@@ -1,27 +1,14 @@
 "use client";
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { FormEvent, useMemo, useState } from "react";
-import { db } from "../lib/firebase";
-
-const requiredEnv = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID",
-];
-
-function useFirebaseReady() {
-  return useMemo(() => requiredEnv.every((key) => process.env[key]), []);
-}
+import { FormEvent, useState } from "react";
+import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const firebaseReady = useFirebaseReady();
+  const firebaseReady = isFirebaseConfigured;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,6 +42,12 @@ export default function CreateLobbyForm() {
         <p>
           Add values to <code>.env.local</code> (see <code>.env.local.example</code>)
           before creating lobbies.
+        </p>
+        <p>
+          Missing keys:{" "}
+          {missingFirebaseConfig.length
+            ? missingFirebaseConfig.join(", ")
+            : "Unknown (restart the dev server)."}
         </p>
       </div>
     );

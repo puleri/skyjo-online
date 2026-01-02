@@ -1,17 +1,8 @@
 "use client";
 
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
-import { db } from "../lib/firebase";
-
-const requiredEnv = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID",
-];
+import { useEffect, useState } from "react";
+import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type Lobby = {
   id: string;
@@ -20,14 +11,10 @@ type Lobby = {
   players: number;
 };
 
-function useFirebaseReady() {
-  return useMemo(() => requiredEnv.every((key) => process.env[key]), []);
-}
-
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const firebaseReady = useFirebaseReady();
+  const firebaseReady = isFirebaseConfigured;
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -59,6 +46,12 @@ export default function LobbyList() {
       <div className="notice">
         <strong>Firestore is not connected yet.</strong>
         <p>Provide your Firebase environment variables to load live lobbies.</p>
+        <p>
+          Missing keys:{" "}
+          {missingFirebaseConfig.length
+            ? missingFirebaseConfig.join(", ")
+            : "Unknown (restart the dev server)."}
+        </p>
       </div>
     );
   }
