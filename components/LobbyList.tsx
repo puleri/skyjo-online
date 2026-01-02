@@ -2,7 +2,7 @@
 
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { db } from "@/lib/firebase";
+import { db } from "../lib/firebase";
 
 const requiredEnv = [
   "NEXT_PUBLIC_FIREBASE_API_KEY",

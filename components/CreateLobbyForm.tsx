@@ -2,7 +2,7 @@
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { FormEvent, useMemo, useState } from "react";
-import { db } from "@/lib/firebase";
+import { db } from "../lib/firebase";
 
 const requiredEnv = [
   "NEXT_PUBLIC_FIREBASE_API_KEY",

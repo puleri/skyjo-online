@@ -1,5 +1,5 @@
-import CreateLobbyForm from "@/components/CreateLobbyForm";
-import LobbyList from "@/components/LobbyList";
+import CreateLobbyForm from "../components/CreateLobbyForm";
+import LobbyList from "../components/LobbyList";
 
 export default function HomePage() {
   return (
