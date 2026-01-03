@@ -82,7 +82,7 @@ export default function LobbyList() {
         joinedAt: serverTimestamp(),
         isReady: false,
       });
-      router.push(`/game/${lobbyId}`);
+      router.push(`/lobby/${lobbyId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
