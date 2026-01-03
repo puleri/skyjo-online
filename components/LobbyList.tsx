@@ -1,7 +1,16 @@
 "use client";
 
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type Lobby = {
@@ -14,6 +23,10 @@ type Lobby = {
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeLobbyId, setActiveLobbyId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
+  const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
 
   useEffect(() => {
@@ -41,6 +54,47 @@ export default function LobbyList() {
     return () => unsubscribe();
   }, [firebaseReady]);
 
+  useEffect(() => {
+    const storedName = window.localStorage.getItem("skyjo:username");
+    if (storedName) {
+      setDisplayName(storedName);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
+
+  const activeLobby = useMemo(
+    () => lobbies.find((lobby) => lobby.id === activeLobbyId) ?? null,
+    [activeLobbyId, lobbies]
+  );
+
+  const handleJoin = async (lobbyId: string) => {
+    if (!uid) {
+      setError("Unable to join a lobby without a signed-in user.");
+      return;
+    }
+
+    setJoiningLobbyId(lobbyId);
+    setError(null);
+    try {
+      await setDoc(doc(db, "lobbies", lobbyId, "players", uid), {
+        displayName: displayName.trim() || "Anonymous player",
+        joinedAt: serverTimestamp(),
+        isReady: false,
+      });
+      setActiveLobbyId(lobbyId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    } finally {
+      setJoiningLobbyId(null);
+    }
+  };
+
   if (!firebaseReady) {
     return (
       <div className="notice">
@@ -60,6 +114,22 @@ export default function LobbyList() {
     return <p className="notice">Firestore error: {error}</p>;
   }
 
+  if (activeLobbyId) {
+    return (
+      <section className="notice">
+        <header>
+          <strong>
+            Lobby: {activeLobby?.name ?? "Unknown lobby"} (ID: {activeLobbyId})
+          </strong>
+        </header>
+        <p>Waiting for players to join. Share the lobby ID to invite others.</p>
+        <button type="button" onClick={() => setActiveLobbyId(null)}>
+          Back to lobby list
+        </button>
+      </section>
+    );
+  }
+
   if (!lobbies.length) {
     return <p>No lobbies yet. Create one above to see real-time updates.</p>;
   }
@@ -74,7 +144,16 @@ export default function LobbyList() {
               <small>Status: {lobby.status}</small>
             </div>
           </div>
-          <small>{lobby.players} players</small>
+          <div>
+            <small>{lobby.players} players</small>
+            <button
+              type="button"
+              onClick={() => handleJoin(lobby.id)}
+              disabled={!uid || joiningLobbyId === lobby.id}
+            >
+              {joiningLobbyId === lobby.id ? "Joining..." : "Join"}
+            </button>
+          </div>
         </li>
       ))}
     </ul>
