@@ -2,17 +2,23 @@
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { FormEvent, useState } from "react";
+import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { uid } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!firebaseReady || !name.trim()) {
+      return;
+    }
+    if (!uid) {
+      setError("Sign in to create a lobby.");
       return;
     }
 
@@ -25,6 +31,7 @@ export default function CreateLobbyForm() {
         createdAt: serverTimestamp(),
         status: "open",
         players: 1,
+        hostId: uid,
       });
       setName("");
     } catch (err) {
@@ -62,7 +69,7 @@ export default function CreateLobbyForm() {
         onChange={(event) => setName(event.target.value)}
         placeholder="Friday Night Skyjo"
       />
-      <button type="submit" disabled={isSubmitting || !name.trim()}>
+      <button type="submit" disabled={isSubmitting || !name.trim() || !uid}>
         {isSubmitting ? "Creating..." : "Create lobby"}
       </button>
       {error ? <p className="notice">{error}</p> : null}
