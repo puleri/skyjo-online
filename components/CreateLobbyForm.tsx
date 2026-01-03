@@ -24,7 +24,7 @@ export default function CreateLobbyForm() {
         name: name.trim(),
         createdAt: serverTimestamp(),
         status: "open",
-        players: 1,
+        players: 0,
       });
       setName("");
     } catch (err) {
