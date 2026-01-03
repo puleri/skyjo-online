@@ -172,6 +172,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 : "Awaiting current player"
             }
             size="main"
+            grid={currentPlayer?.grid}
           />
         </div>
 
@@ -184,6 +185,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   <PlayerGrid
                     label={`${opponent.displayName}${opponent.isReady ? " (ready)" : ""}`}
                     size="mini"
+                    grid={opponent.grid}
                   />
                 </div>
               ))
