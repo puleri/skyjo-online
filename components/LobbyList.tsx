@@ -9,7 +9,8 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -23,11 +24,11 @@ type Lobby = {
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [activeLobbyId, setActiveLobbyId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
+  const router = useRouter();
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -67,11 +68,6 @@ export default function LobbyList() {
     }
   }, [authError]);
 
-  const activeLobby = useMemo(
-    () => lobbies.find((lobby) => lobby.id === activeLobbyId) ?? null,
-    [activeLobbyId, lobbies]
-  );
-
   const handleJoin = async (lobbyId: string) => {
     if (!uid) {
       setError("Unable to join a lobby without a signed-in user.");
@@ -86,7 +82,7 @@ export default function LobbyList() {
         joinedAt: serverTimestamp(),
         isReady: false,
       });
-      setActiveLobbyId(lobbyId);
+      router.push(`/game/${lobbyId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
