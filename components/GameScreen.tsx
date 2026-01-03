@@ -14,6 +14,8 @@ type GameMeta = {
   status: string;
   currentPlayerId: string | null;
   activePlayerOrder: string[];
+  deck: number[];
+  discard: number[];
 };
 
 type GamePlayer = {
@@ -51,6 +53,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           activePlayerOrder: Array.isArray(data.activePlayerOrder)
             ? (data.activePlayerOrder as string[])
             : [],
+          deck: Array.isArray(data.deck) ? (data.deck as number[]) : [],
+          discard: Array.isArray(data.discard) ? (data.discard as number[]) : [],
         });
       },
       (err) => {
@@ -111,6 +115,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   );
 
   const opponentPlayers = orderedPlayers.filter((player) => player.id !== game?.currentPlayerId);
+  const topDiscard =
+    game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
 
   if (!gameId) {
     return (
@@ -164,11 +170,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="game-piles">
           <div className="game-pile">
             <h2>Deck</h2>
-            <div className="card-slot">Draw pile</div>
+            <div className="card card--back" aria-label="Draw pile (face down)" role="img" />
           </div>
           <div className="game-pile">
             <h2>Discard</h2>
-            <div className="card-slot">Discard pile</div>
+            {typeof topDiscard === "number" ? (
+              <div className="card card--discard">{topDiscard}</div>
+            ) : (
+              <div className="card card--discard" aria-label="Empty discard pile">
+                —
+              </div>
+            )}
           </div>
         </div>
 
