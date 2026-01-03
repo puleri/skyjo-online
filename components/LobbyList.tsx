@@ -110,22 +110,6 @@ export default function LobbyList() {
     return <p className="notice">Firestore error: {error}</p>;
   }
 
-  if (activeLobbyId) {
-    return (
-      <section className="notice">
-        <header>
-          <strong>
-            Lobby: {activeLobby?.name ?? "Unknown lobby"} (ID: {activeLobbyId})
-          </strong>
-        </header>
-        <p>Waiting for players to join. Share the lobby ID to invite others.</p>
-        <button type="button" onClick={() => setActiveLobbyId(null)}>
-          Back to lobby list
-        </button>
-      </section>
-    );
-  }
-
   if (!lobbies.length) {
     return <p>No lobbies yet. Create one above to see real-time updates.</p>;
   }
