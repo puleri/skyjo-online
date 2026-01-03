@@ -117,6 +117,9 @@ const startNewRound = (
     deck: remainingDeck,
     discard: [] as number[],
     status: "playing",
+    turnPhase: "choose-draw",
+    endingPlayerId: null,
+    finalTurnRemainingIds: null,
     playerUpdates: playerIds.map((playerId) => ({
       playerId,
       grid: grids[playerId],
@@ -307,6 +310,9 @@ export default function LobbyList() {
         startingPlayerId,
         deck: remainingDeck,
         discard: [],
+        turnPhase: "choose-draw",
+        endingPlayerId: null,
+        finalTurnRemainingIds: null,
       });
 
       const batch = writeBatch(db);
