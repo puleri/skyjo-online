@@ -258,6 +258,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             }
             size="main"
             grid={currentPlayer?.grid}
+            revealed={currentPlayer?.revealed}
           />
         </div>
 
@@ -271,6 +272,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     label={`${opponent.displayName}${opponent.isReady ? " (ready)" : ""}`}
                     size="mini"
                     grid={opponent.grid}
+                    revealed={opponent.revealed}
                   />
                 </div>
               ))
