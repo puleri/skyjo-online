@@ -14,6 +14,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -139,6 +140,7 @@ export default function LobbyList() {
   const firebaseReady = isFirebaseConfigured;
   const { uid, error: authError } = useAnonymousAuth();
   const displayNameTrimmed = displayName.trim();
+  const router = useRouter();
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -205,6 +207,20 @@ export default function LobbyList() {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
   }, [firebaseReady, lobbies]);
+
+  useEffect(() => {
+    if (!firebaseReady || !uid) {
+      return;
+    }
+
+    const activeLobby = lobbies.find((lobby) =>
+      (playerNames[lobby.id] ?? []).some((player) => player.id === uid)
+    );
+
+    if (activeLobby?.gameId) {
+      router.push(`/game/${activeLobby.gameId}`);
+    }
+  }, [firebaseReady, lobbies, playerNames, router, uid]);
 
   const authNotice = useMemo(() => {
     if (!authError) {
