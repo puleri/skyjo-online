@@ -212,22 +212,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="game-piles">
           <div className="game-pile">
             <h2>Deck</h2>
-            {showDrawnCard ? (
-              <>
-                <div className="card card--drawn" aria-label="Drawn card">
-                  {currentPlayer?.pendingDraw}
-                </div>
-                <span className="card-draw-source">Drawn from draw pile</span>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="card card--back"
-                aria-label="Draw pile (face down)"
-                onClick={handleDrawFromDeck}
-                disabled={!canDrawFromDeck}
-              />
-            )}
+            <button
+              type="button"
+              className="card card--back"
+              aria-label="Draw pile (face down)"
+              onClick={handleDrawFromDeck}
+              disabled={!canDrawFromDeck}
+            />
           </div>
           <div className="game-pile">
             <h2>Discard</h2>
@@ -239,6 +230,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="game-pile">
+          <h2>Selected card</h2>
+          {showDrawnCard ? (
+            <>
+              <div className="card card--drawn" aria-label="Selected card">
+                {currentPlayer?.pendingDraw}
+              </div>
+              <span className="card-draw-source">Drawn from draw pile</span>
+            </>
+          ) : (
+            <div className="card" aria-label="No selected card">
+              —
+            </div>
+          )}
         </div>
 
         <div>
