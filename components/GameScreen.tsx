@@ -37,6 +37,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [game, setGame] = useState<GameMeta | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -138,6 +139,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     (game?.deck.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
 
+  useEffect(() => {
+    if (!showDrawnCard) {
+      return;
+    }
+
+    setToastMessage("Click a card on your grid to either reveal or replace!");
+    const timeout = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timeout);
+  }, [showDrawnCard]);
+
   const handleDrawFromDeck = async () => {
     if (!uid) {
       setError("Sign in to draw a card.");
@@ -186,6 +200,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className="game-screen">
+      {toastMessage ? (
+        <div className="toast" role="status" aria-live="polite">
+          {toastMessage}
+        </div>
+      ) : null}
       <section className="game-header">
         <div className="game-header__actions">
           <button type="button" onClick={() => router.back()}>
