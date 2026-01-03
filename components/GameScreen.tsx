@@ -314,7 +314,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               aria-label="Draw pile (face down)"
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
-            />
+            >
+              <span className="card--back-text">Skyjo</span>
+            </button>
           </div>
           <div className="game-pile">
             <h2>Discard</h2>

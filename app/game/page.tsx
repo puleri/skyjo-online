@@ -20,7 +20,9 @@ export default function GamePage() {
       <section className="game-screen__table">
         <div className="pile">
           <span>Deck</span>
-          <div className="card card--back" />
+          <div className="card card--back">
+            <span className="card--back-text">Skyjo</span>
+          </div>
         </div>
         <PlayerGrid label="You" size="main" />
         <div className="pile">
