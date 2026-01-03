@@ -125,6 +125,12 @@ button.card:disabled {
   color: #f8fafc;
 }
 
+.card--back-text {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
 .card--discard {
   background: #fef9c3;
   border-color: #facc15;
