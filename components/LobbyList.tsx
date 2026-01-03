@@ -1,7 +1,17 @@
 "use client";
 
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type Lobby = {
@@ -14,7 +24,11 @@ type Lobby = {
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
+  const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
+  const router = useRouter();
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -40,6 +54,42 @@ export default function LobbyList() {
 
     return () => unsubscribe();
   }, [firebaseReady]);
+
+  useEffect(() => {
+    const storedName = window.localStorage.getItem("skyjo:username");
+    if (storedName) {
+      setDisplayName(storedName);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
+
+  const handleJoin = async (lobbyId: string) => {
+    if (!uid) {
+      setError("Unable to join a lobby without a signed-in user.");
+      return;
+    }
+
+    setJoiningLobbyId(lobbyId);
+    setError(null);
+    try {
+      await setDoc(doc(db, "lobbies", lobbyId, "players", uid), {
+        displayName: displayName.trim() || "Anonymous player",
+        joinedAt: serverTimestamp(),
+        isReady: false,
+      });
+      router.push(`/game/${lobbyId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    } finally {
+      setJoiningLobbyId(null);
+    }
+  };
 
   if (!firebaseReady) {
     return (
@@ -74,7 +124,16 @@ export default function LobbyList() {
               <small>Status: {lobby.status}</small>
             </div>
           </div>
-          <small>{lobby.players} players</small>
+          <div>
+            <small>{lobby.players} players</small>
+            <button
+              type="button"
+              onClick={() => handleJoin(lobby.id)}
+              disabled={!uid || joiningLobbyId === lobby.id}
+            >
+              {joiningLobbyId === lobby.id ? "Joining..." : "Join"}
+            </button>
+          </div>
         </li>
       ))}
     </ul>
