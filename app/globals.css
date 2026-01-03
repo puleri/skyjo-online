@@ -95,6 +95,17 @@ section {
   color: #1e3a8a;
 }
 
+button.card {
+  margin-top: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.card:disabled {
+  cursor: not-allowed;
+}
+
 .player-grid--mini .card {
   min-height: 32px;
   font-size: 0.8rem;
@@ -118,6 +129,12 @@ section {
   background: #fef9c3;
   border-color: #facc15;
   color: #854d0e;
+}
+
+.card--drawn {
+  background: #bbf7d0;
+  border-color: #22c55e;
+  color: #166534;
 }
 
 label {
