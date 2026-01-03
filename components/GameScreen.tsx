@@ -213,9 +213,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="game-pile">
             <h2>Deck</h2>
             {showDrawnCard ? (
-              <div className="card card--drawn" aria-label="Drawn card">
-                {currentPlayer?.pendingDraw}
-              </div>
+              <>
+                <div className="card card--drawn" aria-label="Drawn card">
+                  {currentPlayer?.pendingDraw}
+                </div>
+                <span className="card-draw-source">Drawn from draw pile</span>
+              </>
             ) : (
               <button
                 type="button"
