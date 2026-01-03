@@ -36,6 +36,94 @@ type LobbyPlayer = {
 type LobbyPlayers = Record<string, LobbyPlayer[]>;
 
 const displayNameStorageKey = "skyjo-display-name";
+const cardsPerPlayer = 12;
+
+const createDeck = () => {
+  const cardCounts: Array<[number, number]> = [
+    [-2, 5],
+    [-1, 10],
+    [0, 15],
+    [1, 10],
+    [2, 10],
+    [3, 10],
+    [4, 10],
+    [5, 10],
+    [6, 10],
+    [7, 10],
+    [8, 10],
+    [9, 10],
+    [10, 10],
+    [11, 10],
+    [12, 10],
+  ];
+
+  const deck: number[] = [];
+  cardCounts.forEach(([value, count]) => {
+    for (let i = 0; i < count; i += 1) {
+      deck.push(value);
+    }
+  });
+
+  for (let i = deck.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  return deck;
+};
+
+const dealHands = (deck: number[], playerIds: string[]) => {
+  let cursor = 0;
+  const grids: Record<string, number[]> = {};
+
+  playerIds.forEach((playerId) => {
+    grids[playerId] = deck.slice(cursor, cursor + cardsPerPlayer);
+    cursor += cardsPerPlayer;
+  });
+
+  return {
+    grids,
+    remainingDeck: deck.slice(cursor),
+  };
+};
+
+const createRevealedGrid = () => Array(cardsPerPlayer).fill(false);
+
+const pickRandomPlayerId = (playerIds: string[]) =>
+  playerIds[Math.floor(Math.random() * playerIds.length)];
+
+const pickHighestScorePlayerId = (
+  playerIds: string[],
+  roundScores: Record<string, number>
+) =>
+  playerIds.reduce((leadingPlayerId, playerId) => {
+    const leadingScore = roundScores[leadingPlayerId] ?? Number.NEGATIVE_INFINITY;
+    const candidateScore = roundScores[playerId] ?? Number.NEGATIVE_INFINITY;
+    return candidateScore > leadingScore ? playerId : leadingPlayerId;
+  }, playerIds[0]);
+
+const startNewRound = (
+  playerIds: string[],
+  roundScores: Record<string, number>
+) => {
+  const startingPlayerId = pickHighestScorePlayerId(playerIds, roundScores);
+  const deck = createDeck();
+  const { grids, remainingDeck } = dealHands(deck, playerIds);
+  const revealed = createRevealedGrid();
+
+  return {
+    startingPlayerId,
+    currentPlayerId: startingPlayerId,
+    deck: remainingDeck,
+    discard: [] as number[],
+    status: "playing",
+    playerUpdates: playerIds.map((playerId) => ({
+      playerId,
+      grid: grids[playerId],
+      revealed: [...revealed],
+    })),
+  };
+};
 
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
@@ -204,12 +292,21 @@ export default function LobbyList() {
     }
 
     try {
+      const deck = createDeck();
+      const { grids, remainingDeck } = dealHands(deck, activePlayerOrder);
+      const revealed = createRevealedGrid();
+      const currentPlayerId = pickRandomPlayerId(activePlayerOrder);
+      const startingPlayerId = currentPlayerId;
       const gameRef = await addDoc(collection(db, "games"), {
-        status: "setup",
+        status: "playing",
         lobbyId: lobby.id,
         createdAt: serverTimestamp(),
         roundNumber: 1,
         activePlayerOrder,
+        currentPlayerId,
+        startingPlayerId,
+        deck: remainingDeck,
+        discard: [],
       });
 
       const batch = writeBatch(db);
@@ -217,6 +314,8 @@ export default function LobbyList() {
         batch.set(doc(db, "games", gameRef.id, "players", player.id), {
           displayName: player.displayName ?? "Player",
           seatIndex: player.seatIndex ?? null,
+          grid: grids[player.id],
+          revealed: [...revealed],
         });
       });
       batch.update(doc(db, "lobbies", lobby.id), {
