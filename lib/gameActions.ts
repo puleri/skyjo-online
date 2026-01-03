@@ -19,6 +19,7 @@ type PlayerDoc = {
   grid: Array<number | null>;
   revealed: boolean[];
   pendingDraw?: number | null;
+  pendingDrawSource?: "deck" | "discard" | null;
   roundScore?: number;
   totalScore?: number;
 };
@@ -238,6 +239,7 @@ export const drawFromDiscard = async (
       grid: cleared.grid,
       revealed: cleared.revealed,
       pendingDraw: null,
+      pendingDrawSource: null,
     });
     transaction.update(gameRef, {
       discard,
@@ -276,7 +278,7 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     const drawnCard = deck.pop();
     assertCondition(typeof drawnCard === "number", "Deck is empty.");
 
-    transaction.update(playerRef, { pendingDraw: drawnCard });
+    transaction.update(playerRef, { pendingDraw: drawnCard, pendingDrawSource: "deck" });
     transaction.update(gameRef, { deck, turnPhase: "resolve-draw" });
   });
 };
@@ -368,6 +370,7 @@ export const swapPendingDraw = async (
       grid: cleared.grid,
       revealed: cleared.revealed,
       pendingDraw: null,
+      pendingDrawSource: null,
     });
     transaction.update(gameRef, {
       discard,
@@ -403,7 +406,7 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
 
     const discard = [...game.discard, player.pendingDraw];
 
-    transaction.update(playerRef, { pendingDraw: null });
+    transaction.update(playerRef, { pendingDraw: null, pendingDrawSource: null });
     transaction.update(gameRef, { discard, turnPhase: "resolve" });
   });
 };

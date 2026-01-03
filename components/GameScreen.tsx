@@ -28,6 +28,7 @@ type GamePlayer = {
   grid?: Array<number | null>;
   revealed?: boolean[];
   pendingDraw?: number | null;
+  pendingDrawSource?: "deck" | "discard" | null;
 };
 
 export default function GameScreen({ gameId }: GameScreenProps) {
@@ -90,6 +91,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             grid: Array.isArray(data.grid) ? (data.grid as Array<number | null>) : undefined,
             revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
             pendingDraw: (data.pendingDraw as number | null | undefined) ?? null,
+            pendingDrawSource:
+              (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
           };
         });
         setPlayers(nextPlayers);
@@ -132,12 +135,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
+  const selectedPlayer = useMemo(
+    () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
+    [orderedPlayers]
+  );
+  const selectedCardOwnerLabel = selectedPlayer
+    ? selectedPlayer.id === uid
+      ? "Your card"
+      : `${selectedPlayer.displayName}'s card`
+    : null;
+  const selectedCardSourceLabel =
+    selectedPlayer?.pendingDrawSource === "discard"
+      ? "Picked from discard pile"
+      : "Drawn from draw pile";
   const canDrawFromDeck =
     isCurrentTurn &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.deck.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
+  const showSelectedCard = typeof selectedPlayer?.pendingDraw === "number";
 
   useEffect(() => {
     if (!showDrawnCard) {
@@ -253,12 +270,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
         <div className="game-pile">
           <h2>Selected card</h2>
-          {showDrawnCard ? (
+          {showSelectedCard ? (
             <>
               <div className="card card--drawn" aria-label="Selected card">
-                {currentPlayer?.pendingDraw}
+                {selectedPlayer?.pendingDraw}
               </div>
-              <span className="card-draw-source">Drawn from draw pile</span>
+              <div className="card-tags">
+                {selectedCardOwnerLabel ? (
+                  <span className="card-draw-source">{selectedCardOwnerLabel}</span>
+                ) : null}
+                <span className="card-draw-source">{selectedCardSourceLabel}</span>
+              </div>
             </>
           ) : (
             <div className="card" aria-label="No selected card">
