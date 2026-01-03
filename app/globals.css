@@ -36,6 +36,90 @@ section {
   margin-bottom: 24px;
 }
 
+.game-screen {
+  max-width: 1200px;
+}
+
+.game-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.game-screen__players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.game-screen__table {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) minmax(120px, 160px);
+  gap: 24px;
+  align-items: center;
+}
+
+.player-grid header {
+  margin-bottom: 12px;
+}
+
+.player-grid__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(36px, 1fr));
+  gap: 8px;
+}
+
+.player-grid--mini .player-grid__cards {
+  grid-template-columns: repeat(4, minmax(24px, 1fr));
+}
+
+.card {
+  background: #eff4ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.player-grid--mini .card {
+  min-height: 32px;
+  font-size: 0.8rem;
+}
+
+.pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.card--back {
+  background: #1e293b;
+  border-color: #0f172a;
+  color: #f8fafc;
+}
+
+.card--discard {
+  background: #fef9c3;
+  border-color: #facc15;
+  color: #854d0e;
+}
+
 label {
   font-weight: 600;
 }
@@ -93,58 +177,4 @@ small {
   border: 1px solid #f0d687;
   padding: 12px 16px;
   border-radius: 12px;
-}
-
-.game-screen section {
-  display: grid;
-  gap: 24px;
-}
-
-.game-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.game-board {
-  display: grid;
-  gap: 32px;
-}
-
-.game-piles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-}
-
-.game-pile {
-  flex: 1 1 200px;
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(60px, 1fr));
-  gap: 12px;
-}
-
-.card-grid--mini {
-  grid-template-columns: repeat(3, minmax(60px, 1fr));
-}
-
-.card-slot {
-  background: #f5f7fb;
-  border: 1px dashed #c5cddb;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-.mini-grids {
-  display: grid;
-  gap: 24px;
-}
-
-.mini-grid h3 {
-  margin-top: 0;
 }
