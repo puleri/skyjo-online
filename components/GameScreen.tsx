@@ -4,7 +4,7 @@ import { collection, doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
-import { drawFromDeck } from "../lib/gameActions";
+import { discardPendingDraw, drawFromDeck, revealAfterDiscard, swapPendingDraw } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -39,6 +39,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -155,6 +156,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     (game?.deck.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
   const showSelectedCard = typeof selectedPlayer?.pendingDraw === "number";
+  const canSelectGridCard = showDrawnCard;
 
   useEffect(() => {
     if (!showDrawnCard) {
@@ -168,6 +170,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => window.clearTimeout(timeout);
   }, [showDrawnCard]);
+
+  useEffect(() => {
+    if (!canSelectGridCard) {
+      setActiveActionIndex(null);
+    }
+  }, [canSelectGridCard]);
 
   const handleDrawFromDeck = async () => {
     if (!uid) {
@@ -189,6 +197,58 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
     }
+  };
+
+  const handleSelectGridCard = (index: number) => {
+    if (!canSelectGridCard) {
+      return;
+    }
+    setActiveActionIndex(index);
+  };
+
+  const handleReplace = async (index: number) => {
+    if (!uid) {
+      setError("Sign in to replace a card.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+
+    setError(null);
+    try {
+      await swapPendingDraw(gameId, uid, index);
+      setActiveActionIndex(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
+  };
+
+  const handleReveal = async (index: number) => {
+    if (!uid) {
+      setError("Sign in to reveal a card.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+
+    setError(null);
+    try {
+      await discardPendingDraw(gameId, uid);
+      await revealAfterDiscard(gameId, uid, index);
+      setActiveActionIndex(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
+  };
+
+  const handleCancelMenu = () => {
+    setActiveActionIndex(null);
   };
 
   if (!gameId) {
@@ -300,6 +360,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             size="main"
             grid={currentPlayer?.grid}
             revealed={currentPlayer?.revealed}
+            onCardSelect={canSelectGridCard ? handleSelectGridCard : undefined}
+            activeActionIndex={activeActionIndex}
+            onReplace={canSelectGridCard ? handleReplace : undefined}
+            onReveal={canSelectGridCard ? handleReveal : undefined}
+            onCancel={canSelectGridCard ? handleCancelMenu : undefined}
           />
         </div>
 
