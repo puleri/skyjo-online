@@ -43,7 +43,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!firebaseReady) {
+    if (!firebaseReady || !lobbyId) {
       return;
     }
 
@@ -67,7 +67,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   }, [firebaseReady, lobbyId]);
 
   useEffect(() => {
-    if (!firebaseReady) {
+    if (!firebaseReady || !lobbyId) {
       return;
     }
 
@@ -220,6 +220,15 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       setIsStarting(false);
     }
   };
+
+  if (!lobbyId) {
+    return (
+      <div className="notice">
+        <strong>Loading lobby...</strong>
+        <p>Waiting for a lobby ID before connecting to Firestore.</p>
+      </div>
+    );
+  }
 
   if (!firebaseReady) {
     return (

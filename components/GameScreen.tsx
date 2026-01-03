@@ -32,7 +32,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firebaseReady) {
+    if (!firebaseReady || !gameId) {
       return;
     }
 
@@ -62,7 +62,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [firebaseReady, gameId]);
 
   useEffect(() => {
-    if (!firebaseReady) {
+    if (!firebaseReady || !gameId) {
       return;
     }
 
@@ -111,6 +111,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   );
 
   const opponentPlayers = orderedPlayers.filter((player) => player.id !== game?.currentPlayerId);
+
+  if (!gameId) {
+    return (
+      <div className="notice">
+        <strong>Loading game...</strong>
+        <p>Waiting for a game ID before connecting to Firestore.</p>
+      </div>
+    );
+  }
 
   if (!firebaseReady) {
     return (
