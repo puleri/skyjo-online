@@ -196,6 +196,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           roundNumber: 1,
           currentPlayerId: startingPlayerId,
           activePlayerOrder: playerOrder,
+          turnPhase: "choose-draw",
           deck: shuffledDeck,
           discard: [discardCard],
           createdAt: serverTimestamp(),

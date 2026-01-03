@@ -4,6 +4,8 @@ import { collection, doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
+import { drawFromDeck } from "../lib/gameActions";
+import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type GameScreenProps = {
@@ -16,6 +18,7 @@ type GameMeta = {
   activePlayerOrder: string[];
   deck: number[];
   discard: number[];
+  turnPhase: string;
 };
 
 type GamePlayer = {
@@ -24,11 +27,13 @@ type GamePlayer = {
   isReady: boolean;
   grid?: Array<number | null>;
   revealed?: boolean[];
+  pendingDraw?: number | null;
 };
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firebaseReady = isFirebaseConfigured;
+  const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +60,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             : [],
           deck: Array.isArray(data.deck) ? (data.deck as number[]) : [],
           discard: Array.isArray(data.discard) ? (data.discard as number[]) : [],
+          turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
         });
       },
       (err) => {
@@ -82,6 +88,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             isReady: Boolean(data.isReady),
             grid: Array.isArray(data.grid) ? (data.grid as Array<number | null>) : undefined,
             revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
+            pendingDraw: (data.pendingDraw as number | null | undefined) ?? null,
           };
         });
         setPlayers(nextPlayers);
@@ -93,6 +100,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
 
   const orderedPlayers = useMemo(() => {
     if (!game?.activePlayerOrder.length) {
@@ -117,6 +130,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const opponentPlayers = orderedPlayers.filter((player) => player.id !== game?.currentPlayerId);
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
+  const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
+  const canDrawFromDeck =
+    isCurrentTurn &&
+    game?.turnPhase === "choose-draw" &&
+    typeof currentPlayer?.pendingDraw !== "number" &&
+    (game?.deck.length ?? 0) > 0;
+  const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
+
+  const handleDrawFromDeck = async () => {
+    if (!uid) {
+      setError("Sign in to draw a card.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (!canDrawFromDeck) {
+      return;
+    }
+
+    setError(null);
+    try {
+      await drawFromDeck(gameId, uid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
+  };
 
   if (!gameId) {
     return (
@@ -170,7 +212,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="game-piles">
           <div className="game-pile">
             <h2>Deck</h2>
-            <div className="card card--back" aria-label="Draw pile (face down)" role="img" />
+            {showDrawnCard ? (
+              <div className="card card--drawn" aria-label="Drawn card">
+                {currentPlayer?.pendingDraw}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="card card--back"
+                aria-label="Draw pile (face down)"
+                onClick={handleDrawFromDeck}
+                disabled={!canDrawFromDeck}
+              />
+            )}
           </div>
           <div className="game-pile">
             <h2>Discard</h2>
