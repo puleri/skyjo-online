@@ -83,6 +83,12 @@ section {
   position: relative;
 }
 
+.player-grid__card--active .card {
+  outline: 3px solid #f97316;
+  outline-offset: 2px;
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
+}
+
 .player-grid--mini .player-grid__cards {
   grid-template-columns: repeat(4, minmax(24px, 1fr));
 }

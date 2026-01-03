@@ -46,8 +46,12 @@ export default function PlayerGrid({
         {cards.map((value, index) => {
           const isRevealed = visibility[index];
           const cardClassName = `card${isRevealed ? "" : " card--back card--back-text"}`;
+          const isActive = showActionMenu && activeActionIndex === index;
           return (
-            <div key={`${label}-${index}`} className="player-grid__card">
+            <div
+              key={`${label}-${index}`}
+              className={`player-grid__card${isActive ? " player-grid__card--active" : ""}`}
+            >
               {isSelectable ? (
                 <button
                   type="button"
