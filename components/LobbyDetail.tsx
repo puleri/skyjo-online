@@ -3,17 +3,17 @@
 import {
   collection,
   doc,
-  getDocs,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   updateDoc,
-  writeBatch,
 } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
+import { createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type LobbyPlayer = {
@@ -156,31 +156,63 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     setError(null);
     try {
       const lobbyRef = doc(db, "lobbies", lobbyId);
-      const playerQuery = query(
-        collection(db, "lobbies", lobbyId, "players"),
-        orderBy("joinedAt", "asc")
-      );
-      const playerSnapshot = await getDocs(playerQuery);
-      if (playerSnapshot.empty) {
-        setError("Add at least one player before starting.");
-        return;
-      }
-
-      const playerOrder = playerSnapshot.docs.map((playerDoc) => playerDoc.id);
       const gameRef = doc(collection(db, "games"));
-      const batch = writeBatch(db);
-      batch.set(gameRef, {
-        status: "active",
-        lobbyId,
-        roundNumber: 1,
-        activePlayerOrder: playerOrder,
-        createdAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        const playerQuery = query(
+          collection(db, "lobbies", lobbyId, "players"),
+          orderBy("joinedAt", "asc")
+        );
+        const playerSnapshot = await transaction.get(playerQuery);
+        if (playerSnapshot.empty) {
+          throw new Error("Add at least one player before starting.");
+        }
+
+        const playerOrder = playerSnapshot.docs.map((playerDoc) => playerDoc.id);
+        const shuffledDeck = shuffleDeck(createSkyjoDeck());
+        const playerGrids = new Map<string, number[]>();
+        playerOrder.forEach((playerId) => {
+          const grid: number[] = [];
+          for (let i = 0; i < 12; i += 1) {
+            const card = shuffledDeck.pop();
+            if (typeof card !== "number") {
+              throw new Error("Not enough cards to deal the opening hands.");
+            }
+            grid.push(card);
+          }
+          playerGrids.set(playerId, grid);
+        });
+
+        const discardCard = shuffledDeck.pop();
+        if (typeof discardCard !== "number") {
+          throw new Error("Deck is empty after dealing.");
+        }
+        const startingPlayerId =
+          playerOrder[Math.floor(Math.random() * playerOrder.length)] ?? playerOrder[0];
+
+        transaction.set(gameRef, {
+          status: "playing",
+          lobbyId,
+          roundNumber: 1,
+          currentPlayerId: startingPlayerId,
+          activePlayerOrder: playerOrder,
+          deck: shuffledDeck,
+          discard: [discardCard],
+          createdAt: serverTimestamp(),
+        });
+
+        playerSnapshot.docs.forEach((playerDoc, index) => {
+          const data = playerDoc.data();
+          transaction.set(doc(db, "games", gameRef.id, "players", playerDoc.id), {
+            displayName: data.displayName ?? "Anonymous player",
+            seatIndex: index,
+            grid: playerGrids.get(playerDoc.id) ?? [],
+            revealed: Array.from({ length: 12 }, () => false),
+            roundScore: 0,
+          });
+        });
+
+        transaction.update(lobbyRef, { status: "in-game", gameId: gameRef.id });
       });
-      playerSnapshot.forEach((playerDoc) => {
-        batch.set(doc(db, "games", gameRef.id, "players", playerDoc.id), playerDoc.data());
-      });
-      batch.update(lobbyRef, { status: "in-game", gameId: gameRef.id });
-      await batch.commit();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
