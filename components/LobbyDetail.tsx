@@ -3,6 +3,7 @@
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -162,7 +163,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           collection(db, "lobbies", lobbyId, "players"),
           orderBy("joinedAt", "asc")
         );
-        const playerSnapshot = await transaction.get(playerQuery);
+        const playerSnapshot = await getDocs(playerQuery);
         if (playerSnapshot.empty) {
           throw new Error("Add at least one player before starting.");
         }
