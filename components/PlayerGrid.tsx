@@ -4,6 +4,7 @@ type PlayerGridProps = {
   label: string;
   size?: "main" | "mini";
   isActive?: boolean;
+  isLocal?: boolean;
   grid?: Array<number | null>;
   revealed?: boolean[];
   onCardSelect?: (index: number) => void;
@@ -47,6 +48,7 @@ export default function PlayerGrid({
   label,
   size = "main",
   isActive = false,
+  isLocal = false,
   grid,
   revealed,
   onCardSelect,
@@ -69,7 +71,9 @@ export default function PlayerGrid({
 
   return (
     <section
-      className={`player-grid player-grid--${size}${isActive ? " player-grid--active" : ""}`}
+      className={`player-grid player-grid--${size}${isLocal ? " player-grid--local" : ""}${
+        isActive ? " player-grid--active" : ""
+      }`}
     >
       <header>
         <strong>{label}</strong>

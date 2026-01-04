@@ -134,6 +134,10 @@ section {
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
 }
 
+.player-grid--local {
+  grid-column: 1 / -1;
+}
+
 .player-grid__cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(36px, 1fr));

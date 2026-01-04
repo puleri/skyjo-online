@@ -589,9 +589,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 return (
                   <PlayerGrid
                     key={player.id}
-                    label={`${player.displayName}${player.isReady ? " (ready)" : ""}`}
+                    label={`${player.displayName}${isLocalPlayer ? " (you)" : ""}${
+                      player.isReady ? " (ready)" : ""
+                    }`}
                     size={isLocalPlayer ? "main" : "mini"}
                     isActive={isActivePlayer}
+                    isLocal={isLocalPlayer}
                     grid={player.grid}
                     revealed={player.revealed}
                     onCardSelect={
