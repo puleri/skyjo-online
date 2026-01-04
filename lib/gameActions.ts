@@ -189,13 +189,14 @@ export const drawFromDiscard = async (
     const discard = [...game.discard];
     const drawnCard = discard.pop();
     assertCondition(typeof drawnCard === "number", "Discard pile is empty.");
+    const drawn = drawnCard as number;
 
     const grid = [...player.grid];
     const revealed = [...player.revealed];
     const replacedCard = grid[targetIndex];
     assertCondition(replacedCard !== null && replacedCard !== undefined, "Slot is empty.");
 
-    grid[targetIndex] = drawnCard;
+    grid[targetIndex] = drawn;
     revealed[targetIndex] = true;
     discard.push(replacedCard as number);
 
@@ -278,8 +279,9 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     const deck = [...game.deck];
     const drawnCard = deck.pop();
     assertCondition(typeof drawnCard === "number", "Deck is empty.");
+    const drawn = drawnCard as number;
 
-    transaction.update(playerRef, { pendingDraw: drawnCard, pendingDrawSource: "deck" });
+    transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
     transaction.update(gameRef, { deck, turnPhase: "resolve-draw" });
   });
 };
@@ -326,7 +328,7 @@ export const swapPendingDraw = async (
     const replacedCard = grid[targetIndex];
     assertCondition(replacedCard !== null && replacedCard !== undefined, "Slot is empty.");
 
-    grid[targetIndex] = player.pendingDraw;
+    grid[targetIndex] = player.pendingDraw as number;
     revealed[targetIndex] = true;
 
     const discard = [...game.discard, replacedCard as number];
