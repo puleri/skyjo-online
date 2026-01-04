@@ -67,7 +67,7 @@ const clearColumnIfMatched = (grid: Array<number | null>, revealed: boolean[], i
 const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
 
 const calculateScore = (grid: Array<number | null>) =>
-  grid.reduce((total, value) => total + (value ?? 0), 0);
+  grid.reduce<number>((total, value) => total + (value ?? 0), 0);
 
 type TurnResolution = {
   gameUpdates: Partial<GameDoc>;
@@ -154,6 +154,7 @@ const computeRoundScores = (
   activeOrder.forEach((playerId) => {
     const previousTotal = players[playerId].totalScore ?? 0;
     playerUpdates[playerId] = {
+      revealed: players[playerId].revealed.map(() => true),
       roundScore: roundScores[playerId],
       totalScore: previousTotal + roundScores[playerId],
     };
