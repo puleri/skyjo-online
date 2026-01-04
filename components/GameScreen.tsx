@@ -202,16 +202,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
   );
+  const discardSelectedCard =
+    discardSelectionActive && typeof topDiscard === "number" ? topDiscard : null;
   const selectedCardOwnerLabel = selectedPlayer
     ? selectedPlayer.id === uid
       ? "You drew this card"
       : `${selectedPlayer.displayName} drew this card`
-    : "Awaiting a drawn card";
+    : discardSelectedCard !== null
+      ? "You selected this card"
+      : "Awaiting a drawn card";
   const selectedCardSourceLabel = selectedPlayer
     ? selectedPlayer.pendingDrawSource === "discard"
       ? "From discard pile"
       : "From draw pile"
-    : "Awaiting draw source";
+    : discardSelectedCard !== null
+      ? "From discard pile"
+      : "Awaiting draw source";
   const canDrawFromDeck =
     isCurrentTurn &&
     game?.turnPhase === "choose-draw" &&
@@ -224,7 +230,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
-  const showSelectedCard = typeof selectedPlayer?.pendingDraw === "number";
+  const showSelectedCard =
+    typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
+  const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const canSelectGridCard = showDrawnCard || discardSelectionActive;
 
   const endingPlayerName = useMemo(() => {
@@ -565,7 +573,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <>
             {showSelectedCard ? (
               <div className="card card--drawn" aria-label="Selected card">
-                {selectedPlayer?.pendingDraw}
+                {selectedCardValue}
               </div>
             ) : (
               <div className="card" aria-label="No selected card">
