@@ -15,6 +15,34 @@ type PlayerGridProps = {
 
 const placeholderCards = Array.from({ length: 12 }, (_, index) => index + 1);
 
+const getCardValueClass = (value: number | null | undefined) => {
+  if (typeof value !== "number") {
+    return "";
+  }
+
+  if (value <= -1) {
+    return " card--value-negative";
+  }
+
+  if (value === 0) {
+    return " card--value-zero";
+  }
+
+  if (value <= 3) {
+    return " card--value-low";
+  }
+
+  if (value <= 5) {
+    return " card--value-mid";
+  }
+
+  if (value <= 8) {
+    return " card--value-high";
+  }
+
+  return " card--value-max";
+};
+
 export default function PlayerGrid({
   label,
   size = "main",
@@ -49,7 +77,9 @@ export default function PlayerGrid({
       <div className="player-grid__cards">
         {cards.map((value, index) => {
           const isRevealed = visibility[index];
-          const cardClassName = `card${isRevealed ? "" : " card--back card--back-text"}`;
+          const cardClassName = `card${
+            isRevealed ? getCardValueClass(value) : " card--back card--back-text"
+          }`;
           const isActive = typeof activeActionIndex === "number" && activeActionIndex === index;
           return (
             <div
