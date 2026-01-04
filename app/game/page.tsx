@@ -27,7 +27,7 @@ export default function GamePage() {
         <PlayerGrid label="You" size="main" />
         <div className="pile">
           <span>Discard</span>
-          <div className="card card--discard">-1</div>
+          <div className="card card--value-negative">-1</div>
         </div>
       </section>
     </main>

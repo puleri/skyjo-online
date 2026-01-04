@@ -56,6 +56,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
 
+  const getCardValueClass = (value: number) => {
+    if (value < 0) {
+      return " card--value-negative";
+    }
+    if (value === 0) {
+      return " card--value-zero";
+    }
+    if (value <= 4) {
+      return " card--value-low";
+    }
+    if (value <= 8) {
+      return " card--value-mid";
+    }
+    if (value <= 10) {
+      return " card--value-high";
+    }
+    return " card--value-max";
+  };
+
   useEffect(() => {
     if (!firebaseReady || !gameId) {
       return;
@@ -526,7 +545,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {typeof topDiscard === "number" ? (
               <button
                 type="button"
-                className="card card--discard"
+                className={`card${getCardValueClass(topDiscard)}`}
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
