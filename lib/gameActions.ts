@@ -531,8 +531,14 @@ export const startNextRound = async (gameId: string, playerId: string) => {
 
     const discardCard = shuffledDeck.pop();
     assertCondition(typeof discardCard === "number", "Deck is empty after dealing.");
+    const roundScores = game.roundScores ?? {};
+    const highestRoundScore = Object.values(roundScores).reduce<number | null>(
+      (highest, score) => (highest === null || score > highest ? score : highest),
+      null
+    );
     const startingPlayerId =
-      playerOrder[Math.floor(Math.random() * playerOrder.length)] ?? playerOrder[0];
+      playerOrder.find((targetPlayerId) => roundScores[targetPlayerId] === highestRoundScore) ??
+      playerOrder[0];
 
     transaction.update(gameRef, {
       status: "playing",
