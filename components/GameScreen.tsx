@@ -161,6 +161,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       }))
       .sort((a, b) => a.totalScore - b.totalScore);
   }, [game?.status, orderedPlayers]);
+  const runningTotals = useMemo(
+    () =>
+      orderedPlayers.map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        totalScore: player.totalScore ?? 0,
+      })),
+    [orderedPlayers]
+  );
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
@@ -394,6 +403,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className="game-screen">
+      <section className="score-strip">
+        <h2>Running totals</h2>
+        <ul className="score-strip__list">
+          {runningTotals.map((player) => (
+            <li
+              key={player.id}
+              className={`score-strip__item${
+                player.id === game?.currentPlayerId ? " score-strip__item--active" : ""
+              }`}
+            >
+              <span className="score-strip__name">{player.displayName}</span>
+              <span className="score-strip__score">{player.totalScore}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
       {toastMessage ? (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}
