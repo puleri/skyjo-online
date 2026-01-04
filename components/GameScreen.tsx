@@ -9,6 +9,7 @@ import {
   drawFromDeck,
   drawFromDiscard,
   revealAfterDiscard,
+  startNextRound,
   swapPendingDraw,
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
@@ -24,6 +25,8 @@ type GameMeta = {
   activePlayerOrder: string[];
   deck: number[];
   discard: number[];
+  hostId: string | null;
+  roundNumber: number;
   turnPhase: string;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
@@ -50,6 +53,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [discardSelectionActive, setDiscardSelectionActive] = useState(false);
+  const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +78,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             : [],
           deck: Array.isArray(data.deck) ? (data.deck as number[]) : [],
           discard: Array.isArray(data.discard) ? (data.discard as number[]) : [],
+          hostId: (data.hostId as string | null | undefined) ?? null,
+          roundNumber: (data.roundNumber as number | undefined) ?? 1,
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
           endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
@@ -173,6 +179,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
+  const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -377,6 +384,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     setActiveActionIndex(null);
   };
 
+  const handleStartNextRound = async () => {
+    if (!uid) {
+      setError("Sign in to start the next round.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (!isHost) {
+      setError("Only the host can start the next round.");
+      return;
+    }
+    if (game?.status !== "round-complete") {
+      return;
+    }
+
+    setIsStartingNextRound(true);
+    setError(null);
+    try {
+      await startNextRound(gameId, uid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    } finally {
+      setIsStartingNextRound(false);
+    }
+  };
+
   if (!gameId) {
     return (
       <div className="notice">
@@ -456,6 +492,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </li>
             ))}
           </ol>
+          <div className="game-results__actions">
+            {isHost ? (
+              <button
+                type="button"
+                onClick={handleStartNextRound}
+                disabled={isStartingNextRound}
+              >
+                {isStartingNextRound ? "Starting next round..." : "Start next round"}
+              </button>
+            ) : (
+              <p className="notice">Waiting for the host to start the next round.</p>
+            )}
+          </div>
         </section>
       ) : null}
 

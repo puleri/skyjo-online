@@ -193,6 +193,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         transaction.set(gameRef, {
           status: "playing",
           lobbyId,
+          hostId: uid,
           roundNumber: 1,
           currentPlayerId: startingPlayerId,
           activePlayerOrder: playerOrder,

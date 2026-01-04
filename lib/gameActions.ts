@@ -1,5 +1,6 @@
-import { doc, runTransaction } from "firebase/firestore";
+import { deleteField, doc, runTransaction } from "firebase/firestore";
 import { db } from "./firebase";
+import { createSkyjoDeck, shuffleDeck } from "./game/deck";
 
 export type TurnPhase = "choose-draw" | "resolve-draw" | "choose-swap" | "resolve";
 
@@ -8,6 +9,8 @@ type GameDoc = {
   currentPlayerId: string;
   deck: number[];
   discard: number[];
+  hostId?: string | null;
+  roundNumber?: number;
   turnPhase: TurnPhase;
   endingPlayerId?: string | null;
   finalTurnRemainingIds?: string[] | null;
@@ -496,5 +499,62 @@ export const revealAfterDiscard = async (
         transaction.update(targetRef, updates);
       });
     }
+  });
+};
+
+export const startNextRound = async (gameId: string, playerId: string) => {
+  const gameRef = doc(db, "games", gameId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    assertCondition(game.status === "round-complete", "Round is not complete yet.");
+    assertCondition(game.hostId === playerId, "Only the host can start the next round.");
+
+    const playerOrder = game.activePlayerOrder;
+    assertCondition(playerOrder.length > 0, "No players are active in this game.");
+
+    const shuffledDeck = shuffleDeck(createSkyjoDeck());
+    const playerGrids = new Map<string, number[]>();
+
+    playerOrder.forEach((targetPlayerId) => {
+      const grid: number[] = [];
+      for (let i = 0; i < 12; i += 1) {
+        const card = shuffledDeck.pop();
+        assertCondition(typeof card === "number", "Not enough cards to deal the next round.");
+        grid.push(card as number);
+      }
+      playerGrids.set(targetPlayerId, grid);
+    });
+
+    const discardCard = shuffledDeck.pop();
+    assertCondition(typeof discardCard === "number", "Deck is empty after dealing.");
+    const startingPlayerId =
+      playerOrder[Math.floor(Math.random() * playerOrder.length)] ?? playerOrder[0];
+
+    transaction.update(gameRef, {
+      status: "playing",
+      roundNumber: (game.roundNumber ?? 1) + 1,
+      currentPlayerId: startingPlayerId,
+      turnPhase: "choose-draw",
+      deck: shuffledDeck,
+      discard: [discardCard],
+      endingPlayerId: null,
+      finalTurnRemainingIds: null,
+      roundScores: deleteField(),
+    });
+
+    playerOrder.forEach((targetPlayerId) => {
+      const playerRef = doc(db, "games", gameId, "players", targetPlayerId);
+      transaction.update(playerRef, {
+        grid: playerGrids.get(targetPlayerId) ?? [],
+        revealed: Array.from({ length: 12 }, () => false),
+        pendingDraw: null,
+        pendingDrawSource: null,
+        roundScore: 0,
+      });
+    });
   });
 };
