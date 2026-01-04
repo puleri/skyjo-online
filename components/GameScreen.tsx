@@ -46,6 +46,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
+  const [discardSelectionActive, setDiscardSelectionActive] = useState(false);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -167,7 +168,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
   const showSelectedCard = typeof selectedPlayer?.pendingDraw === "number";
-  const canSelectGridCard = showDrawnCard || canSelectDiscardTarget;
+  const canSelectGridCard = showDrawnCard || discardSelectionActive;
 
   useEffect(() => {
     if (!showDrawnCard) {
@@ -183,10 +184,29 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [showDrawnCard]);
 
   useEffect(() => {
+    if (!discardSelectionActive) {
+      return;
+    }
+
+    setToastMessage("Select a card on your grid to swap with the discard pile.");
+    const timeout = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timeout);
+  }, [discardSelectionActive]);
+
+  useEffect(() => {
     if (!canSelectGridCard) {
       setActiveActionIndex(null);
     }
   }, [canSelectGridCard]);
+
+  useEffect(() => {
+    if (!canSelectDiscardTarget || showDrawnCard || !isCurrentTurn) {
+      setDiscardSelectionActive(false);
+    }
+  }, [canSelectDiscardTarget, showDrawnCard, isCurrentTurn]);
 
   const handleDrawFromDeck = async () => {
     if (!uid) {
@@ -214,10 +234,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!canSelectGridCard) {
       return;
     }
+    if (discardSelectionActive) {
+      void handleDrawFromDiscard(index);
+      return;
+    }
     setActiveActionIndex(index);
   };
 
-  const handleDrawFromDiscard = async () => {
+  const handleDrawFromDiscard = async (targetIndex: number) => {
     if (!uid) {
       setError("Sign in to draw a card.");
       return;
@@ -226,18 +250,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setError("Missing game ID.");
       return;
     }
-    if (!canSelectDiscardTarget || typeof activeActionIndex !== "number") {
+    if (!canSelectDiscardTarget) {
       return;
     }
 
     setError(null);
     try {
-      await drawFromDiscard(gameId, uid, activeActionIndex);
+      await drawFromDiscard(gameId, uid, targetIndex);
       setActiveActionIndex(null);
+      setDiscardSelectionActive(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
     }
+  };
+
+  const handleSelectDiscard = () => {
+    if (!canSelectDiscardTarget) {
+      return;
+    }
+    setDiscardSelectionActive(true);
+    setActiveActionIndex(null);
   };
 
   const handleReplace = async (index: number) => {
@@ -359,8 +392,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 type="button"
                 className="card card--discard"
                 aria-label="Discard pile"
-                onClick={handleDrawFromDiscard}
-                disabled={!canSelectDiscardTarget || typeof activeActionIndex !== "number"}
+                onClick={handleSelectDiscard}
+                disabled={!canSelectDiscardTarget}
               >
                 {topDiscard}
               </button>
