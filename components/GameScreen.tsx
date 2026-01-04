@@ -160,6 +160,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isCurrentTurn &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
+    !discardSelectionActive &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
