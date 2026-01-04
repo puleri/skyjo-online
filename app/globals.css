@@ -40,6 +40,51 @@ section {
   max-width: 1200px;
 }
 
+.score-strip {
+  margin-bottom: 16px;
+}
+
+.score-strip h2 {
+  font-size: 1.25rem;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.score-strip__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.score-strip__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-weight: 600;
+  border-bottom: none;
+}
+
+.score-strip__item--active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.score-strip__score {
+  font-variant-numeric: tabular-nums;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 2px 10px;
+  border: 1px solid #e2e8f0;
+}
+
 .game-screen__header {
   display: flex;
   align-items: center;
