@@ -230,6 +230,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     : selectedDiscardPlayer
       ? "From discard pile"
       : "Awaiting draw source";
+  const discardSelectionActive =
+    Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
     isCurrentTurn &&
     game?.turnPhase === "choose-draw" &&
@@ -242,8 +244,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
-  const discardSelectionActive =
-    Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const showSelectedCard =
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
