@@ -1,7 +1,7 @@
 "use client";
 
 import { collection, doc, onSnapshot } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
 import {
@@ -25,6 +25,8 @@ type GameMeta = {
   deck: number[];
   discard: number[];
   turnPhase: string;
+  endingPlayerId: string | null;
+  finalTurnRemainingIds: string[] | null;
 };
 
 type GamePlayer = {
@@ -35,6 +37,7 @@ type GamePlayer = {
   revealed?: boolean[];
   pendingDraw?: number | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  totalScore?: number;
 };
 
 export default function GameScreen({ gameId }: GameScreenProps) {
@@ -47,6 +50,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [discardSelectionActive, setDiscardSelectionActive] = useState(false);
+  const endingAnnouncementRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -71,6 +75,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           deck: Array.isArray(data.deck) ? (data.deck as number[]) : [],
           discard: Array.isArray(data.discard) ? (data.discard as number[]) : [],
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
+          endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
+          finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
+            ? (data.finalTurnRemainingIds as string[])
+            : null,
         });
       },
       (err) => {
@@ -101,6 +109,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             pendingDraw: (data.pendingDraw as number | null | undefined) ?? null,
             pendingDrawSource:
               (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
+            totalScore: (data.totalScore as number | undefined) ?? undefined,
           };
         });
         setPlayers(nextPlayers);
@@ -140,6 +149,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   );
 
   const opponentPlayers = orderedPlayers.filter((player) => player.id !== game?.currentPlayerId);
+  const sortedScores = useMemo(() => {
+    if (game?.status !== "round-complete") {
+      return [];
+    }
+    return [...orderedPlayers]
+      .map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        totalScore: player.totalScore ?? 0,
+      }))
+      .sort((a, b) => a.totalScore - b.totalScore);
+  }, [game?.status, orderedPlayers]);
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
@@ -172,6 +193,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showSelectedCard = typeof selectedPlayer?.pendingDraw === "number";
   const canSelectGridCard = showDrawnCard || discardSelectionActive;
 
+  const endingPlayerName = useMemo(() => {
+    if (!game?.endingPlayerId) {
+      return null;
+    }
+    return (
+      players.find((player) => player.id === game.endingPlayerId)?.displayName ?? "A player"
+    );
+  }, [game?.endingPlayerId, players]);
+
   useEffect(() => {
     if (!showDrawnCard) {
       return;
@@ -197,6 +227,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => window.clearTimeout(timeout);
   }, [discardSelectionActive]);
+
+  useEffect(() => {
+    if (!game?.endingPlayerId || !endingPlayerName) {
+      return;
+    }
+
+    if (endingAnnouncementRef.current === game.endingPlayerId) {
+      return;
+    }
+
+    endingAnnouncementRef.current = game.endingPlayerId;
+    setToastMessage(`${endingPlayerName} revealed all cards. Everyone gets one final turn!`);
+    const timeout = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [endingPlayerName, game?.endingPlayerId]);
 
   useEffect(() => {
     if (!canSelectGridCard) {
@@ -372,6 +420,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           {error ? <p className="notice">{error}</p> : null}
         </div>
       </section>
+
+      {game?.status === "round-complete" ? (
+        <section className="game-results">
+          <h2>Final scores</h2>
+          <ol>
+            {sortedScores.map((player) => (
+              <li key={player.id}>
+                {player.displayName}: {player.totalScore}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <section className="game-board">
         <div className="game-piles">
