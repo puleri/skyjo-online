@@ -149,17 +149,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   );
   const selectedCardOwnerLabel = selectedPlayer
     ? selectedPlayer.id === uid
-      ? "Your card"
-      : `${selectedPlayer.displayName}'s card`
-    : null;
-  const selectedCardSourceLabel =
-    selectedPlayer?.pendingDrawSource === "discard"
-      ? "Picked from discard pile"
-      : "Drawn from draw pile";
+      ? "You drew this card"
+      : `${selectedPlayer.displayName} drew this card`
+    : "Awaiting a drawn card";
+  const selectedCardSourceLabel = selectedPlayer
+    ? selectedPlayer.pendingDrawSource === "discard"
+      ? "From discard pile"
+      : "From draw pile"
+    : "Awaiting draw source";
   const canDrawFromDeck =
     isCurrentTurn &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
+    !discardSelectionActive &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
@@ -407,23 +409,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
         <div className="game-pile">
           <h2>Selected card</h2>
-          {showSelectedCard ? (
-            <>
+          <>
+            {showSelectedCard ? (
               <div className="card card--drawn" aria-label="Selected card">
                 {selectedPlayer?.pendingDraw}
               </div>
-              <div className="card-tags">
-                {selectedCardOwnerLabel ? (
-                  <span className="card-draw-source">{selectedCardOwnerLabel}</span>
-                ) : null}
-                <span className="card-draw-source">{selectedCardSourceLabel}</span>
+            ) : (
+              <div className="card" aria-label="No selected card">
+                —
               </div>
-            </>
-          ) : (
-            <div className="card" aria-label="No selected card">
-              —
+            )}
+            <div className="card-tags">
+              <span className="card-draw-source">{selectedCardOwnerLabel}</span>
+              <span className="card-draw-source">{selectedCardSourceLabel}</span>
             </div>
-          )}
+          </>
         </div>
 
         <div>
