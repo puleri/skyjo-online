@@ -3,6 +3,7 @@
 type PlayerGridProps = {
   label: string;
   size?: "main" | "mini";
+  isActive?: boolean;
   grid?: Array<number | null>;
   revealed?: boolean[];
   onCardSelect?: (index: number) => void;
@@ -17,6 +18,7 @@ const placeholderCards = Array.from({ length: 12 }, (_, index) => index + 1);
 export default function PlayerGrid({
   label,
   size = "main",
+  isActive = false,
   grid,
   revealed,
   onCardSelect,
@@ -38,7 +40,9 @@ export default function PlayerGrid({
     typeof onCancel === "function";
 
   return (
-    <section className={`player-grid player-grid--${size}`}>
+    <section
+      className={`player-grid player-grid--${size}${isActive ? " player-grid--active" : ""}`}
+    >
       <header>
         <strong>{label}</strong>
       </header>

@@ -114,8 +114,24 @@ section {
   align-items: center;
 }
 
+.player-grids h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.player-grids__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
 .player-grid header {
   margin-bottom: 12px;
+}
+
+.player-grid--active {
+  border: 2px solid #2563eb;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
 }
 
 .player-grid__cards {
