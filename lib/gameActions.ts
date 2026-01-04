@@ -14,6 +14,7 @@ type GameDoc = {
   turnPhase: TurnPhase;
   endingPlayerId?: string | null;
   finalTurnRemainingIds?: string[] | null;
+  selectedDiscardPlayerId?: string | null;
   status?: string;
   roundScores?: Record<string, number>;
 };
@@ -252,6 +253,7 @@ export const drawFromDiscard = async (
     });
     transaction.update(gameRef, {
       discard,
+      selectedDiscardPlayerId: null,
       ...resolution.gameUpdates,
       ...(roundScores ? { roundScores } : {}),
     });
@@ -289,7 +291,27 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     const drawn = drawnCard as number;
 
     transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
-    transaction.update(gameRef, { deck, turnPhase: "resolve-draw" });
+    transaction.update(gameRef, {
+      deck,
+      turnPhase: "resolve-draw",
+      selectedDiscardPlayerId: null,
+    });
+  });
+};
+
+export const selectDiscard = async (gameId: string, playerId: string) => {
+  const gameRef = doc(db, "games", gameId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    assertCondition(game.currentPlayerId === playerId, "Not your turn.");
+    assertCondition(game.turnPhase === "choose-draw", "Not in draw phase.");
+    assertCondition(game.discard.length > 0, "Discard pile is empty.");
+
+    transaction.update(gameRef, { selectedDiscardPlayerId: playerId });
   });
 };
 

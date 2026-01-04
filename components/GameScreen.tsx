@@ -9,6 +9,7 @@ import {
   drawFromDeck,
   drawFromDiscard,
   revealAfterDiscard,
+  selectDiscard,
   startNextRound,
   swapPendingDraw,
 } from "../lib/gameActions";
@@ -30,6 +31,7 @@ type GameMeta = {
   turnPhase: string;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
+  selectedDiscardPlayerId: string | null;
 };
 
 type GamePlayer = {
@@ -52,7 +54,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
-  const [discardSelectionActive, setDiscardSelectionActive] = useState(false);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
 
@@ -104,6 +105,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
             ? (data.finalTurnRemainingIds as string[])
             : null,
+          selectedDiscardPlayerId:
+            (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
         });
       },
       (err) => {
@@ -202,20 +205,29 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
   );
+  const selectedDiscardPlayer = useMemo(
+    () =>
+      game?.selectedDiscardPlayerId
+        ? orderedPlayers.find((player) => player.id === game.selectedDiscardPlayerId) ?? null
+        : null,
+    [game?.selectedDiscardPlayerId, orderedPlayers]
+  );
   const discardSelectedCard =
-    discardSelectionActive && typeof topDiscard === "number" ? topDiscard : null;
+    selectedDiscardPlayer && typeof topDiscard === "number" ? topDiscard : null;
   const selectedCardOwnerLabel = selectedPlayer
     ? selectedPlayer.id === uid
       ? "You drew this card"
       : `${selectedPlayer.displayName} drew this card`
-    : discardSelectedCard !== null
-      ? "You selected this card"
+    : selectedDiscardPlayer
+      ? selectedDiscardPlayer.id === uid
+        ? "You selected this card"
+        : `${selectedDiscardPlayer.displayName} selected this card`
       : "Awaiting a drawn card";
   const selectedCardSourceLabel = selectedPlayer
     ? selectedPlayer.pendingDrawSource === "discard"
       ? "From discard pile"
       : "From draw pile"
-    : discardSelectedCard !== null
+    : selectedDiscardPlayer
       ? "From discard pile"
       : "Awaiting draw source";
   const canDrawFromDeck =
@@ -230,6 +242,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
+  const discardSelectionActive =
+    Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const showSelectedCard =
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
@@ -294,12 +308,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
   }, [canSelectGridCard]);
 
-  useEffect(() => {
-    if (!canSelectDiscardTarget || showDrawnCard || !isCurrentTurn) {
-      setDiscardSelectionActive(false);
-    }
-  }, [canSelectDiscardTarget, showDrawnCard, isCurrentTurn]);
-
   const handleDrawFromDeck = async () => {
     if (!uid) {
       setError("Sign in to draw a card.");
@@ -350,19 +358,33 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     try {
       await drawFromDiscard(gameId, uid, targetIndex);
       setActiveActionIndex(null);
-      setDiscardSelectionActive(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
     }
   };
 
-  const handleSelectDiscard = () => {
+  const handleSelectDiscard = async () => {
     if (!canSelectDiscardTarget) {
       return;
     }
-    setDiscardSelectionActive(true);
-    setActiveActionIndex(null);
+    if (!uid) {
+      setError("Sign in to draw a card.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+
+    setError(null);
+    try {
+      await selectDiscard(gameId, uid);
+      setActiveActionIndex(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
   };
 
   const handleReplace = async (index: number) => {
