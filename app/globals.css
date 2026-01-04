@@ -378,3 +378,11 @@ small {
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
   z-index: 10;
 }
+
+.legal-tiny {
+  font-size: 0.625rem;
+  color: #6b7280;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 34px 12px 34px;
+}

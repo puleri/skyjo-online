@@ -8,9 +8,7 @@ export default function LobbyScreen() {
       <section>
         <h1>Skyjo Online</h1>
         <p>
-          Welcome! This starter page connects to Firebase Firestore using real-time
-          updates. Create a lobby to confirm your Firestore project is wired up,
-          and watch the list update instantly for everyone connected.
+          Welcome to Skyjo online! I love you. Create or join a lobby to start.
         </p>
       </section>
 
