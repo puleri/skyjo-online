@@ -154,7 +154,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     [game?.currentPlayerId, orderedPlayers]
   );
 
-  const opponentPlayers = orderedPlayers.filter((player) => player.id !== game?.currentPlayerId);
   const sortedScores = useMemo(() => {
     if (game?.status !== "round-complete") {
       return [];
@@ -561,41 +560,33 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </>
         </div>
 
-        <div>
-          <h2>Main grid</h2>
-          <PlayerGrid
-            label={
-              currentPlayer
-                ? `${currentPlayer.displayName}${currentPlayer.isReady ? " (ready)" : ""}`
-                : "Awaiting current player"
-            }
-            size="main"
-            grid={currentPlayer?.grid}
-            revealed={currentPlayer?.revealed}
-            onCardSelect={canSelectGridCard ? handleSelectGridCard : undefined}
-            activeActionIndex={activeActionIndex}
-            onReplace={showDrawnCard ? handleReplace : undefined}
-            onReveal={showDrawnCard ? handleReveal : undefined}
-            onCancel={showDrawnCard ? handleCancelMenu : undefined}
-          />
-        </div>
-
-        <div>
-          <h2>Mini grids</h2>
-          <div className="mini-grids">
-            {opponentPlayers.length ? (
-              opponentPlayers.map((opponent) => (
-                <div key={opponent.id} className="mini-grid">
+        <div className="player-grids">
+          <h2>Player grids</h2>
+          <div className="player-grids__list">
+            {orderedPlayers.length ? (
+              orderedPlayers.map((player) => {
+                const isActivePlayer = player.id === game?.currentPlayerId;
+                const isLocalPlayer = player.id === uid;
+                return (
                   <PlayerGrid
-                    label={`${opponent.displayName}${opponent.isReady ? " (ready)" : ""}`}
-                    size="mini"
-                    grid={opponent.grid}
-                    revealed={opponent.revealed}
+                    key={player.id}
+                    label={`${player.displayName}${player.isReady ? " (ready)" : ""}`}
+                    size={isLocalPlayer ? "main" : "mini"}
+                    isActive={isActivePlayer}
+                    grid={player.grid}
+                    revealed={player.revealed}
+                    onCardSelect={
+                      isLocalPlayer && canSelectGridCard ? handleSelectGridCard : undefined
+                    }
+                    activeActionIndex={isLocalPlayer ? activeActionIndex : null}
+                    onReplace={isLocalPlayer && showDrawnCard ? handleReplace : undefined}
+                    onReveal={isLocalPlayer && showDrawnCard ? handleReveal : undefined}
+                    onCancel={isLocalPlayer && showDrawnCard ? handleCancelMenu : undefined}
                   />
-                </div>
-              ))
+                );
+              })
             ) : (
-              <p>No other players yet.</p>
+              <p>No players yet.</p>
             )}
           </div>
         </div>
