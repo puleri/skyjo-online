@@ -50,6 +50,10 @@ const clearColumnIfMatched = (grid: Array<number | null>, revealed: boolean[], i
   if (hasNull) {
     return { grid, revealed };
   }
+  const allRevealed = columnIndices.every((columnIndex) => revealed[columnIndex]);
+  if (!allRevealed) {
+    return { grid, revealed };
+  }
   const [first, ...rest] = values;
   const isMatch = rest.every((value) => value === first);
   if (!isMatch) {
