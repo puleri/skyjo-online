@@ -55,6 +55,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
 
   const getCardValueClass = (value: number) => {
@@ -510,11 +511,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       ) : null}
       <section className="game-header">
         <div className="game-header__actions">
-          <button type="button" onClick={() => router.back()}>
-            Back
-          </button>
-          <button type="button" onClick={() => router.push("/")}>
-            Back to main menu
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Open settings"
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            <span aria-hidden="true">⚙️</span>
           </button>
         </div>
         <div>
@@ -529,6 +532,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           {error ? <p className="notice">{error}</p> : null}
         </div>
       </section>
+      {isSettingsOpen ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="game-settings-title"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2 id="game-settings-title">Game menu</h2>
+            <p>Manage your game settings.</p>
+            <div className="modal__actions">
+              <button type="button" onClick={() => router.push("/")}>
+                Back to main menu
+              </button>
+              <button type="button" onClick={() => setIsSettingsOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {game?.status === "round-complete" ? (
         <section className="game-results">
