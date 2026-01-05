@@ -525,50 +525,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className={`game-screen${isCurrentTurn ? " game-screen--current-turn" : ""}`}>
-      <section className="score-strip">
-        <h2>Running totals</h2>
-        <ul className="score-strip__list">
-          {runningTotals.map((player) => (
-            <li
-              key={player.id}
-              className={`score-strip__item${
-                player.id === game?.currentPlayerId ? " score-strip__item--active" : ""
-              }`}
-            >
-              <span className="score-strip__name">{player.displayName}</span>
-              <span className="score-strip__score">{player.totalScore}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+
+     
       {toastMessage ? (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}
         </div>
       ) : null}
-      <section className="game-header">
-        <div className="game-header__actions">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Open settings"
-            onClick={() => setIsSettingsOpen(true)}
-          >
-            <span aria-hidden="true">⚙️</span>
-          </button>
-        </div>
-        <div>
-          <h1>Game {gameId}</h1>
-          <p>Status: {game?.status ?? "loading..."}</p>
-          <p>
-            Current turn:{" "}
-            {currentPlayer?.displayName ??
-              (game?.currentPlayerId ? `Player ${game.currentPlayerId}` : "TBD")}
-          </p>
-          <p>Players connected: {players.length}</p>
-          {error ? <p className="notice">{error}</p> : null}
-        </div>
-      </section>
       {isSettingsOpen ? (
         <div
           className="modal-backdrop"
@@ -721,6 +684,32 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             )}
           </div>
         </div>
+      </section>
+       <section className="score-strip">
+        <h2>Running totals</h2>
+        <ul className="score-strip__list">
+            <button
+            type="button"
+            className="icon-button"
+            aria-label="Open settings"
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            <span aria-hidden="true">⚙️</span>
+          </button>
+          {runningTotals.map((player) => (
+            <li
+              key={player.id}
+              className={`score-strip__item${
+                player.id === game?.currentPlayerId ? " score-strip__item--active" : ""
+              }`}
+            >
+              <span className="score-strip__name">{player.displayName}</span>
+              <span className="score-strip__score">{player.totalScore}</span>
+            </li>
+          ))}
+        </ul>
+              
+
       </section>
     </main>
   );
