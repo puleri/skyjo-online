@@ -47,6 +47,9 @@ type GamePlayer = {
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
+  const firstTimeTipsStorageKey = "skyjo-first-time-tips";
+  const drawTipMessage = "Click a card on your grid to either reveal or replace!";
+  const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const firebaseReady = isFirebaseConfigured;
   const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
@@ -56,6 +59,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showFirstTimeTips, setShowFirstTimeTips] = useState(true);
   const endingAnnouncementRef = useRef<string | null>(null);
 
   const getCardValueClass = (value: number) => {
@@ -117,6 +121,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
+    if (storedPreference === null) {
+      return;
+    }
+    setShowFirstTimeTips(storedPreference === "true");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
+  }, [showFirstTimeTips]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -260,11 +276,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [game?.endingPlayerId, players]);
 
   useEffect(() => {
-    if (!showDrawnCard) {
+    if (!showDrawnCard || !showFirstTimeTips) {
       return;
     }
 
-    setToastMessage("Click a card on your grid to either reveal or replace!");
+    setToastMessage(drawTipMessage);
     const timeout = window.setTimeout(() => {
       setToastMessage(null);
     }, 4000);
@@ -273,17 +289,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [showDrawnCard]);
 
   useEffect(() => {
-    if (!discardSelectionActive) {
+    if (!discardSelectionActive || !showFirstTimeTips) {
       return;
     }
 
-    setToastMessage("Select a card on your grid to swap with the discard pile.");
+    setToastMessage(discardTipMessage);
     const timeout = window.setTimeout(() => {
       setToastMessage(null);
     }, 4000);
 
     return () => window.clearTimeout(timeout);
-  }, [discardSelectionActive]);
+  }, [discardSelectionActive, showFirstTimeTips]);
+
+  useEffect(() => {
+    if (showFirstTimeTips) {
+      return;
+    }
+
+    if (toastMessage === drawTipMessage || toastMessage === discardTipMessage) {
+      setToastMessage(null);
+    }
+  }, [drawTipMessage, discardTipMessage, showFirstTimeTips, toastMessage]);
 
   useEffect(() => {
     if (!game?.endingPlayerId || !endingPlayerName) {
@@ -543,6 +569,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 id="game-settings-title">Game menu</h2>
             <p>Manage your game settings.</p>
+            <div className="modal__option">
+              <label className="modal__option-label">
+                <input
+                  type="checkbox"
+                  checked={showFirstTimeTips}
+                  onChange={(event) => setShowFirstTimeTips(event.target.checked)}
+                />
+                First time tips
+              </label>
+              <p className="modal__option-help">
+                Show the quick hints about revealing, replacing, and swapping cards.
+              </p>
+            </div>
             <div className="modal__actions">
               <button type="button" onClick={() => router.push("/")}>
                 Back to main menu
