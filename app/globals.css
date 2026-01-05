@@ -41,6 +41,41 @@ section {
   max-width: 1200px;
 }
 
+.game-screen--current-turn {
+  position: relative;
+}
+
+.game-screen--current-turn::before {
+  content: "";
+  position: fixed;
+  inset: 12px;
+  border-radius: 28px;
+  border: 4px solid transparent;
+  background: linear-gradient(
+        90deg,
+        #f87171,
+        #fb923c,
+        #facc15,
+        #4ade80,
+        #38bdf8,
+        #818cf8,
+        #f472b6
+      )
+      border-box;
+  -webkit-mask: linear-gradient(#ffffff 0 0) padding-box, linear-gradient(#ffffff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+  animation: game-turn-rainbow 6s linear infinite;
+}
+
+@keyframes game-turn-rainbow {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
 .score-strip {
   margin-bottom: 16px;
 }

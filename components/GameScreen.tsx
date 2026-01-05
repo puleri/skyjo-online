@@ -524,7 +524,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }
 
   return (
-    <main className="game-screen">
+    <main className={`game-screen${isCurrentTurn ? " game-screen--current-turn" : ""}`}>
       <section className="score-strip">
         <h2>Running totals</h2>
         <ul className="score-strip__list">
