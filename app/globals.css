@@ -1,6 +1,8 @@
+@import "@fontsource/playfair-display";
+
 :root {
   color-scheme: light;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: "Playfair Display", "Inter", system-ui, -apple-system, sans-serif;
 }
 
 * {
