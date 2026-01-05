@@ -11,6 +11,7 @@ body {
   margin: 0;
   background: #f5f7fb;
   color: #1c2430;
+  overflow-x: hidden;
 }
 
 main {
