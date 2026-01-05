@@ -570,13 +570,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <h2 id="game-settings-title">Game menu</h2>
             <p>Manage your game settings.</p>
             <div className="modal__option">
-              <label className="modal__option-label">
-                <input
-                  type="checkbox"
-                  checked={showFirstTimeTips}
-                  onChange={(event) => setShowFirstTimeTips(event.target.checked)}
-                />
-                First time tips
+              <label className="modal__option-label modal__option-toggle">
+                <span>First time tips</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={showFirstTimeTips}
+                    onChange={(event) => setShowFirstTimeTips(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
               </label>
               <p className="modal__option-help">
                 Show the quick hints about revealing, replacing, and swapping cards.
