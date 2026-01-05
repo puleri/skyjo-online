@@ -208,9 +208,11 @@ section {
 
 button.card {
   margin-top: 0;
-  padding: 0;
+  padding: 4px 6px;
   font: inherit;
-  cursor: not-allowed;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
 }
 
 button.card:disabled {
