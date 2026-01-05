@@ -185,6 +185,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return [...ordered, ...remaining];
   }, [game?.activePlayerOrder, players]);
 
+  const displayPlayers = useMemo(() => {
+    if (!uid) {
+      return orderedPlayers;
+    }
+    const localPlayer = orderedPlayers.find((player) => player.id === uid);
+    if (!localPlayer) {
+      return orderedPlayers;
+    }
+    return [localPlayer, ...orderedPlayers.filter((player) => player.id !== uid)];
+  }, [orderedPlayers, uid]);
+
   const currentPlayer = useMemo(
     () =>
       game?.currentPlayerId
@@ -680,8 +691,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="player-grids">
           <h2>Player grids</h2>
           <div className="player-grids__list">
-            {orderedPlayers.length ? (
-              orderedPlayers.map((player) => {
+            {displayPlayers.length ? (
+              displayPlayers.map((player) => {
                 const isActivePlayer = player.id === game?.currentPlayerId;
                 const isLocalPlayer = player.id === uid;
                 return (
