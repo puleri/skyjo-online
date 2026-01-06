@@ -641,6 +641,10 @@ button.card:disabled {
   color: var(--color-dark);
 }
 
+.player-grid__action-icon {
+  margin-right: 8px;
+}
+
 .player-grid__action--primary {
   background: var(--color-accent);
   color: var(--color-on-dark);

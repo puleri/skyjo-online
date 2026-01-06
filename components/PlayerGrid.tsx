@@ -109,13 +109,20 @@ export default function PlayerGrid({
                     className="player-grid__action player-grid__action--primary"
                     onClick={() => onReplace(index)}
                   >
+                    <span className="player-grid__action-icon" aria-hidden="true">
+                      🔄
+                    </span>
                     Replace
                   </button>
                   <button
                     type="button"
                     className="player-grid__action"
                     onClick={() => onReveal(index)}
+                    disabled={isRevealed}
                   >
+                    <span className="player-grid__action-icon" aria-hidden="true">
+                      👁️
+                    </span>
                     Reveal
                   </button>
                   <button
