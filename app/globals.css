@@ -405,10 +405,9 @@ button.card:disabled {
 }
 
 .game-piles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  justify-content: space-evenly;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   align-items: flex-start;
 }
 
@@ -418,6 +417,7 @@ button.card:disabled {
   flex-direction: column;
   align-items: center;
   font-weight: 600;
+  width: 100%;
 }
 
 .game-pile .card,
@@ -493,13 +493,7 @@ button.card:disabled {
 
 @media (max-width: 640px) {
   .game-piles {
-    gap: 12px;
     width: 100%;
-  }
-
-  .game-piles .game-pile {
-    flex: 1 1 calc(50% - 6px);
-    max-width: calc(50% - 6px);
   }
 
   .game-piles .card,

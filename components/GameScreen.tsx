@@ -634,25 +634,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="game-pile">
-          <h2>Selected card</h2>
-          <>
-            {showSelectedCard ? (
-              <div className="card card--drawn" aria-label="Selected card">
-                {selectedCardValue}
+          <div className="game-pile">
+            <h2>Selected card</h2>
+            <>
+              {showSelectedCard ? (
+                <div className="card card--drawn" aria-label="Selected card">
+                  {selectedCardValue}
+                </div>
+              ) : (
+                <div className="card" aria-label="No selected card">
+                  —
+                </div>
+              )}
+              <div className="card-tags">
+                <span className="card-draw-source">{selectedCardOwnerLabel}</span>
+                <span className="card-draw-source">{selectedCardSourceLabel}</span>
               </div>
-            ) : (
-              <div className="card" aria-label="No selected card">
-                —
-              </div>
-            )}
-            <div className="card-tags">
-              <span className="card-draw-source">{selectedCardOwnerLabel}</span>
-              <span className="card-draw-source">{selectedCardSourceLabel}</span>
-            </div>
-          </>
+            </>
+          </div>
         </div>
 
         <div className="player-grids">
