@@ -357,9 +357,9 @@ section {
   position: absolute;
   inset: 0;
   background-image: url("/texture.png");
-  background-size: cover;
+  background-size: 400%;
   background-position: center;
-  opacity: 0.25;
+  opacity: 0.75;
   pointer-events: none;
   border-radius: inherit;
 }
