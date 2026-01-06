@@ -347,6 +347,23 @@ section {
   position: relative;
 }
 
+.player-grid__card .card {
+  position: relative;
+  overflow: hidden;
+}
+
+.player-grid__card .card:not(.card--back)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/texture.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
 .player-grid__card--active .card {
   outline: 3px solid var(--color-accent-secondary-strong);
   outline-offset: 2px;
