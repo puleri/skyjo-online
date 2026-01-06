@@ -5,12 +5,12 @@ import UsernameForm from "./UsernameForm";
 export default function LobbyScreen() {
   return (
     <main>
-      <section>
+      <div className="welcome-div">
         <h1>Skyjo Online</h1>
         <p>
           Welcome to Skyjo online! I love you. Create or join a lobby to start.
         </p>
-      </section>
+      </div>
 
       <section>
         <h2>Choose your username</h2>

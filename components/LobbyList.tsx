@@ -125,7 +125,7 @@ export default function LobbyList() {
             </div>
           </div>
           <div>
-            <small>{lobby.players} players</small>
+            <small className="mr-10">{lobby.players} players</small>
             <button
               type="button"
               onClick={() => handleJoin(lobby.id)}
