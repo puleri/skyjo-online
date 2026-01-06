@@ -601,7 +601,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       <section className="game-board">
         <div className="game-piles">
           <div className="game-pile">
-            <h2>Deck</h2>
+            <h6>Deck</h6>
             <button
               type="button"
               className="card-back-button"
@@ -617,7 +617,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             </button>
           </div>
           <div className="game-pile">
-            <h2>Discard</h2>
+            <h6>Discard</h6>
             {typeof topDiscard === "number" ? (
               <button
                 type="button"
@@ -635,7 +635,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             )}
           </div>
           <div className="game-pile">
-            <h2>Selected card</h2>
+            <h6>Selected card</h6>
             <>
               {showSelectedCard ? (
                 <div className="card card--drawn" aria-label="Selected card">

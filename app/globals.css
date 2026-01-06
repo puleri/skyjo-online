@@ -35,6 +35,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   overflow-x: hidden;
+    color: var(--color-text-muted);
+
 }
 
 main {
@@ -46,10 +48,26 @@ main {
 h1 {
   font-size: 2.5rem;
   margin-bottom: 8px;
+  letter-spacing: 0.09em;
+}
+h2 {
+  font-size: 1.75rem;
+  margin: 0 0 12px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+h6 {
+  font-size: 0.875rem;
+  margin: 0 0 10px;
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+  font-weight: 100;
 }
 
 p {
   line-height: 1.6;
+    color: var(--color-text-muted);
 }
 
 section {
@@ -338,7 +356,6 @@ section {
 }
 
 .card {
-  background: var(--color-surface-bright);
   border: 1px solid var(--color-border);
   border-radius: 10px;
   min-height: 48px;
@@ -347,7 +364,7 @@ section {
   justify-content: center;
   font-weight: 600;
   color: var(--color-dark);
-  box-shadow: 0 4px 5px rgba(31, 41, 51, 0.42);
+  box-shadow: 0 3px 4px rgba(31, 41, 51, 0.32);
 }
 
 .card--value-negative {
