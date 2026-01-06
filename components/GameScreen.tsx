@@ -638,8 +638,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <h6>Selected card</h6>
             <>
               {showSelectedCard ? (
-                <div className="card card--drawn" aria-label="Selected card">
-                  {selectedCardValue}
+                <div
+                  className={`card card--discard-pile${
+                    typeof selectedCardValue === "number"
+                      ? getCardValueClass(selectedCardValue)
+                      : ""
+                  }`}
+                  aria-label="Selected card"
+                >
+                  <span className="card__value">{selectedCardValue}</span>
                 </div>
               ) : (
                 <div className="card card--empty-selected" aria-label="No selected card">
