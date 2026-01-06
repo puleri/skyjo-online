@@ -352,6 +352,7 @@ section {
   overflow: hidden;
   text-shadow: 0px 1px 1px rgba(0, 0, 0, 0.95);
   font-size: 20px;
+  isolation: isolate;
 }
 
 .player-grid__card .card:not(.card--back)::after {
@@ -364,6 +365,12 @@ section {
   opacity: 0.75;
   pointer-events: none;
   border-radius: inherit;
+  z-index: 1;
+}
+
+.player-grid__card .card__value {
+  position: relative;
+  z-index: 2;
 }
 
 .player-grid__card--active .card {

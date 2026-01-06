@@ -97,10 +97,12 @@ export default function PlayerGrid({
                   aria-haspopup={showActionMenu ? "menu" : undefined}
                   onClick={() => onCardSelect(index)}
                 >
-                  {isRevealed ? value ?? "—" : "Skyjo"}
+                  <span className="card__value">{isRevealed ? value ?? "—" : "Skyjo"}</span>
                 </button>
               ) : (
-                <div className={cardClassName}>{isRevealed ? value ?? "—" : "Skyjo"}</div>
+                <div className={cardClassName}>
+                  <span className="card__value">{isRevealed ? value ?? "—" : "Skyjo"}</span>
+                </div>
               )}
               {showActionMenu && activeActionIndex === index ? (
                 <div className="player-grid__actions" role="menu">
