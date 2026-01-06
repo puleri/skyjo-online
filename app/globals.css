@@ -356,6 +356,7 @@ section {
 }
 
 .card {
+  background-color: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 10px;
   min-height: 48px;
