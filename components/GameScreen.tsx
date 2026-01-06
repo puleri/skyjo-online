@@ -69,7 +69,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (value === 0) {
       return " card--value-zero";
     }
-    if (value <= 4) {
+    if (value <= 3) {
       return " card--value-low";
     }
     if (value <= 8) {
