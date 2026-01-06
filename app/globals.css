@@ -8,6 +8,7 @@
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
   --color-border: #d6cbbd;
+  --color-card-edge: #fef8ef;
   --color-text: #1f2933;
   --color-text-muted: #6b645c;
   --color-accent: #5f7a6a;
@@ -387,9 +388,15 @@ section {
 }
 
 .card--value-mid {
-  background: #fde27f;
-  border-color: #e3b73d;
+  background: #ffe22559;
   color: #c1800f;
+      box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+  border-radius: 8px;
 }
 
 .card--value-high {
@@ -433,9 +440,11 @@ button.card:disabled {
 .pile {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  font-weight: 600;
+  font-weight: 100;
   width: 100%;
+  font-size: 85px;
 }
 
 .game-pile .card,
@@ -443,7 +452,7 @@ button.card:disabled {
   width: 152px;
   min-height: 0;
   height: auto;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 6;
 }
 
 .card--back {
@@ -500,7 +509,7 @@ button.card:disabled {
 .card-back-image {
   width: 152px;
   height: auto;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 6;
   display: block;
   border-radius: 14px;
   border: 2px solid var(--color-border);
@@ -516,6 +525,7 @@ button.card:disabled {
 .card--empty-selected {
   border: 4px dashed #d3bf8a83;
   box-shadow: none;
+  font-size: 30px;
 }
 
 .card-draw-source {
@@ -542,7 +552,7 @@ button.card:disabled {
     width: 100%;
     max-width: 100%;
     height: auto;
-    aspect-ratio: 3 / 4;
+    aspect-ratio: 4 / 6;
   }
 }
 
