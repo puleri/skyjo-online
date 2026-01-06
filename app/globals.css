@@ -371,20 +371,35 @@ section {
 
 .card--value-negative {
   background: #96abc3;
-  border-color: #0048ff;
   color: var(--color-on-dark);
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 .card--value-zero {
   background: #def5f8;
-  border-color: #89c8d2;
   color: #3d4a3f;
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 .card--value-low {
   background: #e6f7df;
-  border-color: #94c282;
   color: #277a48;
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 .card--value-mid {
@@ -393,10 +408,8 @@ section {
       box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
-
   border: 7px solid var(--color-card-edge);
   outline: 2px solid var(--color-border);
-  border-radius: 8px;
 }
 
 .card--value-high {
@@ -407,8 +420,13 @@ section {
 
 .card--value-max {
   background: #fcd6cc;
-  border-color: #d6a59a;
   color: #a02208;
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 button.card {
