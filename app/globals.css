@@ -513,7 +513,7 @@ button.card:disabled {
 }
 
 .card--empty-selected {
-  border: 2px dashed #d3bf8a;
+  border: 4px dashed #d3bf8a83;
   box-shadow: none;
 }
 
