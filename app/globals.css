@@ -491,6 +491,26 @@ button.card:disabled {
   text-transform: uppercase;
 }
 
+@media (max-width: 640px) {
+  .game-piles {
+    gap: 12px;
+    width: 100%;
+  }
+
+  .game-piles .game-pile {
+    flex: 1 1 calc(50% - 6px);
+    max-width: calc(50% - 6px);
+  }
+
+  .game-piles .card,
+  .game-piles .card-back-image {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+  }
+}
+
 .card-tags {
   display: flex;
   flex-wrap: wrap;
