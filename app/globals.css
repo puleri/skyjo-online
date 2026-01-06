@@ -347,47 +347,48 @@ section {
   justify-content: center;
   font-weight: 600;
   color: var(--color-dark);
+  box-shadow: 0 4px 5px rgba(31, 41, 51, 0.42);
 }
 
 .card--value-negative {
-  background: #2f3d34;
-  border-color: #3b4b41;
+  background: #96abc3;
+  border-color: #0048ff;
   color: var(--color-on-dark);
 }
 
 .card--value-zero {
-  background: #e7e1d6;
-  border-color: #cdbfae;
+  background: #def5f8;
+  border-color: #89c8d2;
   color: #3d4a3f;
 }
 
 .card--value-low {
-  background: #dce6d8;
-  border-color: #b8c7b2;
-  color: #3f5a4a;
+  background: #e6f7df;
+  border-color: #94c282;
+  color: #277a48;
 }
 
 .card--value-mid {
-  background: #f1e4c4;
-  border-color: #d3bf8a;
-  color: #6b4f1d;
+  background: #fde27f;
+  border-color: #e3b73d;
+  color: #c1800f;
 }
 
 .card--value-high {
-  background: #f5ddc4;
-  border-color: #d9b38b;
+  background: #fde2c4;
+  border-color: #d99c5a;
   color: #7a4b1c;
 }
 
 .card--value-max {
-  background: #f2cfc5;
+  background: #fcd6cc;
   border-color: #d6a59a;
-  color: #7a3b2e;
+  color: #a02208;
 }
 
 button.card {
   margin-top: 0;
-  padding: 4px 6px;
+  padding: 2px 2px;
   font: inherit;
   width: 100%;
   height: 100%;
@@ -428,6 +429,13 @@ button.card:disabled {
 
 .card--back {
   background: var(--color-dark);
+  border-color: #2c3742;
+  color: var(--color-on-dark);
+    background-color: var(--color-dark);
+  background-image: url("/images/skyjo-cardback.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-color: #2c3742;
   color: var(--color-on-dark);
 }

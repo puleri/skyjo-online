@@ -609,7 +609,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <span className="card--back-text">Skyjo</span>
             </button>
           </div>
           <div className="game-pile">
