@@ -662,7 +662,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         </div>
 
         <div className="player-grids">
-          <h2>Player grids</h2>
           <div className="player-grids__list">
             {displayPlayers.length ? (
               displayPlayers.map((player) => {

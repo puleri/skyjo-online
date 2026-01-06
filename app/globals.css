@@ -318,6 +318,7 @@ section {
 }
 
 .player-grids__list {
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
@@ -370,8 +371,10 @@ section {
 }
 
 .card--value-negative {
-  background: #96abc3;
+  background: #0053b3;
   color: var(--color-on-dark);
+      text-shadow: 0 0 5px #0053b3;
+
         box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
