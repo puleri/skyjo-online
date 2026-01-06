@@ -642,7 +642,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   {selectedCardValue}
                 </div>
               ) : (
-                <div className="card" aria-label="No selected card">
+                <div className="card card--empty-selected" aria-label="No selected card">
                   —
                 </div>
               )}
