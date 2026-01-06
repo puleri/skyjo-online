@@ -604,11 +604,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <h2>Deck</h2>
             <button
               type="button"
-              className="card card--back"
+              className="card-back-button"
               aria-label="Draw pile (face down)"
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
+              <img
+                className="card-back-image"
+                src="/skyjo-card-back.svg"
+                alt="Skyjo card back"
+              />
             </button>
           </div>
           <div className="game-pile">

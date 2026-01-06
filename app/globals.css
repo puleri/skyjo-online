@@ -452,6 +452,25 @@ button.card:disabled {
   color: #6b4f1d;
 }
 
+.card-back-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.card-back-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.card-back-image {
+  width: 72px;
+  height: 96px;
+  display: block;
+  border-radius: 12px;
+}
+
 .card--drawn {
   background: #dce6d8;
   border-color: #b8c7b2;
