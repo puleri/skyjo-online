@@ -439,8 +439,10 @@ button.card:disabled {
 
 .game-pile .card,
 .pile .card {
-  width: 72px;
-  min-height: 96px;
+  width: 152px;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 3 / 4;
 }
 
 .card--back {
@@ -482,6 +484,8 @@ button.card:disabled {
 
 .card-back-image {
   width: 152px;
+  height: auto;
+  aspect-ratio: 3 / 4;
   display: block;
   border-radius: 14px;
   border: 2px solid var(--color-border);
