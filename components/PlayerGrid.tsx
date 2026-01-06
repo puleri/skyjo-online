@@ -112,7 +112,7 @@ export default function PlayerGrid({
                     onClick={() => onReplace(index)}
                   >
                     <span className="player-grid__action-icon" aria-hidden="true">
-                      <img src="/trade-icon.svg" alt="" />
+                      <img className="action-menu-icon" src="/trade-icon.svg" alt="" />
                     </span>
                     Trade
                   </button>
@@ -122,10 +122,10 @@ export default function PlayerGrid({
                     onClick={() => onReveal(index)}
                     disabled={isRevealed}
                   >
-                    <span className="player-grid__action-icon" aria-hidden="true">
-                      <img src="/keep-icon.svg" alt="" />
+                    <span className="player-grid__action-icon invert" aria-hidden="true">
+                      <img className="action-menu-icon" src="/keep-icon.svg" alt="" />
                     </span>
-                    Keep
+                    Reveal
                   </button>
                   <button
                     type="button"
