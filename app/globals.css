@@ -381,8 +381,10 @@ section {
 }
 
 .card--value-zero {
-  background: #def5f8;
-  color: #3d4a3f;
+  background: #00e1ff;
+  color: var(--color-card-edge);
+    text-shadow: 0 0 5px #00e1ff;
+
         box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -392,8 +394,10 @@ section {
 }
 
 .card--value-low {
-  background: #e6f7df;
-  color: #277a48;
+  background: #277a48;
+  color: var(--color-card-edge);
+      text-shadow: 0 0 5px #277a48;
+
         box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -403,8 +407,9 @@ section {
 }
 
 .card--value-mid {
-  background: #ffe22559;
-  color: #c1800f;
+  background: rgb(253, 219, 0);
+  color: var(--color-card-edge);
+  text-shadow: 0 0 5px #e0a80e;
       box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -413,9 +418,14 @@ section {
 }
 
 .card--value-high {
-  background: #fde2c4;
-  border-color: #d99c5a;
-  color: #7a4b1c;
+  background: #c62302;
+  color: var(--color-card-edge);
+  text-shadow: 0 0 5px #c62302;
+      box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
 }
 
 .card--value-max {
@@ -462,7 +472,7 @@ button.card:disabled {
   align-items: center;
   font-weight: 100;
   width: 100%;
-  font-size: 85px;
+  font-size: 110px;
 }
 
 .game-pile .card,
@@ -510,9 +520,9 @@ button.card:disabled {
   position: absolute;
   inset: 0;
   background-image: url("/texture.png");
-  background-size: cover;
+  background-size: 300%;
   background-position: center;
-  opacity: 0.35;
+  opacity: 0.75;
   pointer-events: none;
   z-index: 1;
 }
@@ -520,6 +530,8 @@ button.card:disabled {
 .card--discard-pile .card__value {
   position: relative;
   z-index: 2;
+  padding-bottom: 30px;
+
 }
 
 .card--discard::after {
