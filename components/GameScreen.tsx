@@ -59,7 +59,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showFirstTimeTips, setShowFirstTimeTips] = useState(true);
+  const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
 
   const getCardValueClass = (value: number) => {
