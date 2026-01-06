@@ -500,6 +500,28 @@ button.card:disabled {
   overflow: hidden;
 }
 
+.card--discard-pile {
+  position: relative;
+  overflow: hidden;
+}
+
+.card--discard-pile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/texture.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card--discard-pile .card__value {
+  position: relative;
+  z-index: 2;
+}
+
 .card--discard::after {
   content: "";
   position: absolute;
