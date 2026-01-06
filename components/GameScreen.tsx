@@ -621,12 +621,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {typeof topDiscard === "number" ? (
               <button
                 type="button"
-                className={`card${getCardValueClass(topDiscard)}`}
+                className={`card card--discard-pile${getCardValueClass(topDiscard)}`}
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
               >
-                {topDiscard}
+                <span className="card__value">{topDiscard}</span>
               </button>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
