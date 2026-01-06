@@ -577,7 +577,7 @@ button.card:disabled {
 
 .card-back-button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 1;
 }
 
 .card-back-image {
@@ -732,7 +732,7 @@ button:active {
     inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-button:disabled {
+button:disabled:not(.card):not(.card-back-button) {
   background-color: var(--color-sage-300);
   color: var(--color-on-muted);
   cursor: not-allowed;
