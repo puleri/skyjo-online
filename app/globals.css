@@ -477,6 +477,11 @@ button.card:disabled {
   color: #3f5a4a;
 }
 
+.card--empty-selected {
+  border: 2px dashed #d3bf8a;
+  box-shadow: none;
+}
+
 .card-draw-source {
   display: inline-flex;
   align-items: center;
