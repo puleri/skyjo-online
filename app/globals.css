@@ -66,6 +66,13 @@ h6 {
   font-weight: 100;
 }
 
+/* h6 text is smaller on mobile */
+@media (max-width: 640px) {
+  h6 {
+    font-size: 0.7rem;
+  }
+}
+
 p {
   line-height: 1.6;
     color: var(--color-text-muted);
@@ -408,7 +415,6 @@ section {
   background-position: center;
   opacity: 0.75;
   pointer-events: none;
-  border-radius: inherit;
   z-index: 1;
 }
 
@@ -435,7 +441,6 @@ section {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
   color: var(--color-dark);
   box-shadow: 0 3px 4px rgba(31, 41, 51, 0.32);
 }
@@ -491,9 +496,9 @@ section {
 }
 
 .card--value-high {
-  background: #c62302;
+  background: #ff7300;
   color: var(--color-card-edge);
-  text-shadow: 0 0 5px #c62302;
+  text-shadow: 0 0 5px #ff7300;
       box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -502,8 +507,10 @@ section {
 }
 
 .card--value-max {
-  background: #fcd6cc;
-  color: #a02208;
+  background: #da0000;
+    text-shadow: 0 0 5px #da0000;
+
+  color: var(--color-card-edge);
         box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -552,6 +559,16 @@ button.card:disabled {
   width: 100%;
   font-size: 110px;
 }
+
+@media (max-width: 640px) {
+  .game-pile,
+.pile {
+  font-weight: 100;
+  width: 100%;
+  font-size:18vw;
+}
+}
+
 
 .game-pile .card,
 .pile .card {
@@ -672,7 +689,8 @@ button.card:disabled {
 }
 
 .card-draw-source {
-  display: inline-flex;
+  display: flex;
+  text-align: center;
   align-items: center;
   justify-content: center;
   padding: 2px 10px;
@@ -683,6 +701,13 @@ button.card:disabled {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-wrap: pretty;
+}
+
+@media (max-width: 640px) {
+  .card-draw-source {
+    font-size: 0.4rem;
+  }
 }
 
 @media (max-width: 640px) {

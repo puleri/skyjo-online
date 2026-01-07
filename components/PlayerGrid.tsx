@@ -21,27 +21,22 @@ const getCardValueClass = (value: number | null | undefined) => {
     return "";
   }
 
-  if (value <= -1) {
-    return " card--value-negative";
-  }
-
-  if (value === 0) {
-    return " card--value-zero";
-  }
-
-  if (value <= 3) {
-    return " card--value-low";
-  }
-
-  if (value <= 5) {
-    return " card--value-mid";
-  }
-
-  if (value <= 8) {
-    return " card--value-high";
-  }
-
-  return " card--value-max";
+    if (value < 0) {
+      return " card--value-negative";
+    }
+    if (value === 0) {
+      return " card--value-zero";
+    }
+    if (value <= 3) {
+      return " card--value-low";
+    }
+    if (value <= 8) {
+      return " card--value-mid";
+    }
+    if (value <= 10) {
+      return " card--value-high";
+    }
+    return " card--value-max";
 };
 
 export default function PlayerGrid({
