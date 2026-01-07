@@ -611,7 +611,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             >
               <img
                 className="card-back-image"
-                src="/skyjo-cardback.png"
+                src="/images/skyjo-cardback.png"
                 alt="Skyjo card back"
               />
             </button>
