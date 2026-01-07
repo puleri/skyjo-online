@@ -483,6 +483,8 @@ button.card:disabled {
 
 .player-grid--mini .card {
   font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
 }
 
 .game-piles {
