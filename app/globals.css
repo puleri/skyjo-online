@@ -482,8 +482,7 @@ button.card:disabled {
 }
 
 .player-grid--mini .card {
-  min-height: 32px;
-  font-size: 0.8rem;
+  font-size: 1rem;
 }
 
 .game-piles {
