@@ -551,6 +551,10 @@ button.card:disabled {
   align-items: flex-start;
 }
 
+.game-piles--dock {
+  display: none;
+}
+
 .game-pile,
 .pile {
   display: flex;
@@ -717,12 +721,42 @@ button.card:disabled {
     width: 100%;
   }
 
+  .game-piles--dock {
+    display: grid;
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    padding: 8px 10px 10px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 6px 12px rgba(31, 41, 51, 0.2);
+  }
+
+  .game-piles--dock .game-pile {
+    font-size: 1.4rem;
+  }
+
+  .game-piles--dock h6 {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   .game-piles .card,
   .game-piles .card-back-image {
     width: 100%;
     max-width: 100%;
     height: auto;
     aspect-ratio: 4 / 6;
+  }
+
+  .game-piles--dock .card,
+  .game-piles--dock .card-back-image {
+    width: 64px;
+  }
+
+  .game-piles--dock .card-tags {
+    display: none;
   }
 }
 
