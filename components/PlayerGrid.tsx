@@ -97,10 +97,12 @@ export default function PlayerGrid({
                   aria-haspopup={showActionMenu ? "menu" : undefined}
                   onClick={() => onCardSelect(index)}
                 >
-                  {isRevealed ? value ?? "—" : "Skyjo"}
+                  <span className="card__value">{isRevealed ? value ?? "—" : "Skyjo"}</span>
                 </button>
               ) : (
-                <div className={cardClassName}>{isRevealed ? value ?? "—" : "Skyjo"}</div>
+                <div className={cardClassName}>
+                  <span className="card__value">{isRevealed ? value ?? "—" : "Skyjo"}</span>
+                </div>
               )}
               {showActionMenu && activeActionIndex === index ? (
                 <div className="player-grid__actions" role="menu">
@@ -109,13 +111,20 @@ export default function PlayerGrid({
                     className="player-grid__action player-grid__action--primary"
                     onClick={() => onReplace(index)}
                   >
-                    Replace
+                    <span className="player-grid__action-icon" aria-hidden="true">
+                      <img className="action-menu-icon" src="/trade-icon.svg" alt="" />
+                    </span>
+                    Trade
                   </button>
                   <button
                     type="button"
                     className="player-grid__action"
                     onClick={() => onReveal(index)}
+                    disabled={isRevealed}
                   >
+                    <span className="player-grid__action-icon invert" aria-hidden="true">
+                      <img className="action-menu-icon" src="/keep-icon.svg" alt="" />
+                    </span>
                     Reveal
                   </button>
                   <button

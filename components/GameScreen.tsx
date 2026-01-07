@@ -59,7 +59,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showFirstTimeTips, setShowFirstTimeTips] = useState(true);
+  const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
 
   const getCardValueClass = (value: number) => {
@@ -69,7 +69,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (value === 0) {
       return " card--value-zero";
     }
-    if (value <= 4) {
+    if (value <= 3) {
       return " card--value-low";
     }
     if (value <= 8) {
@@ -601,28 +601,32 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       <section className="game-board">
         <div className="game-piles">
           <div className="game-pile">
-            <h2>Deck</h2>
+            <h6>Deck</h6>
             <button
               type="button"
-              className="card card--back"
+              className="card-back-button"
               aria-label="Draw pile (face down)"
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <span className="card--back-text">Skyjo</span>
+              <img
+                className="card-back-image"
+                src="/skyjo-cardback.png"
+                alt="Skyjo card back"
+              />
             </button>
           </div>
           <div className="game-pile">
-            <h2>Discard</h2>
+            <h6>Discard</h6>
             {typeof topDiscard === "number" ? (
               <button
                 type="button"
-                className={`card${getCardValueClass(topDiscard)}`}
+                className={`card card--discard-pile${getCardValueClass(topDiscard)}`}
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
               >
-                {topDiscard}
+                <span className="card__value">{topDiscard}</span>
               </button>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
@@ -630,29 +634,34 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="game-pile">
-          <h2>Selected card</h2>
-          <>
-            {showSelectedCard ? (
-              <div className="card card--drawn" aria-label="Selected card">
-                {selectedCardValue}
+          <div className="game-pile">
+            <h6>Selected card</h6>
+            <>
+              {showSelectedCard ? (
+                <div
+                  className={`card card--discard-pile${
+                    typeof selectedCardValue === "number"
+                      ? getCardValueClass(selectedCardValue)
+                      : ""
+                  }`}
+                  aria-label="Selected card"
+                >
+                  <span className="card__value">{selectedCardValue}</span>
+                </div>
+              ) : (
+                <div className="card card--empty-selected" aria-label="No selected card">
+                  —
+                </div>
+              )}
+              <div className="card-tags">
+                <span className="card-draw-source">{selectedCardOwnerLabel}</span>
+                <span className="card-draw-source">{selectedCardSourceLabel}</span>
               </div>
-            ) : (
-              <div className="card" aria-label="No selected card">
-                —
-              </div>
-            )}
-            <div className="card-tags">
-              <span className="card-draw-source">{selectedCardOwnerLabel}</span>
-              <span className="card-draw-source">{selectedCardSourceLabel}</span>
-            </div>
-          </>
+            </>
+          </div>
         </div>
 
         <div className="player-grids">
-          <h2>Player grids</h2>
           <div className="player-grids__list">
             {displayPlayers.length ? (
               displayPlayers.map((player) => {

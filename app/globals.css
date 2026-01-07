@@ -8,6 +8,7 @@
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
   --color-border: #d6cbbd;
+  --color-card-edge: #fef8ef;
   --color-text: #1f2933;
   --color-text-muted: #6b645c;
   --color-accent: #5f7a6a;
@@ -35,6 +36,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   overflow-x: hidden;
+    color: var(--color-text-muted);
+
 }
 
 main {
@@ -46,10 +49,26 @@ main {
 h1 {
   font-size: 2.5rem;
   margin-bottom: 8px;
+  letter-spacing: 0.09em;
+}
+h2 {
+  font-size: 1.75rem;
+  margin: 0 0 12px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+h6 {
+  font-size: 0.875rem;
+  margin: 0 0 10px;
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+  font-weight: 100;
 }
 
 p {
   line-height: 1.6;
+    color: var(--color-text-muted);
 }
 
 section {
@@ -299,6 +318,7 @@ section {
 }
 
 .player-grids__list {
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
@@ -327,6 +347,32 @@ section {
   position: relative;
 }
 
+.player-grid__card .card {
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.95);
+  font-size: 20px;
+  isolation: isolate;
+}
+
+.player-grid__card .card:not(.card--back)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/texture.png");
+  background-size: 400%;
+  background-position: center;
+  opacity: 0.75;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.player-grid__card .card__value {
+  position: relative;
+  z-index: 2;
+}
+
 .player-grid__card--active .card {
   outline: 3px solid var(--color-accent-secondary-strong);
   outline-offset: 2px;
@@ -338,7 +384,7 @@ section {
 }
 
 .card {
-  background: var(--color-surface-bright);
+  background-color: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 10px;
   min-height: 48px;
@@ -347,47 +393,84 @@ section {
   justify-content: center;
   font-weight: 600;
   color: var(--color-dark);
+  box-shadow: 0 3px 4px rgba(31, 41, 51, 0.32);
 }
 
 .card--value-negative {
-  background: #2f3d34;
-  border-color: #3b4b41;
+  background: #0053b3;
   color: var(--color-on-dark);
+      text-shadow: 0 0 5px #0053b3;
+
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 .card--value-zero {
-  background: #e7e1d6;
-  border-color: #cdbfae;
-  color: #3d4a3f;
+  background: #00e1ff;
+  color: var(--color-card-edge);
+    text-shadow: 0 0 5px #00e1ff;
+
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 .card--value-low {
-  background: #dce6d8;
-  border-color: #b8c7b2;
-  color: #3f5a4a;
+  background: #277a48;
+  color: var(--color-card-edge);
+      text-shadow: 0 0 5px #277a48;
+
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 .card--value-mid {
-  background: #f1e4c4;
-  border-color: #d3bf8a;
-  color: #6b4f1d;
+  background: rgb(253, 219, 0);
+  color: var(--color-card-edge);
+  text-shadow: 0 0 5px #e0a80e;
+      box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
 }
 
 .card--value-high {
-  background: #f5ddc4;
-  border-color: #d9b38b;
-  color: #7a4b1c;
+  background: #c62302;
+  color: var(--color-card-edge);
+  text-shadow: 0 0 5px #c62302;
+      box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
 }
 
 .card--value-max {
-  background: #f2cfc5;
-  border-color: #d6a59a;
-  color: #7a3b2e;
+  background: #fcd6cc;
+  color: #a02208;
+        box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
 }
 
 button.card {
   margin-top: 0;
-  padding: 4px 6px;
+  padding: 2px 2px;
   font: inherit;
   width: 100%;
   height: 100%;
@@ -399,15 +482,13 @@ button.card:disabled {
 }
 
 .player-grid--mini .card {
-  min-height: 32px;
-  font-size: 0.8rem;
+  font-size: 1rem;
 }
 
 .game-piles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  justify-content: space-evenly;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   align-items: flex-start;
 }
 
@@ -415,19 +496,30 @@ button.card:disabled {
 .pile {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
-  font-weight: 600;
+  font-weight: 100;
+  width: 100%;
+  font-size: 110px;
 }
 
 .game-pile .card,
 .pile .card {
-  width: 72px;
-  min-height: 96px;
+  width: 152px;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 4 / 6;
 }
 
 .card--back {
   background: var(--color-dark);
+  border-color: #2c3742;
+  color: var(--color-on-dark);
+    background-color: var(--color-dark);
+  background-image: url("/images/skyjo-cardback.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-color: #2c3742;
   color: var(--color-on-dark);
 }
@@ -442,12 +534,78 @@ button.card:disabled {
   background: #f1e4c4;
   border-color: #d3bf8a;
   color: #6b4f1d;
+  position: relative;
+  overflow: hidden;
+}
+
+.card--discard-pile {
+  position: relative;
+  overflow: hidden;
+}
+
+.card--discard-pile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/texture.png");
+  background-size: 300%;
+  background-position: center;
+  opacity: 0.75;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card--discard-pile .card__value {
+  position: relative;
+  z-index: 2;
+  padding-bottom: 30px;
+
+}
+
+.card--discard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/texture.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.card-back-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.card-back-button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.card-back-image {
+  width: 152px;
+  height: auto;
+  aspect-ratio: 4 / 6;
+  display: block;
+  border-radius: 14px;
+  border: 2px solid var(--color-border);
+  box-shadow: 0 4px 5px rgba(31, 41, 51, 0.42);
 }
 
 .card--drawn {
   background: #dce6d8;
   border-color: #b8c7b2;
   color: #3f5a4a;
+}
+
+.card--empty-selected {
+  border: 4px dashed #d3bf8a83;
+  box-shadow: none;
+  font-size: 30px;
 }
 
 .card-draw-source {
@@ -462,6 +620,20 @@ button.card:disabled {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .game-piles {
+    width: 100%;
+  }
+
+  .game-piles .card,
+  .game-piles .card-back-image {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 6;
+  }
 }
 
 .card-tags {
@@ -484,17 +656,34 @@ button.card:disabled {
   border-radius: 14px;
   background: var(--color-surface-bright);
   border: 1px solid var(--color-border);
-  box-shadow: 0 10px 24px rgba(31, 41, 51, 0.16);
+  filter: drop-shadow(0 2px 4px rgba(31, 41, 51, 0.32));
   z-index: 5;
 }
 
 .player-grid__action {
   margin-top: 0;
-  padding: 14px 22px;
-  font-size: 1.2rem;
+  padding: 10px 20px;
+  font-size: 1rem;
   font-weight: 600;
   background: var(--color-surface-alt);
   color: var(--color-dark);
+    font-family: "Playfair Display", serif;
+  filter: drop-shadow(0 1px 2px rgba(31, 41, 51, 0.32));
+}
+
+.player-grid__action:hover {
+  background: var(--color-sage-300);
+}
+
+.player-grid__action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-menu-icon {
+  display: inline;
+  width: 24px;
 }
 
 .player-grid__action--primary {
@@ -502,8 +691,16 @@ button.card:disabled {
   color: var(--color-on-dark);
 }
 
+.player-grid__action--primary:hover {
+  background: var(--color-accent-secondary);
+}
+
 .player-grid__action--ghost {
   background: var(--color-surface-bright);
+  color: #4a564f;
+}
+.player-grid__action--ghost:hover {
+  background: var(--color-accent-secondary);
   color: #4a564f;
 }
 
@@ -522,7 +719,6 @@ input {
 }
 
 button {
-  margin-top: 12px;
   padding: 12px 20px;
 
   border: none;
@@ -561,7 +757,7 @@ button:active {
     inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-button:disabled {
+button:disabled:not(.card):not(.card-back-button) {
   background-color: var(--color-sage-300);
   color: var(--color-on-muted);
   cursor: not-allowed;
@@ -629,4 +825,8 @@ small {
 /* utilities */
 .mr-10 {
   margin-right: 10px;
+}
+
+.invert {
+  filter: invert(1) brightness(3)
 }
