@@ -524,6 +524,10 @@ button.card:disabled {
   color: var(--color-on-dark);
 }
 
+.player-grid--local .card--back {
+  background-image: url("/images/skyjo-cardback-wide.png");
+}
+
 .card--back-text {
   text-transform: uppercase;
   letter-spacing: 0.08em;
