@@ -90,18 +90,19 @@ section {
 .game-screen--current-turn::before {
   content: "";
   position: fixed;
-  inset: 12px;
-  border-radius: 28px;
-  border: 4px solid transparent;
+  inset: 5px;
+  border-radius: 8px;
+  opacity: .40;
+  border: 14px solid transparent;
   background: linear-gradient(
         90deg,
-        #c2a15e,
-        #b8894a,
-        #5f7a6a,
-        #6b8e7f,
-        #e7e1d6,
-        #f2cfc5,
-        #d3bf8a
+        #ffaa00,
+        #f3d600,
+        #259d55,
+        #00ceb6,
+        #0083c9,
+        #a757c4,
+        #d43232
       )
       border-box;
   -webkit-mask: linear-gradient(#ffffff 0 0) padding-box, linear-gradient(#ffffff 0 0);
@@ -329,8 +330,51 @@ section {
 }
 
 .player-grid--active {
-  border: 2px solid var(--color-accent);
-  box-shadow: 0 12px 24px rgba(95, 122, 106, 0.24);
+  animation: bounceDepth 8000ms cubic-bezier(0.92, 1, 0.76, 1) infinite;
+
+}
+/* Bounce + depth shadow (blurs/unblurs) */
+@keyframes bounceDepth {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.16));
+  }
+  25% {
+    transform: translateY(-3px) scale(1.02);
+    filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.12)); /* farther = blurrier */
+  }
+  50% {
+    transform: translateY(0) scale(0.999);
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.18)); /* closer = tighter */
+  }
+  70% {
+    transform: translateY(-1px) scale(1.001);
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.14));
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.16));
+  }
+}
+
+.bounce-depth {
+  display: inline-block;             /* keeps transform sane */
+  transform-origin: center;
+  will-change: transform, filter;
+  animation: bounceDepth 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Optional: continuous “breathing” loop variant */
+.bounce-depth--loop {
+  animation: bounceDepth 900ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* Optional: respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bounce-depth,
+  .bounce-depth--loop {
+    animation: none;
+  }
 }
 
 .player-grid--local {
@@ -483,8 +527,12 @@ button.card:disabled {
 
 .player-grid--mini .card {
   font-size: 1rem;
-  border: 1px solid var(--color-border);
   border-radius: 3px;
+          box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 2px solid var(--color-card-edge);
+
 }
 
 .game-piles {
@@ -514,10 +562,8 @@ button.card:disabled {
 }
 
 .card--back {
-  background: var(--color-dark);
   border-color: #2c3742;
   color: var(--color-on-dark);
-    background-color: var(--color-dark);
   background-image: url("/images/skyjo-cardback.png");
   background-size: cover;
   background-position: center;
@@ -527,7 +573,18 @@ button.card:disabled {
 }
 
 .player-grid--local .card--back {
+  position: relative;
   background-image: url("/images/skyjo-cardback-wide.png");
+    background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 50px;
+  border-radius: 5px;
+          box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  border: 4px solid var(--color-card-edge);
+
 }
 
 .card--back-text {
@@ -663,7 +720,7 @@ button.card:disabled {
   background: var(--color-surface-bright);
   border: 1px solid var(--color-border);
   filter: drop-shadow(0 2px 4px rgba(31, 41, 51, 0.32));
-  z-index: 5;
+  z-index: 95;
 }
 
 .player-grid__action {
@@ -794,7 +851,7 @@ small {
 }
 
 .notice {
-  background: #f3e7cd;
+  background: var(--color-bg);
   border: 1px solid #d8c08a;
   padding: 12px 16px;
   border-radius: 14px;
