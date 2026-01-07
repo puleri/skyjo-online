@@ -93,7 +93,7 @@ section {
   inset: 5px;
   border-radius: 8px;
   opacity: .40;
-  border: 14px solid transparent;
+  border: 12px solid transparent;
   background: linear-gradient(
         90deg,
         #ffaa00,
