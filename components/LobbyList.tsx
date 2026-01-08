@@ -184,7 +184,11 @@ export default function LobbyList() {
               onClick={() => handleJoin(lobby.id)}
               disabled={!uid || joiningLobbyId === lobby.id}
             >
-              {joiningLobbyId === lobby.id ? "Joining..." : "Join"}
+              {joiningLobbyId === lobby.id
+                ? "Joining..."
+                : lobby.status === "open"
+                  ? "Join"
+                  : "Spectate"}
             </button>
           </div>
         </li>
