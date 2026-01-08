@@ -967,6 +967,7 @@ small {
 }
 
 .question-mark-div {
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -976,6 +977,11 @@ small {
   background-color: #FFFBF9;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
   margin-bottom: 20px;
+}
+
+.question-mark-div:hover {
+  background-color: #E6E2DE;
+  transition: all 0.3s ease-in-out;
 }
 
 .question-mark-icon {
@@ -1042,6 +1048,34 @@ small {
 }
 .form-button-full-width:hover {
   background-color: #7A8B7A;
+    box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
+    transform: translateY(2px);
+    scale: .99
+}
+
+.join-button {
+    background-color: #8D9F8F;
+  border: 1px solid #4545457f;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
+  color: var(--color-dark);
+  letter-spacing: 2px;
+  font-weight: 600;
+  font-family: "Merriweather", serif;
+}
+
+.spectate-button {
+    background-color: #D3D3D3;
+  border: 1px solid #4545457f;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
+  color: var(--color-dark);
+  letter-spacing: 2px;
+  font-weight: 600;
+  font-family: "Merriweather", serif;
+}
+
+.join-button:hover,
+.spectate-button:hover {
+    background-color: #7A8B7A;
     box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
     transform: translateY(2px);
     scale: .99

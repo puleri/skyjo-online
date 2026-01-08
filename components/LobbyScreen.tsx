@@ -1,3 +1,4 @@
+'use client';
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import UsernameForm from "./UsernameForm";
@@ -10,7 +11,14 @@ export default function LobbyScreen() {
       <div className="container">
         <div className="flex-space-between">
           <h2 className="sage-eyebrow-text">GETTING STARTED</h2>
-          <div className="question-mark-div">
+          {/* when this button is clicked, it opens the rules image in another window */}
+
+          <div
+            onClick={() => {
+              window.open("/rules.png", "_blank");
+            }}
+
+            className="question-mark-div">
             <img
               className="question-mark-icon"
               src="/question-mark-icon.svg"

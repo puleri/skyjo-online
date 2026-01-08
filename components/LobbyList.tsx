@@ -178,9 +178,10 @@ export default function LobbyList() {
             </div>
           </div>
           <div>
-            <small className="mr-10">{lobby.players} players</small>
+            {/* <small className="mr-10">{lobby.players} players</small> */}
             <button
               type="button"
+              className={lobby.status === "open" ? "join-button" : "spectate-button"}
               onClick={() => handleJoin(lobby.id)}
               disabled={!uid || joiningLobbyId === lobby.id}
             >

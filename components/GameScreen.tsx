@@ -541,7 +541,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }
 
   return (
-    <main className={`game-screen${isCurrentTurn ? " game-screen--current-turn" : ""}`}>
+    <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
 
      
       {toastMessage ? (
