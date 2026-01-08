@@ -60,7 +60,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
+  const [showDockedPiles, setShowDockedPiles] = useState(false);
   const endingAnnouncementRef = useRef<string | null>(null);
+  const gamePilesRef = useRef<HTMLDivElement | null>(null);
 
   const getCardValueClass = (value: number) => {
     if (value < 0) {
@@ -323,6 +325,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [drawTipMessage, discardTipMessage, showFirstTimeTips, toastMessage]);
 
   useEffect(() => {
+    const element = gamePilesRef.current;
+    if (!element) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowDockedPiles(!entry.isIntersecting);
+    });
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (!game?.endingPlayerId || !endingPlayerName) {
       return;
     }
@@ -524,7 +541,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }
 
   return (
-    <main className={`game-screen${isCurrentTurn ? " game-screen--current-turn" : ""}`}>
+    <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
 
      
       {toastMessage ? (
@@ -598,8 +615,72 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         </section>
       ) : null}
 
+      {showDockedPiles ? (
+        <div className="game-piles game-piles--dock">
+          <div className="game-pile">
+            <h6>Deck</h6>
+            <button
+              type="button"
+              className="card-back-button"
+              aria-label="Draw pile (face down)"
+              onClick={handleDrawFromDeck}
+              disabled={!canDrawFromDeck}
+            >
+              <img
+                className="card-back-image"
+                src="/images/skyjo-cardback.png"
+                alt="Skyjo card back"
+              />
+            </button>
+          </div>
+          <div className="game-pile">
+            <h6>Discard</h6>
+            {typeof topDiscard === "number" ? (
+              <button
+                type="button"
+                className={`card card--discard-pile${getCardValueClass(topDiscard)}`}
+                aria-label="Discard pile"
+                onClick={handleSelectDiscard}
+                disabled={!canSelectDiscardTarget}
+              >
+                <span className="card__value">{topDiscard}</span>
+              </button>
+            ) : (
+              <div className="card card--discard" aria-label="Empty discard pile">
+                —
+              </div>
+            )}
+          </div>
+          <div className="game-pile">
+            <h6>Selected card</h6>
+            <div>
+              {showSelectedCard ? (
+                <div
+                  className={`card card--discard-pile${
+                    typeof selectedCardValue === "number"
+                      ? getCardValueClass(selectedCardValue)
+                      : ""
+                  }`}
+                  aria-label="Selected card"
+                >
+                  <span className="card__value">{selectedCardValue}</span>
+                </div>
+              ) : (
+                <div className="card card--empty-selected" aria-label="No selected card">
+                  —
+                </div>
+              )}
+              <div className="card-tags">
+                <span className="card-draw-source">{selectedCardOwnerLabel}</span>
+                <span className="card-draw-source">{selectedCardSourceLabel}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="game-board">
-        <div className="game-piles">
+        <div className="game-piles" ref={gamePilesRef}>
           <div className="game-pile">
             <h6>Deck</h6>
             <button

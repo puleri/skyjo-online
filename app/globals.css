@@ -1,24 +1,41 @@
-@import "@fontsource/playfair-display";
+
+@font-face {
+  font-family: "Merriweather";
+  src: url("/fonts/Merriweather-VariableFont.ttf") format("truetype");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Merriweather";
+  src: url("/fonts/Merriweather-Italic-VariableFont.ttf") format("truetype");
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
 
 :root {
   color-scheme: light;
-  font-family: "Playfair Display", "Inter", system-ui, -apple-system, sans-serif;
+  font-family: "Merriweather", "sans-serif";
   --color-bg: #f5eee9;
   --color-surface: #f1e8e1;
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
   --color-border: #d6cbbd;
   --color-card-edge: #fef8ef;
-  --color-text: #1f2933;
+  --color-text: #454545;
   --color-text-muted: #6b645c;
   --color-accent: #5f7a6a;
   --color-accent-strong: #6b8e7f;
   --color-accent-soft: #dbe5df;
   --color-accent-secondary: #c2a15e;
   --color-accent-secondary-strong: #b8894a;
-  --color-dark: #1f2933;
+  --color-dark: #454545;
   --color-on-dark: #f6f4ef;
     --color-sage-300: #c7d2c6;
+  --color-sage-400: #a3b3a3;
+  --color-sage-500: #8a9a8a;
   --color-sage-600: #6f846f;
   --color-sage-700: #5f745f;
 
@@ -41,27 +58,29 @@ body {
 }
 
 main {
+}
+
+.container {
   max-width: 960px;
   margin: 0 auto;
   padding: 48px 24px;
+
 }
 
 h1 {
   font-size: 2.5rem;
   margin-bottom: 8px;
-  letter-spacing: 0.09em;
+  letter-spacing: .07em;
 }
 h2 {
   font-size: 1.75rem;
   margin: 0 0 12px;
-  letter-spacing: 0.06em;
   color: var(--color-text-muted);
 }
 
 h6 {
   font-size: 0.875rem;
   margin: 0 0 10px;
-  letter-spacing: 0.09em;
   color: var(--color-text-muted);
   font-weight: 100;
 }
@@ -81,8 +100,8 @@ p {
 section {
   background: var(--color-surface);
   border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 6px 14px rgba(106, 86, 69, 0.4);
+  padding: 14px 34px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32);
   margin-bottom: 24px;
 }
 
@@ -551,6 +570,10 @@ button.card:disabled {
   align-items: flex-start;
 }
 
+.game-piles--dock {
+  display: none;
+}
+
 .game-pile,
 .pile {
   display: flex;
@@ -717,12 +740,42 @@ button.card:disabled {
     width: 100%;
   }
 
+  .game-piles--dock {
+    display: grid;
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    padding: 8px 10px 10px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 6px 12px rgba(31, 41, 51, 0.2);
+  }
+
+  .game-piles--dock .game-pile {
+    font-size: 1.4rem;
+  }
+
+  .game-piles--dock h6 {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   .game-piles .card,
   .game-piles .card-back-image {
     width: 100%;
     max-width: 100%;
     height: auto;
     aspect-ratio: 4 / 6;
+  }
+
+  .game-piles--dock .card,
+  .game-piles--dock .card-back-image {
+    width: 64px;
+  }
+
+  .game-piles--dock .card-tags {
+    display: none;
   }
 }
 
@@ -757,7 +810,6 @@ button.card:disabled {
   font-weight: 600;
   background: var(--color-surface-alt);
   color: var(--color-dark);
-    font-family: "Playfair Display", serif;
   filter: drop-shadow(0 1px 2px rgba(31, 41, 51, 0.32));
 }
 
@@ -855,6 +907,8 @@ button:disabled:not(.card):not(.card-back-button) {
 }
 
 
+
+
 ul {
   list-style: none;
   padding: 0;
@@ -907,9 +961,134 @@ small {
 }
 
 .welcome-div {
-  text-align: center;
-  margin-bottom: 60px;
-  text-wrap: balance;
+  width: 100vw;
+  height: auto;
+  position: relative; /* May need this for alignment */
+}
+
+.question-mark-div {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  width: 50px;
+  border-radius: 30px;
+  background-color: #FFFBF9;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+  margin-bottom: 20px;
+}
+
+.question-mark-div:hover {
+  background-color: #E6E2DE;
+  transition: all 0.3s ease-in-out;
+}
+
+.question-mark-icon {
+  width: 40px;
+  height: 40px;
+  color: #454545;
+  position: relative;
+}
+
+.sage-eyebrow-text {
+  color: var(--color-sage-400);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 1em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.charcoal-eyebrow-text {
+  color: var(--color-dark);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1em;
+  text-transform: uppercase;
+  margin: 60px 0 14px;
+}
+
+.label-input-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: center;
+}
+
+.remaining-grid {
+  /* takes up remaining grid column space */
+  grid-column: 2 / -1;
+}
+
+/* Mobile: single column */
+@media (max-width: 640px) {
+  .label-input-grid {
+    grid-template-columns: 1fr;
+  }
+  .remaining-grid {
+    grid-column: auto;
+  }
+}
+
+
+.form-card-font {
+  font-family: "Merriweather", serif;
+  letter-spacing: 1.3px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #454545;
+}
+
+.form-button-full-width {
+  background-color: #8D9F8F;
+  border: 1px solid #4545457f;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
+  width: 100%;
+}
+.form-button-full-width:hover {
+  background-color: #7A8B7A;
+    box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
+    transform: translateY(2px);
+    scale: .99
+}
+
+.join-button {
+    background-color: #8D9F8F;
+  border: 1px solid #4545457f;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
+  color: var(--color-dark);
+  letter-spacing: 2px;
+  font-weight: 600;
+  font-family: "Merriweather", serif;
+}
+
+.spectate-button {
+    background-color: #D3D3D3;
+  border: 1px solid #4545457f;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
+  color: var(--color-dark);
+  letter-spacing: 2px;
+  font-weight: 600;
+  font-family: "Merriweather", serif;
+}
+
+.join-button:hover,
+.spectate-button:hover {
+    background-color: #7A8B7A;
+    box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
+    transform: translateY(2px);
+    scale: .99
+}
+
+.name-lobby-list {
+  color: var(--color-dark);
+  font-weight: 600;;
+letter-spacing: 2px;
+}
+
+.player-lobby-list {
+  margin-left: 20px;
 }
 
 /* on mobile all the cards have no border */ 
@@ -945,4 +1124,10 @@ small {
 
 .invert {
   filter: invert(1) brightness(3)
+}
+
+.flex-space-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }

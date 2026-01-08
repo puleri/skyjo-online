@@ -28,7 +28,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-  ],
+, "app/fonts.js"  ],
   "exclude": [
     "node_modules"
   ]
