@@ -1,5 +1,3 @@
-@import "@fontsource/playfair-display";
-@import "@fontsource-variable/roboto";
 
 @font-face {
   font-family: "Merriweather";
@@ -812,7 +810,6 @@ button.card:disabled {
   font-weight: 600;
   background: var(--color-surface-alt);
   color: var(--color-dark);
-    font-family: "Roboto", serif;
   filter: drop-shadow(0 1px 2px rgba(31, 41, 51, 0.32));
 }
 
@@ -1051,6 +1048,8 @@ small {
 }
 
 .name-lobby-list {
+  color: var(--color-dark);
+  font-weight: 600;;
 letter-spacing: 2px;
 }
 
