@@ -5,27 +5,25 @@ import UsernameForm from "./UsernameForm";
 export default function LobbyScreen() {
   return (
     <main>
-      <div className="welcome-div">
-        <h1>Skyjo Online</h1>
-        <p>
-          Welcome to Skyjo online! I love you. Create or join a lobby to start.
-        </p>
-      </div>
+      <img className="welcome-div" src="/images/skyjo-hero-banner.png" alt="Skyjo Hero Banner"/>
+        
+      <div className="container">      
+      <h2 className="sage-eyebrow-text">GETTING STARTED</h2>
 
       <section>
-        <h2>Choose your username</h2>
         <UsernameForm />
       </section>
 
-      <section>
-        <h2>Create a lobby</h2>
+      <section className="form-card">
         <CreateLobbyForm />
       </section>
 
-      <section>
-        <h2>Live lobbies</h2>
+      <div className="lobby-list-section">
+        <h2 className="charcoal-eyebrow-text">LOBBIES</h2>
         <LobbyList />
-      </section>
+      </div>
+
+      </div>
     </main>
   );
 }

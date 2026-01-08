@@ -29,15 +29,19 @@ export default function UsernameForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <label htmlFor="username">Username</label>
-      <input
-        id="username"
-        value={username}
-        onChange={(event) => setUsername(event.target.value)}
-        placeholder="Skye"
-      />
-      <button type="submit" disabled={!username.trim()}>
-        Save username
+      <div className="label-input-grid">
+        <label className="form-card-font" htmlFor="username">Name</label>
+        <input
+          id="username"
+          value={username}
+          className="form-card-font remaining-grid"
+          onChange={(event) => setUsername(event.target.value)}
+          placeholder="Skye"
+        />
+
+      </div>
+      <button className="form-button-full-width form-card-font" type="submit" disabled={!username.trim()}>
+       Save Name
       </button>
       {savedName ? (
         <p className="notice">Saved as {savedName}.</p>

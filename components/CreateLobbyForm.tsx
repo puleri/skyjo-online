@@ -62,15 +62,19 @@ export default function CreateLobbyForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <label htmlFor="lobby-name">Lobby name</label>
+<div className="label-input-grid">
+
+      <label className="form-card-font" htmlFor="lobby-name">Lobby Name</label>
       <input
         id="lobby-name"
         value={name}
+        className="form-card-font remaining-grid"
         onChange={(event) => setName(event.target.value)}
         placeholder="Friday Night Skyjo"
       />
-      <button type="submit" disabled={isSubmitting || !name.trim() || !uid}>
-        {isSubmitting ? "Creating..." : "Create lobby"}
+      </div>
+      <button className="form-button-full-width form-card-font" type="submit" disabled={isSubmitting || !name.trim() || !uid}>
+        {isSubmitting ? "Creating..." : "Create Lobby"}
       </button>
       {error ? <p className="notice">{error}</p> : null}
     </form>
