@@ -172,9 +172,9 @@ export default function LobbyList() {
       {lobbies.map((lobby) => (
         <li key={lobby.id}>
           <div>
-            <strong>{lobby.name}</strong>
+            <strong className="name-lobby-list">{lobby.name}</strong>
             <div>
-              <small>{formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}</small>
+              <small className="player-lobby-list">{formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}</small>
             </div>
           </div>
           <div>
