@@ -21,8 +21,11 @@ type Lobby = {
   players: number;
 };
 
+const MAX_PLAYER_NAMES_LENGTH = 60;
+
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
+  const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
@@ -54,6 +57,43 @@ export default function LobbyList() {
 
     return () => unsubscribe();
   }, [firebaseReady]);
+
+  useEffect(() => {
+    if (!firebaseReady) {
+      return;
+    }
+
+    if (!lobbies.length) {
+      setLobbyPlayers({});
+      return;
+    }
+
+    const unsubscribers = lobbies.map((lobby) => {
+      const playerQuery = query(
+        collection(db, "lobbies", lobby.id, "players"),
+        orderBy("joinedAt", "asc")
+      );
+      return onSnapshot(
+        playerQuery,
+        (snapshot) => {
+          const playerNames = snapshot.docs.map(
+            (playerDoc) => playerDoc.data().displayName ?? "Anonymous player"
+          );
+          setLobbyPlayers((prev) => ({
+            ...prev,
+            [lobby.id]: playerNames,
+          }));
+        },
+        (err) => {
+          setError(err.message);
+        }
+      );
+    });
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [firebaseReady, lobbies]);
 
   useEffect(() => {
     const storedName = window.localStorage.getItem("skyjo:username");
@@ -114,6 +154,19 @@ export default function LobbyList() {
     return <p>No lobbies yet. Create one above to see real-time updates.</p>;
   }
 
+  const formatPlayerNames = (names: string[]) => {
+    if (!names.length) {
+      return "No players yet";
+    }
+
+    const joinedNames = names.join(", ");
+    if (joinedNames.length <= MAX_PLAYER_NAMES_LENGTH) {
+      return joinedNames;
+    }
+
+    return `${joinedNames.slice(0, MAX_PLAYER_NAMES_LENGTH)}…`;
+  };
+
   return (
     <ul>
       {lobbies.map((lobby) => (
@@ -121,7 +174,7 @@ export default function LobbyList() {
           <div>
             <strong>{lobby.name}</strong>
             <div>
-              <small>Status: {lobby.status}</small>
+              <small>{formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}</small>
             </div>
           </div>
           <div>
