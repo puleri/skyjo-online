@@ -969,6 +969,25 @@ small {
   position: relative; /* May need this for alignment */
 }
 
+.question-mark-div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  width: 50px;
+  border-radius: 30px;
+  background-color: #FFFBF9;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+  margin-bottom: 20px;
+}
+
+.question-mark-icon {
+  width: 40px;
+  height: 40px;
+  color: #454545;
+  position: relative;
+}
+
 .sage-eyebrow-text {
   color: var(--color-sage-400);
   font-weight: 700;
@@ -1064,4 +1083,10 @@ small {
 
 .invert {
   filter: invert(1) brightness(3)
+}
+
+.flex-space-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
