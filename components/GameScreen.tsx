@@ -33,6 +33,8 @@ type GameMeta = {
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
   roundScores?: Record<string, number>;
+  lastTurnPlayerId?: string | null;
+  lastTurnAction?: string | null;
 };
 
 type GamePlayer = {
@@ -116,6 +118,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           selectedDiscardPlayerId:
             (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
           roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
+          lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
+          lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
         });
       },
       (err) => {
@@ -207,6 +211,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         : null,
     [game?.currentPlayerId, orderedPlayers]
   );
+
+  const lastTurnSummary = useMemo(() => {
+    if (!game || !game.lastTurnPlayerId || !game.lastTurnAction) {
+      return "First turn of the game";
+    }
+    const lastPlayer = orderedPlayers.find((player) => player.id === game.lastTurnPlayerId);
+    const lastPlayerName = lastPlayer?.displayName ?? "Previous player";
+    return `${lastPlayerName} ${game.lastTurnAction}`;
+  }, [game, orderedPlayers]);
 
   const sortedScores = useMemo(() => {
     if (game?.status !== "round-complete") {
@@ -705,6 +718,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 alt="Skyjo card back"
               />
             </button>
+            <div className="card-tags">
+              <span className="card-draw-source">{lastTurnSummary}</span>
+            </div>
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
@@ -769,6 +785,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 alt="Skyjo card back"
               />
             </button>
+            <div className="card-tags">
+              <span className="card-draw-source">{lastTurnSummary}</span>
+            </div>
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
