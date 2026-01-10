@@ -32,6 +32,7 @@ type GameMeta = {
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
+  roundScores?: Record<string, number>;
 };
 
 type GamePlayer = {
@@ -114,6 +115,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             : null,
           selectedDiscardPlayerId:
             (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
+          roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
         });
       },
       (err) => {
@@ -214,10 +216,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       .map((player) => ({
         id: player.id,
         displayName: player.displayName,
-        totalScore: player.totalScore ?? 0,
+        roundScore: game.roundScores?.[player.id] ?? 0,
       }))
-      .sort((a, b) => a.totalScore - b.totalScore);
-  }, [game?.status, orderedPlayers]);
+      .sort((a, b) => a.roundScore - b.roundScore);
+  }, [game?.roundScores, game?.status, orderedPlayers]);
   const runningTotals = useMemo(
     () =>
       orderedPlayers.map((player) => ({
@@ -231,6 +233,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
   const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
+  const isRoundComplete = game?.status === "round-complete";
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -264,12 +267,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
     isCurrentTurn &&
+    !isRoundComplete &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     !discardSelectionActive &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
+    !isRoundComplete &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.discard.length ?? 0) > 0;
@@ -277,7 +282,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showSelectedCard =
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
-  const canSelectGridCard = showDrawnCard || discardSelectionActive;
+  const canSelectGridCard = !isRoundComplete && (showDrawnCard || discardSelectionActive);
 
   const endingPlayerName = useMemo(() => {
     if (!game?.endingPlayerId) {
@@ -591,11 +596,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
       {game?.status === "round-complete" ? (
         <section className="game-results">
-          <h2>Final scores</h2>
+          <h2>End of round totals</h2>
           <ol>
             {sortedScores.map((player) => (
               <li key={player.id}>
-                {player.displayName}: {player.totalScore}
+                {player.displayName}: {player.roundScore}
               </li>
             ))}
           </ol>
