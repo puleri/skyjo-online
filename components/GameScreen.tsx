@@ -718,7 +718,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               />
             </button>
             <div className="card-tags">
-              <span className="card-draw-source">{lastTurnSummary}</span>
+              <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
           </div>
           <div className="game-pile">
@@ -785,7 +785,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               />
             </button>
             <div className="card-tags">
-              <span className="card-draw-source">{lastTurnSummary}</span>
+              <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
           </div>
           <div className="game-pile">
