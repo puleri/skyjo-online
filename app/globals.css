@@ -816,6 +816,7 @@ button.card:disabled {
 }
 
 .player-grid__actions {
+  font-family: "Merriweather", "sans-serif";
   position: absolute;
   top: calc(100% + 8px);
   left: 50%;
@@ -832,6 +833,7 @@ button.card:disabled {
 }
 
 .player-grid__action {
+    font-family: "Merriweather", "sans-serif";
   margin-top: 0;
   padding: 10px 20px;
   font-size: 1rem;
