@@ -159,16 +159,21 @@ const computeRoundScores = (
   }
 
   const playerUpdates: Record<string, Partial<PlayerDoc>> = {};
+  const totalScores: number[] = [];
   activeOrder.forEach((playerId) => {
     const previousTotal = players[playerId].totalScore ?? 0;
+    const totalScore = previousTotal + roundScores[playerId];
+    totalScores.push(totalScore);
     playerUpdates[playerId] = {
       revealed: players[playerId].revealed.map(() => true),
       roundScore: roundScores[playerId],
-      totalScore: previousTotal + roundScores[playerId],
+      totalScore,
     };
   });
 
-  return { roundScores, playerUpdates };
+  const isGameComplete = totalScores.some((totalScore) => totalScore >= 100);
+
+  return { roundScores, playerUpdates, isGameComplete };
 };
 
 export const drawFromDiscard = async (
@@ -220,6 +225,7 @@ export const drawFromDiscard = async (
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
       const players: Record<string, PlayerDoc> = {};
@@ -243,6 +249,7 @@ export const drawFromDiscard = async (
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
+      gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
     transaction.update(playerRef, {
@@ -255,6 +262,7 @@ export const drawFromDiscard = async (
       discard,
       selectedDiscardPlayerId: null,
       ...resolution.gameUpdates,
+      ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
     });
 
@@ -373,6 +381,7 @@ export const swapPendingDraw = async (
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
       const players: Record<string, PlayerDoc> = {};
@@ -396,6 +405,7 @@ export const swapPendingDraw = async (
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
+      gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
     transaction.update(playerRef, {
@@ -407,6 +417,7 @@ export const swapPendingDraw = async (
     transaction.update(gameRef, {
       discard,
       ...resolution.gameUpdates,
+      ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
     });
 
@@ -481,6 +492,7 @@ export const revealAfterDiscard = async (
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
       const players: Record<string, PlayerDoc> = {};
@@ -504,6 +516,7 @@ export const revealAfterDiscard = async (
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
+      gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
     transaction.update(playerRef, {
@@ -512,6 +525,7 @@ export const revealAfterDiscard = async (
     });
     transaction.update(gameRef, {
       ...resolution.gameUpdates,
+      ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
     });
 

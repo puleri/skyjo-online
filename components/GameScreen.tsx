@@ -234,6 +234,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
   const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
   const isRoundComplete = game?.status === "round-complete";
+  const isGameComplete = game?.status === "game-complete";
+  const isGameActive = game?.status === "playing";
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -267,14 +269,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
     isCurrentTurn &&
-    !isRoundComplete &&
+    isGameActive &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     !discardSelectionActive &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
-    !isRoundComplete &&
+    isGameActive &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.discard.length ?? 0) > 0;
@@ -282,7 +284,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showSelectedCard =
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
-  const canSelectGridCard = !isRoundComplete && (showDrawnCard || discardSelectionActive);
+  const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
 
   const endingPlayerName = useMemo(() => {
     if (!game?.endingPlayerId) {
@@ -361,6 +363,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => window.clearTimeout(timeout);
   }, [endingPlayerName, game?.endingPlayerId]);
+
+  const finalScores = useMemo(() => {
+    if (!isGameComplete) {
+      return [];
+    }
+    return [...orderedPlayers]
+      .map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        totalScore: player.totalScore ?? 0,
+      }))
+      .sort((a, b) => {
+        if (a.totalScore !== b.totalScore) {
+          return a.totalScore - b.totalScore;
+        }
+        return a.displayName.localeCompare(b.displayName);
+      });
+  }, [isGameComplete, orderedPlayers]);
+
+  const getAccolade = (index: number) => {
+    if (index === 0) {
+      return "1st";
+    }
+    if (index === 1) {
+      return "2nd";
+    }
+    if (index === 2) {
+      return "3rd";
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (!canSelectGridCard) {
@@ -588,6 +621,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </button>
               <button type="button" onClick={() => setIsSettingsOpen(false)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {isGameComplete ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2>Game over</h2>
+            <p>Lowest points win. Here are the final standings:</p>
+            <ol className="game-complete-list">
+              {finalScores.map((player, index) => {
+                const accolade = getAccolade(index);
+                return (
+                  <li key={player.id} className="game-complete-item">
+                    <span>
+                      {accolade ? (
+                        <span className="game-complete-badge">{accolade}</span>
+                      ) : null}
+                      {player.displayName}
+                    </span>
+                    <span className="game-complete-score">{player.totalScore}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            <div className="modal__actions">
+              <button type="button" onClick={() => router.push("/")}>
+                Back to main menu
               </button>
             </div>
           </div>
