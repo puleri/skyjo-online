@@ -83,7 +83,7 @@ export default function PlayerGrid({
           return (
             <div
               key={`${label}-${index}`}
-              className={`player-grid__card${isActive ? " player-grid__card--active" : ""}`}
+              className={`player-grid__card${isActive ? " player-grid__card--active player-grid__card--menu-open" : ""}`}
             >
               {isSelectable ? (
                 <button
