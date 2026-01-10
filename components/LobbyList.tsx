@@ -145,7 +145,7 @@ export default function LobbyList() {
   }
 
   if (!lobbies.length) {
-    return <p>No lobbies yet. Create one above to see real-time updates.</p>;
+    return <p>No lobbies yet. Create one above.</p>;
   }
 
   const formatPlayerNames = (names: string[]) => {

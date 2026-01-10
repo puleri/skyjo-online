@@ -200,6 +200,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           turnPhase: "choose-draw",
           deck: shuffledDeck,
           discard: [discardCard],
+          lastTurnPlayerId: null,
+          lastTurnAction: null,
           createdAt: serverTimestamp(),
         });
 
@@ -211,6 +213,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             grid: playerGrids.get(playerDoc.id) ?? [],
             revealed: Array.from({ length: 12 }, () => false),
             roundScore: 0,
+            totalScore: 0,
           });
         });
 

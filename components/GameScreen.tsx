@@ -32,6 +32,9 @@ type GameMeta = {
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
+  roundScores?: Record<string, number>;
+  lastTurnPlayerId?: string | null;
+  lastTurnAction?: string | null;
 };
 
 type GamePlayer = {
@@ -114,6 +117,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             : null,
           selectedDiscardPlayerId:
             (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
+          roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
+          lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
+          lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
         });
       },
       (err) => {
@@ -206,6 +212,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     [game?.currentPlayerId, orderedPlayers]
   );
 
+  const lastTurnSummary = useMemo(() => {
+    if (!game || !game.lastTurnPlayerId || !game.lastTurnAction) {
+      return "First turn of the game";
+    }
+    const lastPlayer = orderedPlayers.find((player) => player.id === game.lastTurnPlayerId);
+    const lastPlayerName = lastPlayer?.displayName ?? "Previous player";
+    return `${lastPlayerName} ${game.lastTurnAction}`;
+  }, [game, orderedPlayers]);
+
   const sortedScores = useMemo(() => {
     if (game?.status !== "round-complete") {
       return [];
@@ -214,10 +229,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       .map((player) => ({
         id: player.id,
         displayName: player.displayName,
-        totalScore: player.totalScore ?? 0,
+        roundScore: game.roundScores?.[player.id] ?? 0,
       }))
-      .sort((a, b) => a.totalScore - b.totalScore);
-  }, [game?.status, orderedPlayers]);
+      .sort((a, b) => a.roundScore - b.roundScore);
+  }, [game?.roundScores, game?.status, orderedPlayers]);
   const runningTotals = useMemo(
     () =>
       orderedPlayers.map((player) => ({
@@ -231,6 +246,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
   const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
+  const isRoundComplete = game?.status === "round-complete";
+  const isGameComplete = game?.status === "game-complete";
+  const isGameActive = game?.status === "playing";
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -253,23 +271,30 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         ? "You selected this card"
         : `${selectedDiscardPlayer.displayName} selected this card`
       : "Awaiting a drawn card";
+  const awaitingDrawSourceLabel = currentPlayer
+    ? currentPlayer.id === uid
+      ? "Your turn to draw"
+      : `${currentPlayer.displayName}'s turn`
+    : "Awaiting draw source";
   const selectedCardSourceLabel = selectedPlayer
     ? selectedPlayer.pendingDrawSource === "discard"
       ? "From discard pile"
       : "From draw pile"
     : selectedDiscardPlayer
       ? "From discard pile"
-      : "Awaiting draw source";
+      : awaitingDrawSourceLabel;
   const discardSelectionActive =
     Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
     isCurrentTurn &&
+    isGameActive &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     !discardSelectionActive &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
+    isGameActive &&
     game?.turnPhase === "choose-draw" &&
     typeof currentPlayer?.pendingDraw !== "number" &&
     (game?.discard.length ?? 0) > 0;
@@ -277,7 +302,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showSelectedCard =
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
-  const canSelectGridCard = showDrawnCard || discardSelectionActive;
+  const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
 
   const endingPlayerName = useMemo(() => {
     if (!game?.endingPlayerId) {
@@ -356,6 +381,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => window.clearTimeout(timeout);
   }, [endingPlayerName, game?.endingPlayerId]);
+
+  const finalScores = useMemo(() => {
+    if (!isGameComplete) {
+      return [];
+    }
+    return [...orderedPlayers]
+      .map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        totalScore: player.totalScore ?? 0,
+      }))
+      .sort((a, b) => {
+        if (a.totalScore !== b.totalScore) {
+          return a.totalScore - b.totalScore;
+        }
+        return a.displayName.localeCompare(b.displayName);
+      });
+  }, [isGameComplete, orderedPlayers]);
+
+  const getAccolade = (index: number) => {
+    if (index === 0) {
+      return "1st";
+    }
+    if (index === 1) {
+      return "2nd";
+    }
+    if (index === 2) {
+      return "3rd";
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (!canSelectGridCard) {
@@ -588,14 +644,42 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         </div>
       ) : null}
+      {isGameComplete ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2 className="sage-eyebrow-text">Game over</h2>
+            <ol className="game-complete-list">
+              {finalScores.map((player, index) => {
+                const accolade = getAccolade(index);
+                return (
+                  <li key={player.id} className="game-complete-item">
+                    <span>
+                      {accolade ? (
+                        <span className="game-complete-badge">{accolade}</span>
+                      ) : null}
+                      {player.displayName}
+                    </span>
+                    <span className="game-complete-score">{player.totalScore}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            <div className="modal__actions">
+              <button type="button" className="form-button-full-width" onClick={() => router.push("/")}>
+                Back to main menu
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {game?.status === "round-complete" ? (
         <section className="game-results">
-          <h2>Final scores</h2>
+          <h2 className="sage-eyebrow-text">Round totals</h2>
           <ol>
             {sortedScores.map((player) => (
-              <li key={player.id}>
-                {player.displayName}: {player.totalScore}
+              <li key={player.id} className="round-score-item">
+                {player.displayName}: {player.roundScore}
               </li>
             ))}
           </ol>
@@ -603,6 +687,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {isHost ? (
               <button
                 type="button"
+                className="form-button-full-width"
                 onClick={handleStartNextRound}
                 disabled={isStartingNextRound}
               >
@@ -632,6 +717,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 alt="Skyjo card back"
               />
             </button>
+            <div className="card-tags">
+              <span className="last-turn-summary">{lastTurnSummary}</span>
+            </div>
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
@@ -696,6 +784,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 alt="Skyjo card back"
               />
             </button>
+            <div className="card-tags">
+              <span className="last-turn-summary">{lastTurnSummary}</span>
+            </div>
           </div>
           <div className="game-pile">
             <h6>Discard</h6>

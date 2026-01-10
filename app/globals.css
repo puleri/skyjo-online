@@ -234,7 +234,7 @@ section {
 .modal {
   background: var(--color-surface-bright);
   border-radius: 16px;
-  padding: 24px;
+  padding:24px 34px;
   width: min(420px, 100%);
   box-shadow: 0 16px 40px rgba(31, 41, 51, 0.25);
 }
@@ -728,20 +728,37 @@ button.card:disabled {
   text-align: center;
   align-items: center;
   justify-content: center;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: var(--color-accent-soft);
   color: var(--color-dark);
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  text-wrap: pretty;
+  text-wrap: balance;
+}
+.last-turn-summary {
+  margin: 0 20px;
+  display: flex;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-dark);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  text-wrap: balance;
 }
 
 @media (max-width: 640px) {
-  .card-draw-source {
+  .card-draw-source, .last-turn-summary {
     font-size: 0.4rem;
+    margin: 0;
   }
 }
 
@@ -799,6 +816,7 @@ button.card:disabled {
 }
 
 .player-grid__actions {
+  font-family: "Merriweather", "sans-serif";
   position: absolute;
   top: calc(100% + 8px);
   left: 50%;
@@ -815,6 +833,7 @@ button.card:disabled {
 }
 
 .player-grid__action {
+    font-family: "Merriweather", "sans-serif";
   margin-top: 0;
   padding: 10px 20px;
   font-size: 1rem;
@@ -1009,6 +1028,15 @@ small {
   letter-spacing: 1em;
   text-transform: uppercase;
   margin-bottom: 24px;
+  text-wrap: balance;
+}
+
+/* on mobile, sage-eyebrow-text */
+@media (max-width: 640px) {
+  .sage-eyebrow-text {
+    font-size: 16px;
+    letter-spacing: 0.8em;
+  }
 }
 
 .charcoal-eyebrow-text {
@@ -1053,15 +1081,71 @@ small {
 
 .form-button-full-width {
   background-color: #8D9F8F;
+  color: var(--color-dark);
+  letter-spacing: 2px;
+  font-weight: 600;
+  font-size: 18px;
   border: 1px solid #4545457f;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
   width: 100%;
+  font-family: "Merriweather", serif;
 }
 .form-button-full-width:hover {
   background-color: #7A8B7A;
     box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
     transform: translateY(2px);
     scale: .99
+}
+
+.round-score-item {
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.game-complete-list {
+  list-style: none;
+  padding: 20px;
+  margin: 20px 0 0;
+  display: grid;
+  gap: 12px;
+}
+
+.game-complete-item {
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px;
+  background-color: var(--color-surface-alt);
+  border-radius: 12px;
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.game-complete-badge {
+  position: absolute;
+  left:-12px;
+  top: -16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #8D9F8F;
+  color: var(--color-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid #4545457f;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
+
+}
+
+.game-complete-score {
+  font-size: 1.1rem;
 }
 
 .join-button {
