@@ -415,6 +415,7 @@ section {
 
 .player-grid__card {
   position: relative;
+  z-index: 1;
 }
 
 .player-grid__card .card {
@@ -446,6 +447,10 @@ section {
   outline: 3px solid var(--color-accent-secondary-strong);
   outline-offset: 2px;
   box-shadow: 0 8px 20px rgba(184, 137, 74, 0.3);
+}
+
+.player-grid__card--active {
+  z-index: 150;
 }
 
 .player-grid--mini .player-grid__cards {
@@ -801,7 +806,7 @@ button.card:disabled {
   background: var(--color-surface-bright);
   border: 1px solid var(--color-border);
   filter: drop-shadow(0 2px 4px rgba(31, 41, 51, 0.32));
-  z-index: 95;
+  z-index: 200;
 }
 
 .player-grid__action {
