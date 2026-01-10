@@ -258,13 +258,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         ? "You selected this card"
         : `${selectedDiscardPlayer.displayName} selected this card`
       : "Awaiting a drawn card";
+  const awaitingDrawSourceLabel = currentPlayer
+    ? currentPlayer.id === uid
+      ? "Your turn to draw"
+      : `${currentPlayer.displayName}'s turn to draw`
+    : "Awaiting draw source";
   const selectedCardSourceLabel = selectedPlayer
     ? selectedPlayer.pendingDrawSource === "discard"
       ? "From discard pile"
       : "From draw pile"
     : selectedDiscardPlayer
       ? "From discard pile"
-      : "Awaiting draw source";
+      : awaitingDrawSourceLabel;
   const discardSelectionActive =
     Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
