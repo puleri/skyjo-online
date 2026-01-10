@@ -634,8 +634,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       {isGameComplete ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2>Game over</h2>
-            <p>Lowest points win. Here are the final standings:</p>
+            <h2 className="sage-eyebrow-text">Game over</h2>
             <ol className="game-complete-list">
               {finalScores.map((player, index) => {
                 const accolade = getAccolade(index);
@@ -653,7 +652,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               })}
             </ol>
             <div className="modal__actions">
-              <button type="button" onClick={() => router.push("/")}>
+              <button type="button" className="form-button-full-width" onClick={() => router.push("/")}>
                 Back to main menu
               </button>
             </div>
