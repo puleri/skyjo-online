@@ -261,7 +261,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const awaitingDrawSourceLabel = currentPlayer
     ? currentPlayer.id === uid
       ? "Your turn to draw"
-      : `${currentPlayer.displayName}'s turn to draw`
+      : `${currentPlayer.displayName}'s turn`
     : "Awaiting draw source";
   const selectedCardSourceLabel = selectedPlayer
     ? selectedPlayer.pendingDrawSource === "discard"
