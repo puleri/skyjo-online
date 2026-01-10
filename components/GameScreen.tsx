@@ -596,10 +596,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
       {game?.status === "round-complete" ? (
         <section className="game-results">
-          <h2>End of round totals</h2>
+          <h2 className="sage-eyebrow-text">Round totals</h2>
           <ol>
             {sortedScores.map((player) => (
-              <li key={player.id}>
+              <li key={player.id} className="round-score-item">
                 {player.displayName}: {player.roundScore}
               </li>
             ))}
@@ -608,6 +608,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {isHost ? (
               <button
                 type="button"
+                className="form-button-full-width"
                 onClick={handleStartNextRound}
                 disabled={isStartingNextRound}
               >
