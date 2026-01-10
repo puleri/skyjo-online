@@ -27,7 +27,6 @@ export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string>("");
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
@@ -96,13 +95,6 @@ export default function LobbyList() {
   }, [firebaseReady, lobbies]);
 
   useEffect(() => {
-    const storedName = window.localStorage.getItem("skyjo:username");
-    if (storedName) {
-      setDisplayName(storedName);
-    }
-  }, []);
-
-  useEffect(() => {
     if (authError) {
       setError(authError);
     }
@@ -117,8 +109,10 @@ export default function LobbyList() {
     setJoiningLobbyId(lobbyId);
     setError(null);
     try {
+      const storedName = window.localStorage.getItem("skyjo:username");
+      const resolvedName = storedName?.trim();
       await setDoc(doc(db, "lobbies", lobbyId, "players", uid), {
-        displayName: displayName.trim() || "Anonymous player",
+        displayName: resolvedName || "Anonymous player",
         joinedAt: serverTimestamp(),
         isReady: false,
       });

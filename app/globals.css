@@ -357,7 +357,8 @@ section {
 
 .player-grid--active {
   animation: bounceDepth 8000ms cubic-bezier(0.92, 1, 0.76, 1) infinite;
-
+  /* keeps menu above other players grids */
+  z-index: 10;
 }
 /* Bounce + depth shadow (blurs/unblurs) */
 @keyframes bounceDepth {
@@ -448,6 +449,15 @@ section {
   box-shadow: 0 8px 20px rgba(184, 137, 74, 0.3);
 }
 
+.player-grid__card--active {
+  z-index: 150;
+}
+
+.player-grid__card--menu-open {
+  position: relative;
+  z-index: 1000;
+}
+
 .player-grid--mini .player-grid__cards {
   grid-template-columns: repeat(4, minmax(24px, 1fr));
 }
@@ -491,7 +501,7 @@ section {
 }
 
 .card--value-low {
-  background: #277a48;
+  background: #18cd00;
   color: var(--color-card-edge);
       text-shadow: 0 0 5px #277a48;
 
@@ -742,8 +752,9 @@ button.card:disabled {
 
   .game-piles--dock {
     display: grid;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left:0;
     z-index: 120;
     padding: 8px 10px 10px;
     background: var(--color-surface);
@@ -800,7 +811,7 @@ button.card:disabled {
   background: var(--color-surface-bright);
   border: 1px solid var(--color-border);
   filter: drop-shadow(0 2px 4px rgba(31, 41, 51, 0.32));
-  z-index: 95;
+  z-index: 1010;
 }
 
 .player-grid__action {
@@ -1130,4 +1141,9 @@ letter-spacing: 2px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.z-1 {
+  position: relative;
+  z-index: -1;
 }
