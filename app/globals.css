@@ -500,7 +500,7 @@ section {
 }
 
 .card--value-low {
-  background: #277a48;
+  background: #18cd00;
   color: var(--color-card-edge);
       text-shadow: 0 0 5px #277a48;
 
