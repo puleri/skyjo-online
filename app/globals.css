@@ -357,7 +357,8 @@ section {
 
 .player-grid--active {
   animation: bounceDepth 8000ms cubic-bezier(0.92, 1, 0.76, 1) infinite;
-
+  /* keeps menu above other players grids */
+  z-index: 10;
 }
 /* Bounce + depth shadow (blurs/unblurs) */
 @keyframes bounceDepth {
@@ -1140,4 +1141,9 @@ letter-spacing: 2px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.z-1 {
+  position: relative;
+  z-index: -1;
 }
