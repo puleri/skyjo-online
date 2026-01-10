@@ -742,8 +742,9 @@ button.card:disabled {
 
   .game-piles--dock {
     display: grid;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left:0;
     z-index: 120;
     padding: 8px 10px 10px;
     background: var(--color-surface);
