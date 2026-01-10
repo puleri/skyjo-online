@@ -200,6 +200,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           turnPhase: "choose-draw",
           deck: shuffledDeck,
           discard: [discardCard],
+          lastTurnPlayerId: null,
+          lastTurnAction: null,
           createdAt: serverTimestamp(),
         });
 
