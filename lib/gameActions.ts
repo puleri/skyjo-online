@@ -74,6 +74,33 @@ const clearColumnIfMatched = (grid: Array<number | null>, revealed: boolean[], i
   return { grid: nextGrid, revealed: nextRevealed };
 };
 
+const clearMatchedColumns = (grid: Array<number | null>, revealed: boolean[]) => {
+  let nextGrid = [...grid];
+  let nextRevealed = [...revealed];
+  for (let column = 0; column < columns; column += 1) {
+    const columnIndices = getColumnIndices(column);
+    const values = columnIndices.map((columnIndex) => nextGrid[columnIndex]);
+    const hasNull = values.some((value) => value === null || value === undefined);
+    if (hasNull) {
+      continue;
+    }
+    const allRevealed = columnIndices.every((columnIndex) => nextRevealed[columnIndex]);
+    if (!allRevealed) {
+      continue;
+    }
+    const [first, ...rest] = values;
+    const isMatch = rest.every((value) => value === first);
+    if (!isMatch) {
+      continue;
+    }
+    columnIndices.forEach((columnIndex) => {
+      nextGrid[columnIndex] = null;
+      nextRevealed[columnIndex] = true;
+    });
+  }
+  return { grid: nextGrid, revealed: nextRevealed };
+};
+
 const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
 
 const calculateScore = (grid: Array<number | null>) =>
@@ -144,9 +171,11 @@ const computeRoundScores = (
   const roundScores: Record<string, number> = {};
   const scoresByPlayer = activeOrder.map((playerId) => {
     const player = players[playerId];
-    const score = calculateScore(player.grid);
+    const revealed = player.revealed.map(() => true);
+    const cleared = clearMatchedColumns(player.grid, revealed);
+    const score = calculateScore(cleared.grid);
     roundScores[playerId] = score;
-    return { playerId, score };
+    return { playerId, score, cleared };
   });
   const positiveScores = scoresByPlayer
     .map(({ score }) => score)
@@ -162,12 +191,14 @@ const computeRoundScores = (
 
   const playerUpdates: Record<string, Partial<PlayerDoc>> = {};
   const totalScores: number[] = [];
-  activeOrder.forEach((playerId) => {
+  activeOrder.forEach((playerId, index) => {
+    const cleared = scoresByPlayer[index].cleared;
     const previousTotal = players[playerId].totalScore ?? 0;
     const totalScore = previousTotal + roundScores[playerId];
     totalScores.push(totalScore);
     playerUpdates[playerId] = {
-      revealed: players[playerId].revealed.map(() => true),
+      grid: cleared.grid,
+      revealed: cleared.revealed,
       roundScore: roundScores[playerId],
       totalScore,
     };

@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, doc, onSnapshot } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
@@ -64,8 +64,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const [showDockedPiles, setShowDockedPiles] = useState(false);
+  const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
+  const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
 
   const getCardValueClass = (value: number) => {
     if (value < 0) {
@@ -176,6 +178,30 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [firebaseReady, gameId]);
 
   useEffect(() => {
+    if (!firebaseReady || !gameId) {
+      return;
+    }
+
+    const spectatorCollection = collection(db, "games", gameId, "spectators");
+    const unsubscribe = onSnapshot(
+      spectatorCollection,
+      (snapshot) => {
+        setSpectators(
+          snapshot.docs.map((doc) => ({
+            id: doc.id,
+            displayName: (doc.data().displayName as string | undefined) ?? "Anonymous spectator",
+          }))
+        );
+      },
+      (err) => {
+        setError(err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseReady, gameId]);
+
+  useEffect(() => {
     if (authError) {
       setError(authError);
     }
@@ -197,11 +223,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!uid) {
       return orderedPlayers;
     }
-    const localPlayer = orderedPlayers.find((player) => player.id === uid);
-    if (!localPlayer) {
+    const localPlayerIndex = orderedPlayers.findIndex((player) => player.id === uid);
+    if (localPlayerIndex === -1) {
       return orderedPlayers;
     }
-    return [localPlayer, ...orderedPlayers.filter((player) => player.id !== uid)];
+    return [
+      ...orderedPlayers.slice(localPlayerIndex),
+      ...orderedPlayers.slice(0, localPlayerIndex),
+    ];
   }, [orderedPlayers, uid]);
 
   const currentPlayer = useMemo(
@@ -249,6 +278,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isRoundComplete = game?.status === "round-complete";
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
+  const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -303,6 +333,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
+  const spectatorCount = useMemo(() => {
+    if (!spectators.length) {
+      return 0;
+    }
+    const playerIds = new Set(players.map((player) => player.id));
+    return spectators.filter((spectator) => !playerIds.has(spectator.id)).length;
+  }, [players, spectators]);
+
+  const spectatorNames = useMemo(() => {
+    if (!spectators.length) {
+      return [];
+    }
+    const playerIds = new Set(players.map((player) => player.id));
+    return spectators
+      .filter((spectator) => !playerIds.has(spectator.id))
+      .map((spectator) => spectator.displayName);
+  }, [players, spectators]);
 
   const endingPlayerName = useMemo(() => {
     if (!game?.endingPlayerId) {
@@ -418,6 +465,47 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setActiveActionIndex(null);
     }
   }, [canSelectGridCard]);
+
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !uid) {
+      return;
+    }
+
+    const spectatorRef = doc(db, "games", gameId, "spectators", uid);
+    if (isLocalPlayer) {
+      deleteDoc(spectatorRef).catch((err: Error) => setError(err.message));
+      return;
+    }
+
+    const resolvedName = window.localStorage.getItem("skyjo:username")?.trim();
+    const touchSpectator = () =>
+      setDoc(
+        spectatorRef,
+        {
+          displayName: resolvedName || "Anonymous spectator",
+          joinedAt: serverTimestamp(),
+          lastSeen: serverTimestamp(),
+        },
+        { merge: true }
+      ).catch((err: Error) => setError(err.message));
+
+    touchSpectator();
+    const heartbeat = window.setInterval(() => {
+      setDoc(
+        spectatorRef,
+        {
+          displayName: resolvedName || "Anonymous spectator",
+          lastSeen: serverTimestamp(),
+        },
+        { merge: true }
+      ).catch((err: Error) => setError(err.message));
+    }, 60000);
+
+    return () => {
+      window.clearInterval(heartbeat);
+      deleteDoc(spectatorRef).catch(() => undefined);
+    };
+  }, [firebaseReady, gameId, isLocalPlayer, uid]);
 
   const handleDrawFromDeck = async () => {
     if (!uid) {
@@ -598,8 +686,47 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
-
-     
+      <div className="spectator-count">
+        <button
+          type="button"
+          className="spectator-count__button"
+          aria-label={`Spectators: ${spectatorCount}`}
+          aria-haspopup="dialog"
+          onClick={() => setIsSpectatorModalOpen(true)}
+        >
+          <img className="eye-icon" src="/eye-icon.svg"/>
+          <span className="spectator-count__value">{spectatorCount}</span>
+        </button>
+      </div>
+      {isSpectatorModalOpen ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="spectator-list-title"
+          onClick={() => setIsSpectatorModalOpen(false)}
+        >
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2 className="sage-eyebrow-text">Spectators</h2>
+            {spectatorNames.length ? (
+              <ul className="player-list">
+                {spectatorNames.map((name, index) => (
+                  <li key={`${name}-${index}`} className="player-list-item">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No spectators yet.</p>
+            )}
+            <div className="modal__actions">
+              <button className="form-button-full-width" type="button" onClick={() => setIsSpectatorModalOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {toastMessage ? (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}
