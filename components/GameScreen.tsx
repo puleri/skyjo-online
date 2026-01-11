@@ -707,7 +707,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           onClick={() => setIsSpectatorModalOpen(false)}
         >
           <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 id="spectator-list-title">Spectators</h2>
+            <h2 className="sage-eyebrow-text">Spectators</h2>
             {spectatorNames.length ? (
               <ul className="player-list">
                 {spectatorNames.map((name, index) => (
@@ -720,7 +720,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <p>No spectators yet.</p>
             )}
             <div className="modal__actions">
-              <button type="button" onClick={() => setIsSpectatorModalOpen(false)}>
+              <button className="form-button-full-width" type="button" onClick={() => setIsSpectatorModalOpen(false)}>
                 Close
               </button>
             </div>

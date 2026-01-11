@@ -1271,6 +1271,13 @@ letter-spacing: 2px;
   font-variant-numeric: tabular-nums;
 }
 
+.spectator-list-title {
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  color: var(--color-dark);
+}
+
 /* on mobile all the cards have no border */ 
 @media (max-width: 540px) {
   .player-grid--mini .card,
