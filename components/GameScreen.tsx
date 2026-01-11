@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, doc, onSnapshot } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
@@ -64,6 +64,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const [showDockedPiles, setShowDockedPiles] = useState(false);
+  const [spectatorIds, setSpectatorIds] = useState<string[]>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
 
@@ -176,6 +177,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [firebaseReady, gameId]);
 
   useEffect(() => {
+    if (!firebaseReady || !gameId) {
+      return;
+    }
+
+    const spectatorCollection = collection(db, "games", gameId, "spectators");
+    const unsubscribe = onSnapshot(
+      spectatorCollection,
+      (snapshot) => {
+        setSpectatorIds(snapshot.docs.map((doc) => doc.id));
+      },
+      (err) => {
+        setError(err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseReady, gameId]);
+
+  useEffect(() => {
     if (authError) {
       setError(authError);
     }
@@ -252,6 +272,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isRoundComplete = game?.status === "round-complete";
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
+  const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -306,6 +327,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
+  const spectatorCount = useMemo(() => {
+    if (!spectatorIds.length) {
+      return 0;
+    }
+    const playerIds = new Set(players.map((player) => player.id));
+    return spectatorIds.filter((spectatorId) => !playerIds.has(spectatorId)).length;
+  }, [players, spectatorIds]);
 
   const endingPlayerName = useMemo(() => {
     if (!game?.endingPlayerId) {
@@ -421,6 +449,44 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setActiveActionIndex(null);
     }
   }, [canSelectGridCard]);
+
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !uid) {
+      return;
+    }
+
+    const spectatorRef = doc(db, "games", gameId, "spectators", uid);
+    if (isLocalPlayer) {
+      deleteDoc(spectatorRef).catch((err: Error) => setError(err.message));
+      return;
+    }
+
+    const touchSpectator = () =>
+      setDoc(
+        spectatorRef,
+        {
+          joinedAt: serverTimestamp(),
+          lastSeen: serverTimestamp(),
+        },
+        { merge: true }
+      ).catch((err: Error) => setError(err.message));
+
+    touchSpectator();
+    const heartbeat = window.setInterval(() => {
+      setDoc(
+        spectatorRef,
+        {
+          lastSeen: serverTimestamp(),
+        },
+        { merge: true }
+      ).catch((err: Error) => setError(err.message));
+    }, 60000);
+
+    return () => {
+      window.clearInterval(heartbeat);
+      deleteDoc(spectatorRef).catch(() => undefined);
+    };
+  }, [firebaseReady, gameId, isLocalPlayer, uid]);
 
   const handleDrawFromDeck = async () => {
     if (!uid) {
@@ -601,8 +667,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
-
-     
+      <div className="spectator-count">
+        <button
+          type="button"
+          className="spectator-count__button"
+          aria-label={`Spectators: ${spectatorCount}`}
+        >
+          <span aria-hidden="true">👁️</span>
+          <span className="spectator-count__value">{spectatorCount}</span>
+        </button>
+      </div>
       {toastMessage ? (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}

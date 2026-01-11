@@ -220,6 +220,34 @@ section {
   background: var(--color-accent-soft);
 }
 
+.spectator-count {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 120;
+}
+
+.spectator-count__button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-bright);
+  border-radius: 999px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--color-text);
+  box-shadow: 0 6px 16px rgba(31, 41, 51, 0.2);
+}
+
+.spectator-count__button:hover {
+  background: var(--color-accent-soft);
+}
+
+.spectator-count__value {
+  font-variant-numeric: tabular-nums;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
