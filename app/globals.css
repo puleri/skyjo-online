@@ -220,33 +220,7 @@ section {
   background: var(--color-accent-soft);
 }
 
-.spectator-count {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 120;
-}
 
-.spectator-count__button {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-bright);
-  border-radius: 999px;
-  padding: 8px 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--color-text);
-  box-shadow: 0 6px 16px rgba(31, 41, 51, 0.2);
-}
-
-.spectator-count__button:hover {
-  background: var(--color-accent-soft);
-}
-
-.spectator-count__value {
-  font-variant-numeric: tabular-nums;
-}
 
 .modal-backdrop {
   position: fixed;
@@ -1263,6 +1237,40 @@ letter-spacing: 2px;
   margin-left: 20px;
 }
 
+.spectator-count {
+  position: absolute;
+  background-color: none;
+  margin: 0;
+  z-index: 0;
+}
+.eye-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.spectator-count__button {
+  margin: 10px;
+  border: 1px solid var(--color-border);
+  background: none;
+  background-color: none;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.spectator-count__button:hover {
+  background: var(--color-accent-soft);
+}
+
+.spectator-count__value {
+  font-variant-numeric: tabular-nums;
+}
+
 /* on mobile all the cards have no border */ 
 @media (max-width: 540px) {
   .player-grid--mini .card,
@@ -1286,6 +1294,15 @@ letter-spacing: 2px;
   .card--discard-pile {
     border-radius: 14px;
   }
+  .eye-icon {
+  width: 14px;
+  height: 14px;
+}
+.spectator-count__button {
+  font-size:
+    10px;
+  padding: 4px 6px;
+}
 }
 
 

@@ -694,7 +694,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-haspopup="dialog"
           onClick={() => setIsSpectatorModalOpen(true)}
         >
-          <span aria-hidden="true">👁️</span>
+          <img className="eye-icon" src="/eye-icon.svg"/>
           <span className="spectator-count__value">{spectatorCount}</span>
         </button>
       </div>
