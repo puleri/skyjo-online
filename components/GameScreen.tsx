@@ -197,11 +197,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!uid) {
       return orderedPlayers;
     }
-    const localPlayer = orderedPlayers.find((player) => player.id === uid);
-    if (!localPlayer) {
+    const localPlayerIndex = orderedPlayers.findIndex((player) => player.id === uid);
+    if (localPlayerIndex === -1) {
       return orderedPlayers;
     }
-    return [localPlayer, ...orderedPlayers.filter((player) => player.id !== uid)];
+    return [
+      ...orderedPlayers.slice(localPlayerIndex),
+      ...orderedPlayers.slice(0, localPlayerIndex),
+    ];
   }, [orderedPlayers, uid]);
 
   const currentPlayer = useMemo(
