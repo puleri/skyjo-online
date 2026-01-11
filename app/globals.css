@@ -351,6 +351,10 @@ section {
   gap: 16px;
 }
 
+.player-grid {
+  position: relative;
+}
+
 .player-grid header {
   margin-bottom: 12px;
 }
@@ -359,6 +363,44 @@ section {
   animation: bounceDepth 8000ms cubic-bezier(0.92, 1, 0.76, 1) infinite;
   /* keeps menu above other players grids */
   z-index: 10;
+}
+
+.player-grid--active::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background: conic-gradient(
+        #ff3b30,
+        #ff9500,
+        #ffcc00,
+        #34c759,
+        #0fb9b1,
+        #007aff,
+        #5856d6,
+        #af52de,
+        #ff3b30
+      )
+      border-box;
+  -webkit-mask: linear-gradient(#ffffff 0 0) padding-box, linear-gradient(#ffffff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  animation: player-turn-rainbow 5s linear infinite;
+}
+
+.player-grid--active > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes player-turn-rainbow {
+  to {
+    transform: rotate(1turn);
+    filter: hue-rotate(360deg);
+  }
 }
 /* Bounce + depth shadow (blurs/unblurs) */
 @keyframes bounceDepth {
@@ -399,7 +441,9 @@ section {
 /* Optional: respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .bounce-depth,
-  .bounce-depth--loop {
+  .bounce-depth--loop,
+  .player-grid--active,
+  .player-grid--active::before {
     animation: none;
   }
 }
