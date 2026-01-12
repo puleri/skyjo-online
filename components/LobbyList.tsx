@@ -22,12 +22,14 @@ type Lobby = {
 };
 
 const MAX_PLAYER_NAMES_LENGTH = 60;
+const LOBBIES_PER_PAGE = 5;
 
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
@@ -100,6 +102,16 @@ export default function LobbyList() {
     }
   }, [authError]);
 
+  useEffect(() => {
+    if (!lobbies.length) {
+      setPageIndex(0);
+      return;
+    }
+
+    const maxPageIndex = Math.max(Math.ceil(lobbies.length / LOBBIES_PER_PAGE) - 1, 0);
+    setPageIndex((current) => Math.min(current, maxPageIndex));
+  }, [lobbies.length]);
+
   const handleJoin = async (lobbyId: string) => {
     if (!uid) {
       setError("Unable to join a lobby without a signed-in user.");
@@ -161,33 +173,64 @@ export default function LobbyList() {
     return `${joinedNames.slice(0, MAX_PLAYER_NAMES_LENGTH)}…`;
   };
 
+  const totalPages = Math.ceil(lobbies.length / LOBBIES_PER_PAGE);
+  const startIndex = pageIndex * LOBBIES_PER_PAGE;
+  const visibleLobbies = lobbies.slice(startIndex, startIndex + LOBBIES_PER_PAGE);
+
   return (
-    <ul>
-      {lobbies.map((lobby) => (
-        <li key={lobby.id}>
-          <div>
-            <strong className="name-lobby-list">{lobby.name}</strong>
+    <div>
+      <ul>
+        {visibleLobbies.map((lobby) => (
+          <li key={lobby.id}>
             <div>
-              <small className="player-lobby-list">{formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}</small>
+              <strong className="name-lobby-list">{lobby.name}</strong>
+              <div>
+                <small className="player-lobby-list">
+                  {formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}
+                </small>
+              </div>
             </div>
-          </div>
-          <div>
-            {/* <small className="mr-10">{lobby.players} players</small> */}
-            <button
-              type="button"
-              className={lobby.status === "open" ? "join-button" : "spectate-button"}
-              onClick={() => handleJoin(lobby.id)}
-              disabled={!uid || joiningLobbyId === lobby.id}
-            >
-              {joiningLobbyId === lobby.id
-                ? "Joining..."
-                : lobby.status === "open"
-                  ? "Join"
-                  : "Spectate"}
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
+            <div>
+              {/* <small className="mr-10">{lobby.players} players</small> */}
+              <button
+                type="button"
+                className={lobby.status === "open" ? "join-button" : "spectate-button"}
+                onClick={() => handleJoin(lobby.id)}
+                disabled={!uid || joiningLobbyId === lobby.id}
+              >
+                {joiningLobbyId === lobby.id
+                  ? "Joining..."
+                  : lobby.status === "open"
+                    ? "Join"
+                    : "Spectate"}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {totalPages > 1 ? (
+        <div className="lobby-pagination">
+          <button
+            type="button"
+            className="pagination-button"
+            onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
+            disabled={pageIndex === 0}
+          >
+            Previous
+          </button>
+          <span className="pagination-status">
+            Page {pageIndex + 1} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="pagination-button"
+            onClick={() => setPageIndex((current) => Math.min(current + 1, totalPages - 1))}
+            disabled={pageIndex + 1 >= totalPages}
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
