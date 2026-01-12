@@ -68,6 +68,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
   const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
+  const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
+  const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
+    useState<string | null>(null);
 
   const getCardValueClass = (value: number) => {
     if (value < 0) {
@@ -333,6 +336,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
+  const isLocalFinalTurn =
+    Boolean(uid) &&
+    Boolean(game?.endingPlayerId) &&
+    game?.endingPlayerId !== uid &&
+    game?.currentPlayerId === uid &&
+    Boolean(game?.finalTurnRemainingIds?.includes(uid));
   const spectatorCount = useMemo(() => {
     if (!spectators.length) {
       return 0;
@@ -428,6 +437,30 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => window.clearTimeout(timeout);
   }, [endingPlayerName, game?.endingPlayerId]);
+
+  useEffect(() => {
+    if (!game?.endingPlayerId) {
+      setDismissedFinalTurnForEndingPlayerId(null);
+      setIsFinalTurnOverlayOpen(false);
+      return;
+    }
+
+    if (dismissedFinalTurnForEndingPlayerId !== game.endingPlayerId && isLocalFinalTurn) {
+      setIsFinalTurnOverlayOpen(true);
+      return;
+    }
+
+    if (!isLocalFinalTurn) {
+      setIsFinalTurnOverlayOpen(false);
+    }
+  }, [dismissedFinalTurnForEndingPlayerId, game?.endingPlayerId, isLocalFinalTurn]);
+
+  const handleDismissFinalTurnOverlay = () => {
+    if (game?.endingPlayerId) {
+      setDismissedFinalTurnForEndingPlayerId(game.endingPlayerId);
+    }
+    setIsFinalTurnOverlayOpen(false);
+  };
 
   const finalScores = useMemo(() => {
     if (!isGameComplete) {
@@ -730,6 +763,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       {toastMessage ? (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}
+        </div>
+      ) : null}
+      {isFinalTurnOverlayOpen ? (
+        <div
+          className="final-turn-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss last turn announcement"
+          onClick={handleDismissFinalTurnOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissFinalTurnOverlay();
+            }
+          }}
+        >
+          <div className="final-turn-overlay__message">
+            {`${endingPlayerName ?? "A player"} revealed their last card! this is your last turn`}
+          </div>
         </div>
       ) : null}
       {isSettingsOpen ? (
