@@ -732,11 +732,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         </button>
         <button
           type="button"
-          className="icon-button"
+          className="settings-button"
           aria-label="Open settings"
           onClick={() => setIsSettingsOpen(true)}
         >
-          <span aria-hidden="true">⚙️</span>
+          <img className="settings-icon" src="/settings-icon.svg"/>
         </button>
       </div>
       {isSpectatorModalOpen ? (
