@@ -998,7 +998,8 @@ input {
   width: 100%;
   padding: 12px 14px;
   margin: 12px 0;
-  background-color: rgb(250, 244, 241);
+  color: var(--color-dark);
+  background-color: var(--color-surface-bright);
   border-radius: 14px;
   border: 1px solid var(--color-border);
   font-size: 1rem;
@@ -1124,7 +1125,7 @@ small {
   height: 50px;
   width: 50px;
   border-radius: 30px;
-  background-color: #FFFBF9;
+  background-color: var(--color-surface-bright);
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
   margin-bottom: 20px;
   border: none;
@@ -1136,8 +1137,8 @@ small {
 }
 
 .question-mark-icon {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   color: #454545;
   position: relative;
 }
@@ -1197,7 +1198,7 @@ small {
   letter-spacing: 1.3px;
   font-size: 18px;
   font-weight: 700;
-  color: #454545;
+  color: var(--color-dark);
 }
 
 .form-button-full-width {
