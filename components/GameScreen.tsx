@@ -730,6 +730,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <img className="eye-icon" src="/eye-icon.svg"/>
           <span className="spectator-count__value">{spectatorCount}</span>
         </button>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Open settings"
+          onClick={() => setIsSettingsOpen(true)}
+        >
+          <span aria-hidden="true">⚙️</span>
+        </button>
       </div>
       {isSpectatorModalOpen ? (
         <div
@@ -1049,17 +1057,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         </div>
       </section>
-       <section className="score-strip">
+      <section className="score-strip">
         <h2>Running totals</h2>
         <ul className="score-strip__list">
-            <button
-            type="button"
-            className="icon-button"
-            aria-label="Open settings"
-            onClick={() => setIsSettingsOpen(true)}
-          >
-            <span aria-hidden="true">⚙️</span>
-          </button>
           {runningTotals.map((player) => (
             <li
               key={player.id}
