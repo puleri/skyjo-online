@@ -337,7 +337,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
   const isLocalFinalTurn =
-    Boolean(uid) &&
+    uid !== null &&
     Boolean(game?.endingPlayerId) &&
     game?.endingPlayerId !== uid &&
     game?.currentPlayerId === uid &&
