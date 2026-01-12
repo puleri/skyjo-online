@@ -1,12 +1,30 @@
 'use client';
+import { useEffect, useState } from "react";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import UsernameForm from "./UsernameForm";
 
+const darkModeStorageKey = "skyjo-dark-mode";
+const heroBannerLight = "/images/skyjo-hero-banner.png";
+const heroBannerDark = "/images/skyjo-hero-banner-darkmode.png";
+
 export default function LobbyScreen() {
+  const [heroBannerSrc, setHeroBannerSrc] = useState(heroBannerLight);
+
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem(darkModeStorageKey);
+    const prefersDarkMode = storedPreference === "true";
+    setHeroBannerSrc(prefersDarkMode ? heroBannerDark : heroBannerLight);
+    if (prefersDarkMode) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }, []);
+
   return (
     <main>
-      <img className="welcome-div" src="/images/skyjo-hero-banner.png" alt="Skyjo Hero Banner" />
+      <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
 
       <div className="container">
         <div className="flex-space-between">
