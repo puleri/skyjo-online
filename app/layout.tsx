@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
+import ThemeSync from "../components/ThemeSync";
 
 
 
@@ -17,7 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ThemeSync />
+        {children}
+      </body>
       <p className="legal-tiny">I do not own the rights to Skyjo; this is just a
           fan project made for learning purposes. If you enjoy this project, please
           consider buying the physical game online or from a game store near you</p>
