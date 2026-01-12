@@ -9,11 +9,18 @@ const firstTimeTipsStorageKey = "skyjo-first-time-tips";
 const heroBannerLight = "/images/skyjo-hero-banner.png";
 const heroBannerDark = "/images/skyjo-hero-banner-darkmode.png";
 
+function getInitialDarkModePreference() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.localStorage.getItem(darkModeStorageKey) === "true";
+}
+
 export default function LobbyScreen() {
-  const [heroBannerSrc, setHeroBannerSrc] = useState(heroBannerLight);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(getInitialDarkModePreference);
+  const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
 
   useEffect(() => {
     const storedTipsPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
@@ -27,15 +34,7 @@ export default function LobbyScreen() {
   }, [showFirstTimeTips]);
 
   useEffect(() => {
-    const storedPreference = window.localStorage.getItem(darkModeStorageKey);
-    if (storedPreference !== null) {
-      setIsDarkMode(storedPreference === "true");
-    }
-  }, []);
-
-  useEffect(() => {
     window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
-    setHeroBannerSrc(isDarkMode ? heroBannerDark : heroBannerLight);
     if (isDarkMode) {
       document.documentElement.setAttribute("data-theme", "dark");
     } else {

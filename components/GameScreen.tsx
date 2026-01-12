@@ -64,7 +64,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(darkModeStorageKey) === "true";
+  });
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
@@ -148,14 +153,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   useEffect(() => {
     window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
   }, [showFirstTimeTips]);
-
-  useEffect(() => {
-    const storedPreference = window.localStorage.getItem(darkModeStorageKey);
-    if (storedPreference === null) {
-      return;
-    }
-    setIsDarkMode(storedPreference === "true");
-  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
