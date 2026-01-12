@@ -78,6 +78,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
   const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
     useState<string | null>(null);
+  const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
+  const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
 
   const getCardValueClass = (value: number) => {
     if (value < 0) {
@@ -298,6 +300,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  const hasColdRoundScore = useMemo(() => {
+    if (!isRoundComplete) {
+      return false;
+    }
+    const scores = game?.roundScores ?? {};
+    return Object.values(scores).some((score) => score <= -5);
+  }, [game?.roundScores, isRoundComplete]);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -476,6 +485,32 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setDismissedFinalTurnForEndingPlayerId(game.endingPlayerId);
     }
     setIsFinalTurnOverlayOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isRoundComplete) {
+      setIsColdOverlayOpen(false);
+      return;
+    }
+
+    if (!hasColdRoundScore || typeof game?.roundNumber !== "number") {
+      setIsColdOverlayOpen(false);
+      return;
+    }
+
+    if (dismissedColdOverlayRound !== game.roundNumber) {
+      setIsColdOverlayOpen(true);
+      return;
+    }
+
+    setIsColdOverlayOpen(false);
+  }, [dismissedColdOverlayRound, game?.roundNumber, hasColdRoundScore, isRoundComplete]);
+
+  const handleDismissColdOverlay = () => {
+    if (typeof game?.roundNumber === "number") {
+      setDismissedColdOverlayRound(game.roundNumber);
+    }
+    setIsColdOverlayOpen(false);
   };
 
   const finalScores = useMemo(() => {
@@ -810,6 +845,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <br/>
             Last turn
           </div>
+        </div>
+      ) : null}
+      {isColdOverlayOpen ? (
+        <div
+          className="cold-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss cold bonus message"
+          onClick={handleDismissColdOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissColdOverlay();
+            }
+          }}
+        >
+          <div className="cold-overlay__message">that's cold</div>
         </div>
       ) : null}
       {isSettingsOpen ? (

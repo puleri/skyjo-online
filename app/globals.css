@@ -200,6 +200,47 @@ backdrop-filter: blur(5px);
   color: #c0d9c0;
 }
 
+.cold-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 44, 74, 0.55);
+  box-shadow: 0 10px 40px rgba(8, 28, 48, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 42px;
+  z-index: 210;
+  cursor: pointer;
+  text-wrap: balance;
+  overflow: hidden;
+}
+
+.cold-overlay::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(195, 241, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  transform: translateX(-120%);
+  animation: cold-sweep 2.6s ease-in-out infinite;
+}
+
+.cold-overlay__message {
+  position: relative;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 300;
+  text-transform: lowercase;
+  letter-spacing: 4px;
+  color: #dff6ff;
+  text-shadow: 0 0 16px rgba(170, 230, 255, 0.7);
+}
+
 /* on mobile */
 @media (max-width: 640px) {
   .final-turn-overlay__message {
@@ -213,6 +254,18 @@ backdrop-filter: blur(5px);
 @keyframes game-turn-rainbow {
   to {
     filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes cold-sweep {
+  0% {
+    transform: translateX(-120%) rotate(2deg);
+  }
+  60% {
+    transform: translateX(40%) rotate(2deg);
+  }
+  100% {
+    transform: translateX(120%) rotate(2deg);
   }
 }
 
