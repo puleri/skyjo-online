@@ -919,9 +919,9 @@ button.card:disabled {
   top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 15px;
   padding: 15px;
   border-radius: 14px;
   background: var(--color-surface-bright);
@@ -931,7 +931,7 @@ button.card:disabled {
 }
 
 .player-grid__action {
-    font-family: "Merriweather", "sans-serif";
+  font-family: "Merriweather", "sans-serif";
   margin-top: 0;
   padding: 10px 20px;
   font-size: 1rem;
@@ -972,6 +972,10 @@ button.card:disabled {
 .player-grid__action--ghost:hover {
   background: var(--color-accent-secondary);
   color: #4a564f;
+}
+
+.player-grid__action--cancel {
+  grid-column: 1 / -1;
 }
 
 label {
