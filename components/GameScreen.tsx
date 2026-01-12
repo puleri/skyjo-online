@@ -51,6 +51,7 @@ type GamePlayer = {
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firstTimeTipsStorageKey = "skyjo-first-time-tips";
+  const darkModeStorageKey = "skyjo-dark-mode";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const firebaseReady = isFirebaseConfigured;
@@ -63,6 +64,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
@@ -146,6 +148,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   useEffect(() => {
     window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
   }, [showFirstTimeTips]);
+
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem(darkModeStorageKey);
+    if (storedPreference === null) {
+      return;
+    }
+    setIsDarkMode(storedPreference === "true");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -823,6 +842,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <p className="modal__option-help">
                 Show the quick hints about revealing, replacing, and swapping cards.
               </p>
+            </div>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>Dark mode</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={isDarkMode}
+                    onChange={(event) => setIsDarkMode(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help">Switch the interface to the dark theme.</p>
             </div>
             <div className="modal__actions">
               <button type="button" onClick={() => router.push("/")}>
