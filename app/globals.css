@@ -64,7 +64,7 @@
   --color-on-dark: #2a2421;
   --color-on-muted: #bdb4a7;
   --card-back-image: url("/images/skyjo-cardback-darkmode.png");
-  --card-back-image-mobile: url("/images/skyjo-cardback-darkmode.png");
+  --card-back-image-mobile: url("/images/skyjo-cardback-wide-darkmode.png");
 }
 
 
@@ -726,8 +726,8 @@ button.card:disabled {
 
 .player-grid--local .card--back {
   position: relative;
-  background-image: url("/images/skyjo-cardback-wide.png");
-    background-size: cover;
+  background-image: var(--card-back-image-mobile);
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   min-height: 50px;
