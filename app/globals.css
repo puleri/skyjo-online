@@ -1110,7 +1110,13 @@ small {
   position: relative; /* May need this for alignment */
 }
 
-.question-mark-div {
+.menu-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-action-button {
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1121,9 +1127,10 @@ small {
   background-color: #FFFBF9;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
   margin-bottom: 20px;
+  border: none;
 }
 
-.question-mark-div:hover {
+.menu-action-button:hover {
   background-color: #E6E2DE;
   transition: all 0.3s ease-in-out;
 }
