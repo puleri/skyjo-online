@@ -780,7 +780,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           }}
         >
           <div className="final-turn-overlay__message">
-            {`${endingPlayerName ?? "A player"} revealed their last card! this is your last turn`}
+            <span className="final-turn-triggerer">
+            {`${endingPlayerName ?? "A player"} finished!`}
+            </span>
+            <br/>
+            Last turn
           </div>
         </div>
       ) : null}
