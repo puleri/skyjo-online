@@ -41,6 +41,8 @@
 
   --color-on-sage: #f1e8e1;
   --color-on-muted: #7a7a75;
+  --card-back-image: url("/images/skyjo-cardback.png");
+  --card-back-image-mobile: url("/images/skyjo-cardback-wide.png");
 }
 
 :root[data-theme="dark"] {
@@ -61,6 +63,8 @@
   --color-dark: #f6f4ef;
   --color-on-dark: #2a2421;
   --color-on-muted: #bdb4a7;
+  --card-back-image: url("/images/skyjo-cardback-darkmode.png");
+  --card-back-image-mobile: url("/images/skyjo-cardback-darkmode.png");
 }
 
 
@@ -712,7 +716,7 @@ button.card:disabled {
 .card--back {
   border-color: #2c3742;
   color: var(--color-on-dark);
-  background-image: url("/images/skyjo-cardback.png");
+  background-image: var(--card-back-image);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -807,6 +811,10 @@ button.card:disabled {
   height: auto;
   aspect-ratio: 4 / 6;
   display: block;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 14px;
   border: 2px solid var(--color-border);
   box-shadow: 0 4px 5px rgba(31, 41, 51, 0.42);
@@ -1423,7 +1431,7 @@ letter-spacing: 2px;
 
 @media (max-width: 540px) {
   .card--back {
-  background-image: url("/images/skyjo-cardback-wide.png");
+  background-image: var(--card-back-image-mobile);
   }
   .card--discard-pile {
     border-radius: 14px;

@@ -936,11 +936,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <img
-                className="card-back-image"
-                src="/images/skyjo-cardback.png"
-                alt="Skyjo card back"
-              />
+              <span className="card-back-image" aria-hidden="true" />
             </button>
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
@@ -1003,11 +999,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <img
-                className="card-back-image"
-                src="/images/skyjo-cardback.png"
-                alt="Skyjo card back"
-              />
+              <span className="card-back-image" aria-hidden="true" />
             </button>
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
