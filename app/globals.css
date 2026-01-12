@@ -1339,7 +1339,7 @@ small {
 }
 
 .spectate-button {
-    background-color: #D3D3D3;
+    background-color: var(--color-surface-alt);
   border: 1px solid #4545457f;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
   color: var(--color-dark);
@@ -1350,7 +1350,7 @@ small {
 
 .join-button:hover,
 .spectate-button:hover {
-    background-color: #7A8B7A;
+    background-color: var(--color-accent);
     box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
     transform: translateY(2px);
     scale: .99
@@ -1378,7 +1378,7 @@ letter-spacing: 2px;
 }
 
 .pagination-button {
-  background-color: #D3D3D3;
+  background-color: var(--color-surface-alt);
   border: 1px solid #4545457f;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
   color: var(--color-dark);
@@ -1389,14 +1389,15 @@ letter-spacing: 2px;
 }
 
 .pagination-button:hover:not(:disabled) {
-  background-color: #7A8B7A;
+  color: var(--color-dark);
+  background-color: var(--color-accent);
   box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
   transform: translateY(2px);
   scale: .99
 }
 
 .pagination-button:disabled {
-  opacity: 0.5;
+  opacity: .7;
   cursor: not-allowed;
 }
 

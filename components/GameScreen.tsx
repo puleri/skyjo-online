@@ -908,10 +908,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <p className="modal__option-help">Switch the interface to the dark theme.</p>
             </div>
             <div className="modal__actions">
-              <button type="button" onClick={() => router.push("/")}>
-                Back to main menu
+              <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
+                Main Menu
               </button>
-              <button type="button" onClick={() => setIsSettingsOpen(false)}>
+              <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
                 Close
               </button>
             </div>

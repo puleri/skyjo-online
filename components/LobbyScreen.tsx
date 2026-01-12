@@ -119,7 +119,7 @@ export default function LobbyScreen() {
                 <p className="modal__option-help">Switch the interface to the dark theme.</p>
               </div>
               <div className="modal__actions">
-                <button type="button" onClick={() => setIsSettingsOpen(false)}>
+                <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
                   Close
                 </button>
               </div>
