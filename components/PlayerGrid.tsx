@@ -124,7 +124,7 @@ export default function PlayerGrid({
                   </button>
                   <button
                     type="button"
-                    className="player-grid__action player-grid__action--ghost"
+                    className="player-grid__action player-grid__action--ghost player-grid__action--cancel"
                     onClick={onCancel}
                   >
                     Cancel
