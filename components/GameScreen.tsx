@@ -51,6 +51,7 @@ type GamePlayer = {
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firstTimeTipsStorageKey = "skyjo-first-time-tips";
+  const darkModeStorageKey = "skyjo-dark-mode";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const firebaseReady = isFirebaseConfigured;
@@ -63,6 +64,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(darkModeStorageKey) === "true";
+  });
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
@@ -71,6 +78,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
   const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
     useState<string | null>(null);
+  const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
+  const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
 
   const getCardValueClass = (value: number) => {
     if (value < 0) {
@@ -146,6 +155,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   useEffect(() => {
     window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
   }, [showFirstTimeTips]);
+
+  useEffect(() => {
+    window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -282,6 +300,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  const hasColdRoundScore = useMemo(() => {
+    if (!isRoundComplete) {
+      return false;
+    }
+    const scores = game?.roundScores ?? {};
+    return Object.values(scores).some((score) => score <= -5);
+  }, [game?.roundScores, isRoundComplete]);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
     [orderedPlayers]
@@ -460,6 +485,32 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setDismissedFinalTurnForEndingPlayerId(game.endingPlayerId);
     }
     setIsFinalTurnOverlayOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isRoundComplete) {
+      setIsColdOverlayOpen(false);
+      return;
+    }
+
+    if (!hasColdRoundScore || typeof game?.roundNumber !== "number") {
+      setIsColdOverlayOpen(false);
+      return;
+    }
+
+    if (dismissedColdOverlayRound !== game.roundNumber) {
+      setIsColdOverlayOpen(true);
+      return;
+    }
+
+    setIsColdOverlayOpen(false);
+  }, [dismissedColdOverlayRound, game?.roundNumber, hasColdRoundScore, isRoundComplete]);
+
+  const handleDismissColdOverlay = () => {
+    if (typeof game?.roundNumber === "number") {
+      setDismissedColdOverlayRound(game.roundNumber);
+    }
+    setIsColdOverlayOpen(false);
   };
 
   const finalScores = useMemo(() => {
@@ -796,6 +847,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         </div>
       ) : null}
+      {isColdOverlayOpen ? (
+        <div
+          className="cold-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss cold bonus message"
+          onClick={handleDismissColdOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissColdOverlay();
+            }
+          }}
+        >
+          <div className="cold-overlay__message">that's cold</div>
+        </div>
+      ) : null}
       {isSettingsOpen ? (
         <div
           className="modal-backdrop"
@@ -824,11 +892,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 Show the quick hints about revealing, replacing, and swapping cards.
               </p>
             </div>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>Dark mode</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={isDarkMode}
+                    onChange={(event) => setIsDarkMode(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help">Switch the interface to the dark theme.</p>
+            </div>
             <div className="modal__actions">
-              <button type="button" onClick={() => router.push("/")}>
-                Back to main menu
+              <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
+                Main Menu
               </button>
-              <button type="button" onClick={() => setIsSettingsOpen(false)}>
+              <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
                 Close
               </button>
             </div>
@@ -902,11 +985,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <img
-                className="card-back-image"
-                src="/images/skyjo-cardback.png"
-                alt="Skyjo card back"
-              />
+              <span className="card-back-image" aria-hidden="true" />
             </button>
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
@@ -969,11 +1048,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <img
-                className="card-back-image"
-                src="/images/skyjo-cardback.png"
-                alt="Skyjo card back"
-              />
+              <span className="card-back-image" aria-hidden="true" />
             </button>
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>

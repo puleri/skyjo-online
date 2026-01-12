@@ -41,6 +41,30 @@
 
   --color-on-sage: #f1e8e1;
   --color-on-muted: #7a7a75;
+  --card-back-image: url("/images/skyjo-cardback.png");
+  --card-back-image-mobile: url("/images/skyjo-cardback-wide.png");
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #1f1b18;
+  --color-surface: #2a2421;
+  --color-surface-alt: #3a322c;
+  --color-surface-bright: #332c27;
+  --color-border: #4a4039;
+  --color-card-edge: #3b332d;
+  --color-text: #f6f4ef;
+  --color-text-muted: #d4ccc1;
+  --color-accent: #8db3a1;
+  --color-accent-strong: #9fc3b3;
+  --color-accent-soft: #3b4741;
+  --color-accent-secondary: #d1b06a;
+  --color-accent-secondary-strong: #e0b468;
+  --color-dark: #f6f4ef;
+  --color-on-dark: #2a2421;
+  --color-on-muted: #bdb4a7;
+  --card-back-image: url("/images/skyjo-cardback-darkmode.png");
+  --card-back-image-mobile: url("/images/skyjo-cardback-wide-darkmode.png");
 }
 
 
@@ -176,6 +200,47 @@ backdrop-filter: blur(5px);
   color: #c0d9c0;
 }
 
+.cold-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 44, 74, 0.55);
+  box-shadow: 0 10px 40px rgba(8, 28, 48, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 42px;
+  z-index: 210;
+  cursor: pointer;
+  text-wrap: balance;
+  overflow: hidden;
+}
+
+.cold-overlay::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(195, 241, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  transform: translateX(-120%);
+  animation: cold-sweep 2.6s ease-in-out infinite;
+}
+
+.cold-overlay__message {
+  position: relative;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: #dff6ff;
+  text-shadow: 0 0 16px rgba(170, 230, 255, 0.7);
+}
+
 /* on mobile */
 @media (max-width: 640px) {
   .final-turn-overlay__message {
@@ -189,6 +254,18 @@ backdrop-filter: blur(5px);
 @keyframes game-turn-rainbow {
   to {
     filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes cold-sweep {
+  0% {
+    transform: translateX(-120%) rotate(2deg);
+  }
+  60% {
+    transform: translateX(40%) rotate(2deg);
+  }
+  100% {
+    transform: translateX(120%) rotate(2deg);
   }
 }
 
@@ -692,7 +769,7 @@ button.card:disabled {
 .card--back {
   border-color: #2c3742;
   color: var(--color-on-dark);
-  background-image: url("/images/skyjo-cardback.png");
+  background-image: var(--card-back-image);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -702,8 +779,8 @@ button.card:disabled {
 
 .player-grid--local .card--back {
   position: relative;
-  background-image: url("/images/skyjo-cardback-wide.png");
-    background-size: cover;
+  background-image: var(--card-back-image-mobile);
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   min-height: 50px;
@@ -784,9 +861,13 @@ button.card:disabled {
 
 .card-back-image {
   width: 152px;
-  height: auto;
+  height: 228px;
   aspect-ratio: 4 / 6;
   display: block;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 14px;
   border: 2px solid var(--color-border);
   box-shadow: 0 4px 5px rgba(31, 41, 51, 0.42);
@@ -836,6 +917,10 @@ button.card:disabled {
   text-wrap: balance;
 }
 
+.game-results {
+  padding: 32px 54px;
+}
+
 @media (max-width: 640px) {
   .card-draw-source, .last-turn-summary {
     font-size: 0.4rem;
@@ -874,13 +959,14 @@ button.card:disabled {
   .game-piles .card-back-image {
     width: 100%;
     max-width: 100%;
-    height: auto;
+    height: 37vw;
     aspect-ratio: 4 / 6;
   }
 
   .game-piles--dock .card,
   .game-piles--dock .card-back-image {
     width: 64px;
+    height: 96px;
   }
 
   .game-piles--dock .card-tags {
@@ -920,8 +1006,8 @@ button.card:disabled {
   padding: 10px 20px;
   font-size: 1rem;
   font-weight: 600;
-  background: var(--color-surface-alt);
-  color: var(--color-dark);
+  background: #faf9f6;
+  color: #454545;
   filter: drop-shadow(0 1px 2px rgba(31, 41, 51, 0.32));
 }
 
@@ -970,7 +1056,8 @@ input {
   width: 100%;
   padding: 12px 14px;
   margin: 12px 0;
-  background-color: rgb(250, 244, 241);
+  color: var(--color-dark);
+  background-color: var(--color-surface-bright);
   border-radius: 14px;
   border: 1px solid var(--color-border);
   font-size: 1rem;
@@ -1082,7 +1169,13 @@ small {
   position: relative; /* May need this for alignment */
 }
 
-.question-mark-div {
+.menu-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-action-button {
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1090,19 +1183,20 @@ small {
   height: 50px;
   width: 50px;
   border-radius: 30px;
-  background-color: #FFFBF9;
+  background-color: var(--color-surface-bright);
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
   margin-bottom: 20px;
+  border: none;
 }
 
-.question-mark-div:hover {
+.menu-action-button:hover {
   background-color: #E6E2DE;
   transition: all 0.3s ease-in-out;
 }
 
 .question-mark-icon {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   color: #454545;
   position: relative;
 }
@@ -1162,7 +1256,7 @@ small {
   letter-spacing: 1.3px;
   font-size: 18px;
   font-weight: 700;
-  color: #454545;
+  color: var(--color-dark);
 }
 
 .form-button-full-width {
@@ -1245,7 +1339,7 @@ small {
 }
 
 .spectate-button {
-    background-color: #D3D3D3;
+    background-color: var(--color-surface-alt);
   border: 1px solid #4545457f;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
   color: var(--color-dark);
@@ -1256,7 +1350,7 @@ small {
 
 .join-button:hover,
 .spectate-button:hover {
-    background-color: #7A8B7A;
+    background-color: var(--color-accent);
     box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
     transform: translateY(2px);
     scale: .99
@@ -1284,7 +1378,7 @@ letter-spacing: 2px;
 }
 
 .pagination-button {
-  background-color: #D3D3D3;
+  background-color: var(--color-surface-alt);
   border: 1px solid #4545457f;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.42);
   color: var(--color-dark);
@@ -1295,14 +1389,15 @@ letter-spacing: 2px;
 }
 
 .pagination-button:hover:not(:disabled) {
-  background-color: #7A8B7A;
+  color: var(--color-dark);
+  background-color: var(--color-accent);
   box-shadow: 0 0px 2px rgba(0, 0, 0, 0.42);
   transform: translateY(2px);
   scale: .99
 }
 
 .pagination-button:disabled {
-  opacity: 0.5;
+  opacity: .7;
   cursor: not-allowed;
 }
 
@@ -1403,7 +1498,7 @@ letter-spacing: 2px;
 
 @media (max-width: 540px) {
   .card--back {
-  background-image: url("/images/skyjo-cardback-wide.png");
+  background-image: var(--card-back-image-mobile);
   }
   .card--discard-pile {
     border-radius: 14px;

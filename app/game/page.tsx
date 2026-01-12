@@ -20,11 +20,7 @@ export default function GamePage() {
       <section className="game-screen__table">
         <div className="pile">
           <span>Deck</span>
-          <img
-            className="card-back-image"
-            src="/images/skyjo-cardback.png"
-            alt="Skyjo card back"
-          />
+          <div className="card-back-image" role="img" aria-label="Skyjo card back" />
         </div>
         <PlayerGrid label="You" size="main" />
         <div className="pile">
