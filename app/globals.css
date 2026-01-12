@@ -861,7 +861,7 @@ button.card:disabled {
 
 .card-back-image {
   width: 152px;
-  height: auto;
+  height: 228px;
   aspect-ratio: 4 / 6;
   display: block;
   background-image: var(--card-back-image);
@@ -962,6 +962,7 @@ button.card:disabled {
   .game-piles--dock .card,
   .game-piles--dock .card-back-image {
     width: 64px;
+    height: 96px;
   }
 
   .game-piles--dock .card-tags {
