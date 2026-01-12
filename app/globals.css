@@ -959,7 +959,7 @@ button.card:disabled {
   .game-piles .card-back-image {
     width: 100%;
     max-width: 100%;
-    height: auto;
+    height: 37vw;
     aspect-ratio: 4 / 6;
   }
 
