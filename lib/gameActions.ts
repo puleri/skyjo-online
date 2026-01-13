@@ -149,6 +149,17 @@ const resolveTurn = (
   }
 
   const nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
+  let refreshedDeck: number[] | null = null;
+  if (game.deck.length === 0) {
+    refreshedDeck = shuffleDeck(createSkyjoDeck());
+    const lastDiscard = game.discard[game.discard.length - 1];
+    if (typeof lastDiscard === "number") {
+      const discardIndex = refreshedDeck.indexOf(lastDiscard);
+      if (discardIndex !== -1) {
+        refreshedDeck.splice(discardIndex, 1);
+      }
+    }
+  }
 
   return {
     gameUpdates: {
@@ -156,6 +167,7 @@ const resolveTurn = (
       endingPlayerId,
       finalTurnRemainingIds,
       turnPhase: "choose-draw",
+      ...(refreshedDeck ? { deck: refreshedDeck } : {}),
     },
     roundComplete,
     endingPlayerId,
