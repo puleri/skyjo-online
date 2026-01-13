@@ -151,13 +151,10 @@ const resolveTurn = (
   const nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
   let refreshedDeck: number[] | null = null;
   if (game.deck.length === 0) {
-    refreshedDeck = shuffleDeck(createSkyjoDeck());
-    const lastDiscard = game.discard[game.discard.length - 1];
-    if (typeof lastDiscard === "number") {
-      const discardIndex = refreshedDeck.indexOf(lastDiscard);
-      if (discardIndex !== -1) {
-        refreshedDeck.splice(discardIndex, 1);
-      }
+    const discardPile = game.discard;
+    const remainingDiscard = discardPile.slice(0, -1);
+    if (remainingDiscard.length > 0) {
+      refreshedDeck = shuffleDeck(remainingDiscard);
     }
   }
 
@@ -189,14 +186,20 @@ const computeRoundScores = (
     roundScores[playerId] = score;
     return { playerId, score, cleared };
   });
-  const positiveScores = scoresByPlayer
-    .map(({ score }) => score)
-    .filter((score) => score > 0)
-    .sort((a, b) => a - b);
-  const lowestPositiveScore = positiveScores[0];
-  if (endingPlayerId && typeof lowestPositiveScore === "number") {
+  const allScores = scoresByPlayer.map(({ score }) => score);
+  const lowestScore =
+    allScores.reduce<number | null>((lowest, score) => {
+      if (lowest === null || score < lowest) {
+        return score;
+      }
+      return lowest;
+    }, null) ?? 0;
+  const lowestScoreCount = allScores.filter((score) => score === lowestScore).length;
+  if (endingPlayerId) {
     const endingScore = roundScores[endingPlayerId];
-    if (endingScore > lowestPositiveScore) {
+    const shouldDouble =
+      endingScore > lowestScore || (endingScore === lowestScore && lowestScoreCount > 1);
+    if (shouldDouble) {
       roundScores[endingPlayerId] = endingScore * 2;
     }
   }

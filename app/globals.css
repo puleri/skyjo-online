@@ -42,7 +42,7 @@
   --color-on-sage: #f1e8e1;
   --color-on-muted: #7a7a75;
   --card-back-image: url("/images/skyjo-cardback.png");
-  --card-back-image-mobile: url("/images/skyjo-cardback-wide.png");
+  --card-back-image-wide: url("/images/skyjo-cardback-wide.png");
 }
 
 :root[data-theme="dark"] {
@@ -64,7 +64,7 @@
   --color-on-dark: #2a2421;
   --color-on-muted: #bdb4a7;
   --card-back-image: url("/images/skyjo-cardback-darkmode.png");
-  --card-back-image-mobile: url("/images/skyjo-cardback-wide-darkmode.png");
+  --card-back-image-wide: url("/images/skyjo-cardback-wide-darkmode.png");
 }
 
 
@@ -769,7 +769,7 @@ button.card:disabled {
 .card--back {
   border-color: #2c3742;
   color: var(--color-on-dark);
-  background-image: var(--card-back-image);
+  background-image: var(--card-back-image-wide);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -779,7 +779,7 @@ button.card:disabled {
 
 .player-grid--local .card--back {
   position: relative;
-  background-image: var(--card-back-image-mobile);
+  background-image: var(--card-back-image-wide);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -957,9 +957,10 @@ button.card:disabled {
 
   .game-piles .card,
   .game-piles .card-back-image {
+    min-width: 82px;
     width: 100%;
     max-width: 100%;
-    height: 37vw;
+    height: 33vw;
     aspect-ratio: 4 / 6;
   }
 
@@ -1498,7 +1499,7 @@ letter-spacing: 2px;
 
 @media (max-width: 540px) {
   .card--back {
-  background-image: var(--card-back-image-mobile);
+  background-image: var(--card-back-image-wide);
   }
   .card--discard-pile {
     border-radius: 14px;
