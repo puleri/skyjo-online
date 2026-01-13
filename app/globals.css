@@ -723,10 +723,6 @@ button.card:disabled {
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
   border: 2px solid var(--color-card-edge);
-  background-image: var(--card-back-image-wide);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
 
 }
 
@@ -773,7 +769,7 @@ button.card:disabled {
 .card--back {
   border-color: #2c3742;
   color: var(--color-on-dark);
-  background-image: var(--card-back-image);
+  background-image: var(--card-back-image-wide);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
