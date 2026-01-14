@@ -115,6 +115,10 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     [players, uid]
   );
   const isHost = Boolean(uid && lobby?.hostId && uid === lobby.hostId);
+  const hostPlayer = useMemo(
+    () => (lobby?.hostId ? players.find((player) => player.id === lobby.hostId) ?? null : null),
+    [players, lobby?.hostId]
+  );
   const allPlayersReady = players.length > 0 && players.every((player) => player.isReady);
 
   const handleToggleReady = async () => {
@@ -274,13 +278,19 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
               ? "Set not ready"
               : "Set ready"}
           </button>
-          <button
-            type="button"
-            onClick={handleStartGame}
-            disabled={!isHost || !allPlayersReady || isStarting}
-          >
-            {isStarting ? "Starting..." : "Start game"}
-          </button>
+          {isHost ? (
+            <button
+              type="button"
+              onClick={handleStartGame}
+              disabled={!allPlayersReady || isStarting}
+            >
+              {isStarting ? "Starting..." : "Start game"}
+            </button>
+          ) : (
+            <p className="lobby-detail__waiting">
+              Waiting for {hostPlayer?.displayName ?? "the host"} to start game.
+            </p>
+          )}
         </div>
       </header>
 
