@@ -21,6 +21,7 @@ type LobbyPlayer = {
   id: string;
   displayName: string;
   isReady: boolean;
+  glyph: string;
 };
 
 type LobbyDetailProps = {
@@ -56,6 +57,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           id: doc.id,
           displayName: doc.data().displayName ?? "Anonymous player",
           isReady: Boolean(doc.data().isReady),
+          glyph: (doc.data().glyph as string | undefined) ?? "player-glyph-sun",
         }));
         setPlayers(nextPlayers);
       },
@@ -285,14 +287,24 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       {!players.length ? (
         <p>No players have joined this lobby yet.</p>
       ) : (
-        <ul className="lobby-detail__players">
+        <section className="lobby-scene" aria-label="Lobby players">
           {players.map((player) => (
-            <li key={player.id}>
-              <span>{player.displayName}</span>
-              <span>{player.isReady ? "Ready" : "Not ready"}</span>
-            </li>
+            <div key={player.id} className="lobby-player">
+              <img
+                className="lobby-player__glyph"
+                src={`/glyphs/${player.glyph}.svg`}
+                alt={`${player.displayName} glyph`}
+              />
+              <img
+                className="lobby-player__platform"
+                src="/glyphs/player-glyph-platform.svg"
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="lobby-player__name">{player.displayName}</span>
+            </div>
           ))}
-        </ul>
+        </section>
       )}
     </section>
   );
