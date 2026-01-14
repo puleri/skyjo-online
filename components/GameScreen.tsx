@@ -1150,6 +1150,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               
 
       </section>
+        <p className="legal-tiny">I do not own the rights to Skyjo; this is just a
+          fan project made for learning purposes. If you enjoy this project, please
+          consider buying the physical game online or from a game store near you</p>
     </main>
   );
 }

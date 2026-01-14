@@ -80,8 +80,6 @@ body {
 
 }
 
-main {}
-
 .container {
   position: relative;
   max-width: 960px;
@@ -119,6 +117,10 @@ h6 {
 p {
   line-height: 1.6;
   color: var(--color-text-muted);
+}
+
+strong {
+  font-weight: 900;
 }
 
 section {
@@ -1302,6 +1304,11 @@ small {
   scale: .99
 }
 
+.ready {
+    opacity: 0.6;
+    font-style: oblique;
+}
+
 .round-score-item {
   font-family: "Merriweather", serif;
   font-weight: 700;
@@ -1444,15 +1451,25 @@ small {
   height: 28px;
 }
 
+.lobby-scene-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  background-image: url("/images/skyjo-lobby-bg.png");
+  background-size: cover;
+  min-height: 100vh;
+
+}
+
 .lobby-scene {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 24px;
-  margin-top: 24px;
-  background-image: url("/images/lobby-bg.png");
-  background-size: cover;
-  min-height: 100vh;
 }
 
 .lobby-player {
@@ -1480,6 +1497,23 @@ small {
   font-weight: 600;
   letter-spacing: 1px;
   text-align: center;
+}
+
+.lobby-detail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 30px;
+  min-width: 230px;
+}
+
+.lobby-detail__waiting {
+  color: var(--color-dark);
+  font-weight: 100;
+  letter-spacing: 3px;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: .8rem;
 }
 
 .spectator-count__button {

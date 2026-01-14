@@ -259,65 +259,65 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   }
 
   return (
-    <section className="lobby-detail">
-      <header className="lobby-detail__header">
-        <div>
-          <h1>Lobby {lobbyId}</h1>
-          <p>Players connected: {players.length}</p>
-          <p>Glyphs available: {GLYPHS.length}</p>
-        </div>
-        <div className="lobby-detail__actions">
-          <button
-            type="button"
-            onClick={handleToggleReady}
-            disabled={!uid || !currentPlayer || isUpdating}
-          >
-            {isUpdating
-              ? "Updating..."
-              : currentPlayer?.isReady
-              ? "Set not ready"
-              : "Set ready"}
-          </button>
-          {isHost ? (
-            <button
-              type="button"
-              onClick={handleStartGame}
-              disabled={!allPlayersReady || isStarting}
-            >
-              {isStarting ? "Starting..." : "Start game"}
-            </button>
-          ) : (
-            <p className="lobby-detail__waiting">
-              Waiting for {hostPlayer?.displayName ?? "the host"} to start game.
-            </p>
-          )}
-        </div>
-      </header>
+    <div className="lobby-detail">
+
 
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
         <p>No players have joined this lobby yet.</p>
       ) : (
-        <section className="lobby-scene" aria-label="Lobby players">
-          {players.map((player) => (
-            <div key={player.id} className="lobby-player">
-              <img
-                className="lobby-player__glyph"
-                src={`/glyphs/${player.glyph}.svg`}
-                alt={`${player.displayName} glyph`}
-              />
-              <img
-                className="lobby-player__platform"
-                src="/glyphs/player-glyph-platform.svg"
-                alt=""
-                aria-hidden="true"
-              />
-              <span className="lobby-player__name">{player.displayName}</span>
-            </div>
-          ))}
-        </section>
+        <div className="lobby-scene-wrapper">
+          <div className="lobby-scene" aria-label="Lobby players">
+            {players.map((player) => (
+              <div key={player.id} className="lobby-player">
+                <img
+                  className="lobby-player__glyph"
+                  src={`/glyphs/${player.glyph}.svg`}
+                  alt={`${player.displayName} glyph`}
+                />
+                <img
+                  className="lobby-player__platform"
+                  src="/glyphs/player-glyph-platform.svg"
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span className="lobby-player__name">{player.displayName}</span>
+              </div>
+            ))}
+
+          </div>
+          <div className="lobby-detail__actions">
+            <button
+              type="button"
+              className={`form-button-full-width ${currentPlayer?.isReady ? "ready" : ""}`}
+              onClick={handleToggleReady}
+              disabled={!uid || !currentPlayer || isUpdating}
+            >
+              {isUpdating
+                ? "Updating..."
+                : currentPlayer?.isReady
+                  ? "✓ Ready (click to unready)"
+                  : "Ready up"}
+            </button>
+            {isHost ? (
+              <button
+                type="button"
+                className="form-button-full-width"
+                onClick={handleStartGame}
+                disabled={!allPlayersReady || isStarting}
+              >
+                {isStarting ? "Starting..." : "Start game"}
+              </button>
+            ) : (
+              <p className="lobby-detail__waiting">
+                Waiting for <strong>{hostPlayer?.displayName ?? "the host"}</strong> to start the game.
+              </p>
+            )}
+          </div>
+        </div>
+
       )}
-    </section>
+    </div>
   );
 }
