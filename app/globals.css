@@ -1464,8 +1464,9 @@ small {
 }
 
 .lobby-player__glyph {
-  width: 96px;
+  width: 66px;
   height: 96px;
+  margin-bottom: -25px;
   object-fit: contain;
 }
 
