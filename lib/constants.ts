@@ -7,5 +7,6 @@ export const GLYPHS = [
   "pinetree",
   "eclipse",
   "stag",
+  "luna",
   "white-lotus",
 ];
