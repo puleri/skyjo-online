@@ -6,12 +6,13 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
-  setDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
+import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type Lobby = {
@@ -123,10 +124,49 @@ export default function LobbyList() {
     try {
       const storedName = window.localStorage.getItem("skyjo:username");
       const resolvedName = storedName?.trim();
-      await setDoc(doc(db, "lobbies", lobbyId, "players", uid), {
-        displayName: resolvedName || "Anonymous player",
-        joinedAt: serverTimestamp(),
-        isReady: false,
+      const lobbyRef = doc(db, "lobbies", lobbyId);
+      const playerRef = doc(db, "lobbies", lobbyId, "players", uid);
+      await runTransaction(db, async (transaction) => {
+        const lobbySnapshot = await transaction.get(lobbyRef);
+        if (!lobbySnapshot.exists()) {
+          throw new Error("This lobby no longer exists.");
+        }
+
+        const lobbyData = lobbySnapshot.data();
+        const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
+          ? lobbyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
+          : null;
+        const assignedGlyphs = Array.isArray(lobbyData.assignedGlyphs)
+          ? lobbyData.assignedGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
+          : [];
+        const glyphPool =
+          availableGlyphs && availableGlyphs.length > 0
+            ? availableGlyphs
+            : GLYPHS.filter((glyph) => !assignedGlyphs.includes(glyph));
+
+        if (!glyphPool.length) {
+          throw new Error("No glyphs are available for this lobby.");
+        }
+
+        const glyph = glyphPool[Math.floor(Math.random() * glyphPool.length)];
+        const nextAssignedGlyphs = Array.from(new Set([...assignedGlyphs, glyph]));
+        const lobbyUpdates: Record<string, unknown> = {
+          assignedGlyphs: nextAssignedGlyphs,
+        };
+
+        if (availableGlyphs && availableGlyphs.length > 0) {
+          lobbyUpdates.availableGlyphs = availableGlyphs.filter(
+            (availableGlyph) => availableGlyph !== glyph
+          );
+        }
+
+        transaction.set(playerRef, {
+          displayName: resolvedName || "Anonymous player",
+          joinedAt: serverTimestamp(),
+          isReady: false,
+          glyph,
+        });
+        transaction.update(lobbyRef, lobbyUpdates);
       });
       router.push(`/lobby/${lobbyId}`);
     } catch (err) {
