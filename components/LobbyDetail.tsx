@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
+import { GLYPHS } from "../lib/constants";
 import { createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -257,6 +258,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         <div>
           <h1>Lobby {lobbyId}</h1>
           <p>Players connected: {players.length}</p>
+          <p>Glyphs available: {GLYPHS.length}</p>
         </div>
         <div className="lobby-detail__actions">
           <button
