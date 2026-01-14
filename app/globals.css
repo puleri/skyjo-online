@@ -42,6 +42,7 @@
   --color-on-muted: #7a7a75;
   --card-back-image: url("/images/skyjo-cardback.png");
   --card-back-image-wide: url("/images/skyjo-cardback-wide.png");
+  --lobby-bg-image: url("/images/skyjo-lobby-bg.png");
 }
 
 :root[data-theme="dark"] {
@@ -64,6 +65,7 @@
   --color-on-muted: #bdb4a7;
   --card-back-image: url("/images/skyjo-cardback-darkmode.png");
   --card-back-image-wide: url("/images/skyjo-cardback-wide-darkmode.png");
+  --lobby-bg-image: url("/images/skyjo-lobby-bg-darkmode.png");
 }
 
 
@@ -1459,7 +1461,7 @@ small {
   justify-content: center;
   align-items: center;
   gap: 24px;
-  background-image: url("/images/skyjo-lobby-bg.png");
+  background-image: var(--lobby-bg-image);
   background-size: cover;
   background-position: bottom;
   min-height: 100vh;
