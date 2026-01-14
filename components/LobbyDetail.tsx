@@ -282,7 +282,14 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
                   alt=""
                   aria-hidden="true"
                 />
-                <span className="lobby-player__name">{player.displayName}</span>
+                <span className="lobby-player__name">
+                  {player.displayName}
+                  {player.isReady ? (
+                    <span className="lobby-player__ready" aria-label="Ready">
+                      ✓
+                    </span>
+                  ) : null}
+                </span>
               </div>
             ))}
 

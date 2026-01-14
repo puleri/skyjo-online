@@ -1109,7 +1109,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   <PlayerGrid
                     key={player.id}
                     label={`${player.displayName}${isLocalPlayer ? " (you)" : ""}${
-                      player.isReady ? " (ready)" : ""
+                      player.isReady ? " ✓" : ""
                     }`}
                     size={isLocalPlayer ? "main" : "mini"}
                     isActive={isActivePlayer}
