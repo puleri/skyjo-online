@@ -1499,6 +1499,12 @@ small {
   text-align: center;
 }
 
+.lobby-player__ready {
+  color: #2f7d3a;
+  margin-left: 6px;
+  font-weight: 700;
+}
+
 .lobby-detail__actions {
   display: flex;
   flex-direction: column;
