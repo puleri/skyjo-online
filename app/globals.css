@@ -1450,6 +1450,9 @@ small {
   justify-content: center;
   gap: 24px;
   margin-top: 24px;
+  background-image: url("/images/lobby-bg.png");
+  background-size: cover;
+  min-height: 100vh;
 }
 
 .lobby-player {
