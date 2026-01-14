@@ -1309,6 +1309,7 @@ small {
     font-style: oblique;
 }
 
+
 .round-score-item {
   font-family: "Merriweather", serif;
   font-weight: 700;
@@ -1469,8 +1470,8 @@ small {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: center;
-  gap: 24px;
+  align-items: flex-end;
+  gap: 54px;
 }
 
 .lobby-player {
@@ -1483,9 +1484,11 @@ small {
 
 .lobby-player__glyph {
   width: 66px;
-  height: 96px;
-  margin-bottom: -25px;
+  max-height: 56px;
+  margin-bottom: -15px;
   object-fit: contain;
+  z-index: 2;
+  opacity: .8;
 }
 
 .lobby-player__platform {
@@ -1512,6 +1515,7 @@ small {
   gap: 22px;
   margin-top: 30px;
   min-width: 230px;
+  max-width: 300px;
 }
 
 .lobby-detail__waiting {

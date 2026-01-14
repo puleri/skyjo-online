@@ -304,8 +304,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
               {isUpdating
                 ? "Updating..."
                 : currentPlayer?.isReady
-                  ? "✓ Ready (click to unready)"
-                  : "Ready up"}
+                  ? `✓ Ready`
+                  : "Ready"}
             </button>
             {isHost ? (
               <button
@@ -318,7 +318,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
               </button>
             ) : (
               <p className="lobby-detail__waiting">
-                Waiting for <strong>{hostPlayer?.displayName ?? "the host"}</strong> to start the game.
+                Once players are ready, <strong>{hostPlayer?.displayName ?? "the host"}</strong> can start the game.
               </p>
             )}
           </div>
