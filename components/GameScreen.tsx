@@ -778,7 +778,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-haspopup="dialog"
           onClick={() => setIsSpectatorModalOpen(true)}
         >
-          <img className="eye-icon" src="/eye-icon.svg"/>
+          <img className="eye-icon" src="/eye-icon.png"/>
           <span className="spectator-count__value">{spectatorCount}</span>
         </button>
         <button
@@ -787,7 +787,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-label="Open settings"
           onClick={() => setIsSettingsOpen(true)}
         >
-          <img className="settings-icon" src="/settings-icon.svg"/>
+          <img className="settings-icon" src="/settings-icon.png"/>
         </button>
       </div>
       {isSpectatorModalOpen ? (
@@ -1109,7 +1109,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   <PlayerGrid
                     key={player.id}
                     label={`${player.displayName}${isLocalPlayer ? " (you)" : ""}${
-                      player.isReady ? " (ready)" : ""
+                      player.isReady ? " ✓" : ""
                     }`}
                     size={isLocalPlayer ? "main" : "mini"}
                     isActive={isActivePlayer}
@@ -1150,6 +1150,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               
 
       </section>
+        <p className="legal-tiny">I do not own the rights to Skyjo; this is just a
+          fan project made for learning purposes. If you enjoy this project, please
+          consider buying the physical game online or from a game store near you</p>
     </main>
   );
 }

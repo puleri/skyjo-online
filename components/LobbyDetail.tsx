@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
+import { GLYPHS } from "../lib/constants";
 import { createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -21,6 +22,7 @@ type LobbyPlayer = {
   id: string;
   displayName: string;
   isReady: boolean;
+  glyph: string;
 };
 
 type LobbyDetailProps = {
@@ -56,6 +58,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           id: doc.id,
           displayName: doc.data().displayName ?? "Anonymous player",
           isReady: Boolean(doc.data().isReady),
+          glyph: (doc.data().glyph as string | undefined) ?? "player-glyph-sun",
         }));
         setPlayers(nextPlayers);
       },
@@ -112,6 +115,10 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     [players, uid]
   );
   const isHost = Boolean(uid && lobby?.hostId && uid === lobby.hostId);
+  const hostPlayer = useMemo(
+    () => (lobby?.hostId ? players.find((player) => player.id === lobby.hostId) ?? null : null),
+    [players, lobby?.hostId]
+  );
   const allPlayersReady = players.length > 0 && players.every((player) => player.isReady);
 
   const handleToggleReady = async () => {
@@ -252,48 +259,72 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   }
 
   return (
-    <section className="lobby-detail">
-      <header className="lobby-detail__header">
-        <div>
-          <h1>Lobby {lobbyId}</h1>
-          <p>Players connected: {players.length}</p>
-        </div>
-        <div className="lobby-detail__actions">
-          <button
-            type="button"
-            onClick={handleToggleReady}
-            disabled={!uid || !currentPlayer || isUpdating}
-          >
-            {isUpdating
-              ? "Updating..."
-              : currentPlayer?.isReady
-              ? "Set not ready"
-              : "Set ready"}
-          </button>
-          <button
-            type="button"
-            onClick={handleStartGame}
-            disabled={!isHost || !allPlayersReady || isStarting}
-          >
-            {isStarting ? "Starting..." : "Start game"}
-          </button>
-        </div>
-      </header>
+    <div className="lobby-detail">
+
 
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
         <p>No players have joined this lobby yet.</p>
       ) : (
-        <ul className="lobby-detail__players">
-          {players.map((player) => (
-            <li key={player.id}>
-              <span>{player.displayName}</span>
-              <span>{player.isReady ? "Ready" : "Not ready"}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="lobby-scene-wrapper">
+          <div className="lobby-scene" aria-label="Lobby players">
+            {players.map((player) => (
+              <div key={player.id} className="lobby-player">
+                <img
+                  className="lobby-player__glyph"
+                  src={`/glyphs/${player.glyph}.svg`}
+                  alt={`${player.displayName} glyph`}
+                />
+                <img
+                  className="lobby-player__platform"
+                  src="/glyphs/player-glyph-platform.svg"
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span className="lobby-player__name">
+                  {player.displayName}
+                  {player.isReady ? (
+                    <span className="lobby-player__ready" aria-label="Ready">
+                      ✓
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            ))}
+
+          </div>
+          <div className="lobby-detail__actions">
+            <button
+              type="button"
+              className={`form-button-full-width ${currentPlayer?.isReady ? "ready" : ""}`}
+              onClick={handleToggleReady}
+              disabled={!uid || !currentPlayer || isUpdating}
+            >
+              {isUpdating
+                ? "Updating..."
+                : currentPlayer?.isReady
+                  ? `✓ Ready`
+                  : "Ready"}
+            </button>
+            {isHost ? (
+              <button
+                type="button"
+                className="form-button-full-width"
+                onClick={handleStartGame}
+                disabled={!allPlayersReady || isStarting}
+              >
+                {isStarting ? "Starting..." : "Start game"}
+              </button>
+            ) : (
+              <p className="lobby-detail__waiting">
+                Once players are ready, <strong>{hostPlayer?.displayName ?? "the host"}</strong> can start the game.
+              </p>
+            )}
+          </div>
+        </div>
+
       )}
-    </section>
+    </div>
   );
 }

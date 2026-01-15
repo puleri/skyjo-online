@@ -57,7 +57,7 @@ export default function LobbyScreen() {
               aria-label="Open game settings"
               onClick={() => setIsSettingsOpen(true)}
             >
-              <img className="settings-icon" src="/settings-icon.svg" alt="Settings icon" />
+              <img className="settings-icon" src="/settings-icon.png" alt="Settings icon" />
             </button>
             <button
               type="button"
@@ -69,7 +69,7 @@ export default function LobbyScreen() {
             >
               <img
                 className="question-mark-icon"
-                src="/question-mark-icon.svg"
+                src="/question-mark-icon.png"
                 alt="Skyjo Instructions Menu Icon"
               />
             </button>

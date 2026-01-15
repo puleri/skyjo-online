@@ -42,6 +42,7 @@
   --color-on-muted: #7a7a75;
   --card-back-image: url("/images/skyjo-cardback.png");
   --card-back-image-wide: url("/images/skyjo-cardback-wide.png");
+  --lobby-bg-image: url("/images/skyjo-lobby-bg.png");
 }
 
 :root[data-theme="dark"] {
@@ -64,6 +65,7 @@
   --color-on-muted: #bdb4a7;
   --card-back-image: url("/images/skyjo-cardback-darkmode.png");
   --card-back-image-wide: url("/images/skyjo-cardback-wide-darkmode.png");
+  --lobby-bg-image: url("/images/skyjo-lobby-bg-darkmode.png");
 }
 
 
@@ -79,8 +81,6 @@ body {
   color: var(--color-text-muted);
 
 }
-
-main {}
 
 .container {
   position: relative;
@@ -119,6 +119,10 @@ h6 {
 p {
   line-height: 1.6;
   color: var(--color-text-muted);
+}
+
+strong {
+  font-weight: 900;
 }
 
 section {
@@ -900,6 +904,8 @@ button.card:disabled {
   border: 4px dashed #d3bf8a83;
   box-shadow: none;
   font-size: 30px;
+      color: var(--color-card-edge);
+
 }
 
 .card-draw-source {
@@ -939,61 +945,7 @@ button.card:disabled {
   padding: 32px 54px;
 }
 
-@media (max-width: 640px) {
 
-  .card-draw-source,
-  .last-turn-summary {
-    font-size: 0.4rem;
-    margin: 0;
-  }
-}
-
-@media (max-width: 640px) {
-  .game-piles {
-    width: 100%;
-  }
-
-  .game-piles--dock {
-    display: grid;
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 120;
-    padding: 8px 10px 10px;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
-    box-shadow: 0 6px 12px rgba(31, 41, 51, 0.2);
-  }
-
-  .game-piles--dock .game-pile {
-    font-size: 1.4rem;
-  }
-
-  .game-piles--dock h6 {
-    font-size: 0.6rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .game-piles .card,
-  .game-piles .card-back-image {
-    min-width: 82px;
-    width: 100%;
-    max-width: 100%;
-    height: 33vw;
-    aspect-ratio: 4 / 6;
-  }
-
-  .game-piles--dock .card,
-  .game-piles--dock .card-back-image {
-    width: 64px;
-    height: 96px;
-  }
-
-  .game-piles--dock .card-tags {
-    display: none;
-  }
-}
 
 .card-tags {
   display: flex;
@@ -1302,6 +1254,12 @@ small {
   scale: .99
 }
 
+.ready {
+    opacity: 0.6;
+    font-style: oblique;
+}
+
+
 .round-score-item {
   font-family: "Merriweather", serif;
   font-weight: 700;
@@ -1444,6 +1402,81 @@ small {
   height: 28px;
 }
 
+.lobby-scene-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  background-image: var(--lobby-bg-image);
+  background-size: cover;
+  background-position: bottom;
+  min-height: 100vh;
+
+}
+
+.lobby-scene {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 54px;
+}
+
+.lobby-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.lobby-player__glyph {
+  width: 66px;
+  max-height: 56px;
+  margin-bottom: -15px;
+  object-fit: contain;
+  z-index: 2;
+  opacity: .8;
+}
+
+.lobby-player__platform {
+  width: 120px;
+  height: auto;
+}
+
+.lobby-player__name {
+  color: var(--color-dark);
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.lobby-player__ready {
+  color: #2f7d3a;
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+.lobby-detail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 30px;
+  min-width: 230px;
+  max-width: 300px;
+}
+
+.lobby-detail__waiting {
+  color: var(--color-dark);
+  font-weight: 100;
+  letter-spacing: 3px;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: .8rem;
+}
+
 .spectator-count__button {
   position: absolute;
   right: 0px;
@@ -1549,6 +1582,69 @@ small {
     font-size:
       10px;
     padding: 4px 6px;
+  }
+}
+
+@media (max-width: 640px) {
+
+  .card-draw-source,
+  .last-turn-summary {
+    font-size: 0.4rem;
+    margin: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .game-piles {
+    width: 100%;
+  }
+
+  .game-piles--dock {
+    display: grid;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 120;
+    padding: 8px 10px 10px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 6px 12px rgba(31, 41, 51, 0.2);
+  }
+
+  .game-piles--dock .game-pile {
+    font-size: 2.6rem;
+  }
+
+  .game-piles--dock h6 {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .game-piles .card,
+  .game-piles .card-back-image {
+    min-width: 82px;
+    width: 100%;
+    max-width: 100%;
+    height: 33vw;
+    border: 2px solid var(--color-card-edge);
+    aspect-ratio: 4 / 6;
+  }
+
+  .game-piles--dock .card,
+  .game-piles--dock .card-back-image {
+    height: 120px;
+    width: auto;
+  }
+
+  .game-piles--dock .card-tags {
+    display: none;
+  }
+
+  .card--empty-selected {
+    color: var(--color-card-edge) !important;
+    border-style: dashed !important;
+    border-radius: 10px !important;
   }
 }
 
