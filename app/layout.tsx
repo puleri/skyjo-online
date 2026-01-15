@@ -2,6 +2,7 @@ import "./globals.css";
 
 import type { Metadata } from "next";
 import ThemeSync from "../components/ThemeSync";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
 
@@ -19,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <meta name="apple-mobile-web-app-title" content="Skyjo" />
-
+      <SpeedInsights />
 
       <body>
         <ThemeSync />
