@@ -778,7 +778,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-haspopup="dialog"
           onClick={() => setIsSpectatorModalOpen(true)}
         >
-          <img className="eye-icon" src="/eye-icon.svg"/>
+          <img className="eye-icon" src="/eye-icon.png"/>
           <span className="spectator-count__value">{spectatorCount}</span>
         </button>
         <button
@@ -787,7 +787,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-label="Open settings"
           onClick={() => setIsSettingsOpen(true)}
         >
-          <img className="settings-icon" src="/settings-icon.svg"/>
+          <img className="settings-icon" src="/settings-icon.png"/>
         </button>
       </div>
       {isSpectatorModalOpen ? (
