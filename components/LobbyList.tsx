@@ -8,6 +8,8 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  type DocumentData,
+  type UpdateData,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -150,7 +152,7 @@ export default function LobbyList() {
 
         const glyph = glyphPool[Math.floor(Math.random() * glyphPool.length)];
         const nextAssignedGlyphs = Array.from(new Set([...assignedGlyphs, glyph]));
-        const lobbyUpdates: Record<string, unknown> = {
+        const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
         };
 
