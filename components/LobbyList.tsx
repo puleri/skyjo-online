@@ -30,6 +30,7 @@ const LOBBIES_PER_PAGE = 5;
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
+  const [lobbyPlayerIds, setLobbyPlayerIds] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -69,6 +70,7 @@ export default function LobbyList() {
 
     if (!lobbies.length) {
       setLobbyPlayers({});
+      setLobbyPlayerIds({});
       return;
     }
 
@@ -80,12 +82,18 @@ export default function LobbyList() {
       return onSnapshot(
         playerQuery,
         (snapshot) => {
-          const playerNames = snapshot.docs.map(
+          const playerDocs = snapshot.docs;
+          const playerNames = playerDocs.map(
             (playerDoc) => playerDoc.data().displayName ?? "Anonymous player"
           );
+          const playerIds = playerDocs.map((playerDoc) => playerDoc.id);
           setLobbyPlayers((prev) => ({
             ...prev,
             [lobby.id]: playerNames,
+          }));
+          setLobbyPlayerIds((prev) => ({
+            ...prev,
+            [lobby.id]: playerIds,
           }));
         },
         (err) => {
@@ -222,33 +230,43 @@ export default function LobbyList() {
   return (
     <div>
       <ul>
-        {visibleLobbies.map((lobby) => (
-          <li key={lobby.id}>
-            <div>
-              <strong className="name-lobby-list">{lobby.name}</strong>
+        {visibleLobbies.map((lobby) => {
+          const isPlayerInLobby = uid ? lobbyPlayerIds[lobby.id]?.includes(uid) : false;
+          const buttonLabel =
+            joiningLobbyId === lobby.id
+              ? "Joining..."
+              : isPlayerInLobby
+                ? "Rejoin"
+                : lobby.status === "open"
+                  ? "Join"
+                  : "Spectate";
+          const buttonClassName =
+            isPlayerInLobby || lobby.status === "open" ? "join-button" : "spectate-button";
+
+          return (
+            <li key={lobby.id}>
               <div>
-                <small className="player-lobby-list">
-                  {formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}
-                </small>
+                <strong className="name-lobby-list">{lobby.name}</strong>
+                <div>
+                  <small className="player-lobby-list">
+                    {formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}
+                  </small>
+                </div>
               </div>
-            </div>
-            <div>
-              {/* <small className="mr-10">{lobby.players} players</small> */}
-              <button
-                type="button"
-                className={lobby.status === "open" ? "join-button" : "spectate-button"}
-                onClick={() => handleJoin(lobby.id)}
-                disabled={!uid || joiningLobbyId === lobby.id}
-              >
-                {joiningLobbyId === lobby.id
-                  ? "Joining..."
-                  : lobby.status === "open"
-                    ? "Join"
-                    : "Spectate"}
-              </button>
-            </div>
-          </li>
-        ))}
+              <div>
+                {/* <small className="mr-10">{lobby.players} players</small> */}
+                <button
+                  type="button"
+                  className={buttonClassName}
+                  onClick={() => handleJoin(lobby.id)}
+                  disabled={!uid || joiningLobbyId === lobby.id}
+                >
+                  {buttonLabel}
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
       {totalPages > 1 ? (
         <div className="lobby-pagination">
