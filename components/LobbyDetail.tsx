@@ -17,6 +17,7 @@ import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
 type LobbyPlayer = {
   id: string;
@@ -42,9 +43,18 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowLoadingOverlay(false);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!firebaseReady || !lobbyId) {
@@ -255,32 +265,37 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
   if (!lobbyId) {
     return (
-      <div className="notice">
-        <strong>Loading lobby...</strong>
-        <p>Waiting for a lobby ID before connecting to Firestore.</p>
-      </div>
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Loading lobby...</strong>
+          <p>Waiting for a lobby ID before connecting to Firestore.</p>
+        </div>
+      </>
     );
   }
 
   if (!firebaseReady) {
     return (
-      <div className="notice">
-        <strong>Firestore is not connected yet.</strong>
-        <p>Provide your Firebase environment variables to load live lobbies.</p>
-        <p>
-          Missing keys:{" "}
-          {missingFirebaseConfig.length
-            ? missingFirebaseConfig.join(", ")
-            : "Unknown (restart the dev server)."}
-        </p>
-      </div>
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Firestore is not connected yet.</strong>
+          <p>Provide your Firebase environment variables to load live lobbies.</p>
+          <p>
+            Missing keys:{" "}
+            {missingFirebaseConfig.length
+              ? missingFirebaseConfig.join(", ")
+              : "Unknown (restart the dev server)."}
+          </p>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="lobby-detail">
-
-
+      <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (

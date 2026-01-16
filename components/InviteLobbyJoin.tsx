@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
 type InviteLobbyJoinProps = {
   lobbyId: string;
@@ -32,9 +33,18 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowLoadingOverlay(false);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!firebaseReady || !lobbyId) {
@@ -187,56 +197,65 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
   if (!firebaseReady) {
     return (
-      <div className="notice">
-        <strong>Firestore is not connected yet.</strong>
-        <p>Provide your Firebase environment variables to load live lobbies.</p>
-        <p>
-          Missing keys:{" "}
-          {missingFirebaseConfig.length
-            ? missingFirebaseConfig.join(", ")
-            : "Unknown (restart the dev server)."}
-        </p>
-      </div>
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Firestore is not connected yet.</strong>
+          <p>Provide your Firebase environment variables to load live lobbies.</p>
+          <p>
+            Missing keys:{" "}
+            {missingFirebaseConfig.length
+              ? missingFirebaseConfig.join(", ")
+              : "Unknown (restart the dev server)."}
+          </p>
+        </div>
+      </>
     );
   }
 
   if (!lobby) {
     return (
-      <div className="notice">
-        <strong>Lobby not found.</strong>
-        <p>This invite link is no longer valid.</p>
-      </div>
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Lobby not found.</strong>
+          <p>This invite link is no longer valid.</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="container">
-      <section className="form-card">
-        <h2 className="sage-eyebrow-text">Lobby Invite</h2>
-        <p>{inviteMessage}</p>
-        <form onSubmit={handleJoin}>
-          <div className="label-input-grid">
-            <label className="form-card-font" htmlFor="invite-username">
-              Name
-            </label>
-            <input
-              id="invite-username"
-              value={username}
-              className="form-card-font remaining-grid"
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="Skye"
-            />
-          </div>
-          <button
-            className="form-button-full-width form-card-font"
-            type="submit"
-            disabled={!username.trim() || isJoining}
-          >
-            {isJoining ? "Joining..." : "Join Lobby"}
-          </button>
-          {error ? <p className="notice">{error}</p> : null}
-        </form>
-      </section>
-    </div>
+    <>
+      <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+      <div className="container">
+        <section className="form-card">
+          <h2 className="sage-eyebrow-text">Lobby Invite</h2>
+          <p>{inviteMessage}</p>
+          <form onSubmit={handleJoin}>
+            <div className="label-input-grid">
+              <label className="form-card-font" htmlFor="invite-username">
+                Name
+              </label>
+              <input
+                id="invite-username"
+                value={username}
+                className="form-card-font remaining-grid"
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="Skye"
+              />
+            </div>
+            <button
+              className="form-button-full-width form-card-font"
+              type="submit"
+              disabled={!username.trim() || isJoining}
+            >
+              {isJoining ? "Joining..." : "Join Lobby"}
+            </button>
+            {error ? <p className="notice">{error}</p> : null}
+          </form>
+        </section>
+      </div>
+    </>
   );
 }
