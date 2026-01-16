@@ -17,6 +17,7 @@ import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
 type LobbyPlayer = {
   id: string;
@@ -41,9 +42,19 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowLoadingOverlay(false);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!firebaseReady || !lobbyId) {
@@ -120,6 +131,24 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     [players, lobby?.hostId]
   );
   const allPlayersReady = players.length > 0 && players.every((player) => player.isReady);
+  const inviteLink =
+    typeof window === "undefined" ? "" : `${window.location.origin}/invite/${lobbyId}`;
+
+  const handleCopyInvite = async () => {
+    if (!inviteLink) {
+      setInviteStatus("Invite link unavailable.");
+      return;
+    }
+
+    setInviteStatus(null);
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setInviteStatus("Invite link copied!");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to copy invite link.";
+      setInviteStatus(message);
+    }
+  };
 
   const handleToggleReady = async () => {
     if (!uid) {
@@ -236,32 +265,37 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
   if (!lobbyId) {
     return (
-      <div className="notice">
-        <strong>Loading lobby...</strong>
-        <p>Waiting for a lobby ID before connecting to Firestore.</p>
-      </div>
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Loading lobby...</strong>
+          <p>Waiting for a lobby ID before connecting to Firestore.</p>
+        </div>
+      </>
     );
   }
 
   if (!firebaseReady) {
     return (
-      <div className="notice">
-        <strong>Firestore is not connected yet.</strong>
-        <p>Provide your Firebase environment variables to load live lobbies.</p>
-        <p>
-          Missing keys:{" "}
-          {missingFirebaseConfig.length
-            ? missingFirebaseConfig.join(", ")
-            : "Unknown (restart the dev server)."}
-        </p>
-      </div>
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Firestore is not connected yet.</strong>
+          <p>Provide your Firebase environment variables to load live lobbies.</p>
+          <p>
+            Missing keys:{" "}
+            {missingFirebaseConfig.length
+              ? missingFirebaseConfig.join(", ")
+              : "Unknown (restart the dev server)."}
+          </p>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="lobby-detail">
-
-
+      <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
@@ -307,6 +341,15 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
                   ? `✓ Ready`
                   : "Ready"}
             </button>
+            <button
+              type="button"
+              className="form-button-full-width"
+              onClick={handleCopyInvite}
+              disabled={!inviteLink}
+            >
+              Copy invite link
+            </button>
+            {inviteStatus ? <p className="lobby-detail__invite-status">{inviteStatus}</p> : null}
             {isHost ? (
               <button
                 type="button"

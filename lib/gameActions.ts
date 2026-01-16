@@ -269,7 +269,7 @@ export const drawFromDiscard = async (
       revealed: cleared.revealed,
     };
 
-    const lastTurnAction = "took the discard pile card and swapped a card.";
+    const lastTurnAction = "took discard pile card and swapped card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
 
     let roundScores: Record<string, number> | null = null;
@@ -428,7 +428,7 @@ export const swapPendingDraw = async (
       revealed: cleared.revealed,
     };
 
-    const lastTurnAction = "drew from the deck and swapped a card.";
+    const lastTurnAction = "drew from deck and swapped card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
 
     let roundScores: Record<string, number> | null = null;
@@ -542,7 +542,7 @@ export const revealAfterDiscard = async (
       revealed: cleared.revealed,
     };
 
-    const lastTurnAction = "discarded the drawn card and revealed a card.";
+    const lastTurnAction = "discarded drawn card and revealed card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
 
     let roundScores: Record<string, number> | null = null;
