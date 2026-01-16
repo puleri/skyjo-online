@@ -1468,6 +1468,13 @@ small {
   max-width: 300px;
 }
 
+.lobby-detail__invite-status {
+  margin: 0;
+  color: var(--color-dark);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .lobby-detail__waiting {
   color: var(--color-dark);
   font-weight: 100;
