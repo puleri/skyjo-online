@@ -1470,6 +1470,7 @@ small {
 
 .lobby-detail__invite-status {
   margin: 0;
+  border-radius: 5px;
   color: var(--color-dark);
   font-size: 0.9rem;
   text-align: center;
@@ -1492,7 +1493,7 @@ small {
   align-items: center;
   justify-content: center;
   background: rgba(246, 243, 237, 0.95);
-  animation: loading-swipe-away 1s ease-in-out forwards;
+  animation: loading-swipe-away 1.3s ease-in-out forwards;
 }
 
 .loading-swipe-overlay__spinner {
