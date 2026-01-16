@@ -212,7 +212,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   return (
     <div className="container">
       <section className="form-card">
-        <h2 className="charcoal-eyebrow-text">Lobby Invite</h2>
+        <h2 className="sage-eyebrow-text">Lobby Invite</h2>
         <p>{inviteMessage}</p>
         <form onSubmit={handleJoin}>
           <div className="label-input-grid">
