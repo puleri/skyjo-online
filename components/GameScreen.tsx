@@ -931,15 +931,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         </button>
         <button
           type="button"
-          className="leaderboard-button"
-          aria-label="Open leaderboard"
-          aria-haspopup="dialog"
-          onClick={() => setIsLeaderboardOpen(true)}
-        >
-          Leaderboard
-        </button>
-        <button
-          type="button"
           className="settings-button"
           aria-label="Open settings"
           onClick={() => setIsSettingsOpen(true)}

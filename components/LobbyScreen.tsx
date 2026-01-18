@@ -105,6 +105,15 @@ export default function LobbyScreen() {
             <button
               type="button"
               className="menu-action-button"
+              aria-label="Open leaderboard"
+              aria-haspopup="dialog"
+              onClick={() => setIsLeaderboardOpen(true)}
+            >
+              <img className="settings-icon" src="/leaderboard-icon.png" alt="Leaderboard icon" />
+            </button>
+            <button
+              type="button"
+              className="menu-action-button"
               aria-label="Open game settings"
               onClick={() => setIsSettingsOpen(true)}
             >
@@ -188,15 +197,6 @@ export default function LobbyScreen() {
         <div className="lobby-list-section">
           <div className="flex-space-between">
             <h2 className="charcoal-eyebrow-text">LOBBIES</h2>
-            <button
-              type="button"
-              className="leaderboard-button"
-              aria-label="Open leaderboard"
-              aria-haspopup="dialog"
-              onClick={() => setIsLeaderboardOpen(true)}
-            >
-              Leaderboard
-            </button>
           </div>
           <LobbyList />
         </div>
@@ -233,7 +233,7 @@ export default function LobbyScreen() {
                   ))}
                 </ol>
               ) : (
-                <p>No scores yet. Finish a game to claim a spot!</p>
+                <p className="tiny-bold">No scores yet. Finish a game to claim a spot!</p>
               )}
               <div className="modal__actions">
                 <button

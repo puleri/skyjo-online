@@ -1602,6 +1602,12 @@ small {
   background: var(--color-accent-soft);
 }
 
+.tiny-bold {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-on-muted);
+}
+
 .spectator-count__value {
   font-variant-numeric: tabular-nums;
 }
