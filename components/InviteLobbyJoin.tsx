@@ -144,8 +144,12 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         }
 
         const playerSnapshot = await transaction.get(playerRef);
+        const isHost = (lobbyData.hostId as string | undefined) === uid;
         if (playerSnapshot.exists()) {
           transaction.update(playerRef, { displayName: trimmedName });
+          if (isHost) {
+            transaction.update(lobbyRef, { hostDisplayName: trimmedName });
+          }
           return;
         }
 
@@ -169,6 +173,9 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
         };
+        if (isHost) {
+          lobbyUpdates.hostDisplayName = trimmedName;
+        }
 
         if (availableGlyphs && availableGlyphs.length > 0) {
           lobbyUpdates.availableGlyphs = availableGlyphs.filter(

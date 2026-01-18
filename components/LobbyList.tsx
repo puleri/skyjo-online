@@ -143,6 +143,8 @@ export default function LobbyList() {
         }
 
         const lobbyData = lobbySnapshot.data();
+        const displayName = resolvedName || "Anonymous player";
+        const isHost = (lobbyData.hostId as string | undefined) === uid;
         const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
           ? lobbyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
           : null;
@@ -163,6 +165,9 @@ export default function LobbyList() {
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
         };
+        if (isHost) {
+          lobbyUpdates.hostDisplayName = displayName;
+        }
 
         if (availableGlyphs && availableGlyphs.length > 0) {
           lobbyUpdates.availableGlyphs = availableGlyphs.filter(
@@ -171,7 +176,7 @@ export default function LobbyList() {
         }
 
         transaction.set(playerRef, {
-          displayName: resolvedName || "Anonymous player",
+          displayName,
           joinedAt: serverTimestamp(),
           isReady: false,
           glyph,
