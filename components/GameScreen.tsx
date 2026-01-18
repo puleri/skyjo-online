@@ -1148,15 +1148,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </ol>
           <div className="game-results__actions">
             <div className="game-results__ready">
-              <h3 className="sage-eyebrow-text">Ready status</h3>
-              <ul className="player-list">
+              <h3 className="charcoal-eyebrow-text">Ready status</h3>
+              <ol className="player-list">
                 {orderedPlayers.map((player) => (
                   <li key={player.id} className="player-list-item">
                     {player.displayName}
                     {player.isReady ? " ✓" : ""}
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
             {isLocalPlayerReady ? (
               <p className="notice">You are ready for the next round.</p>

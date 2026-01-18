@@ -1260,7 +1260,7 @@ small {
 }
 
 
-.round-score-item {
+.round-score-item, .player-list-item {
   font-family: "Merriweather", serif;
   font-weight: 700;
   letter-spacing: 1.2px;
