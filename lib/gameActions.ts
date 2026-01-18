@@ -26,6 +26,7 @@ type PlayerDoc = {
   revealed: boolean[];
   pendingDraw?: number | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  isReady?: boolean;
   roundScore?: number;
   totalScore?: number;
 };
@@ -214,6 +215,7 @@ const computeRoundScores = (
     playerUpdates[playerId] = {
       grid: cleared.grid,
       revealed: cleared.revealed,
+      isReady: false,
       roundScore: roundScores[playerId],
       totalScore,
     };
@@ -608,6 +610,19 @@ export const startNextRound = async (gameId: string, playerId: string) => {
 
     const playerOrder = game.activePlayerOrder;
     assertCondition(playerOrder.length > 0, "No players are active in this game.");
+    const players: Record<string, PlayerDoc> = {};
+    await Promise.all(
+      playerOrder.map(async (activePlayerId) => {
+        const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
+        const playerSnap = await transaction.get(playerDocRef);
+        assertCondition(playerSnap.exists(), "Player not found.");
+        players[activePlayerId] = playerSnap.data() as PlayerDoc;
+      })
+    );
+    const allPlayersReady = playerOrder.every((activePlayerId) =>
+      Boolean(players[activePlayerId].isReady)
+    );
+    assertCondition(allPlayersReady, "All players must be ready to start the next round.");
 
     const shuffledDeck = shuffleDeck(createSkyjoDeck());
     const playerGrids = new Map<string, number[]>();
@@ -654,8 +669,26 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         revealed: Array.from({ length: 12 }, () => false),
         pendingDraw: null,
         pendingDrawSource: null,
+        isReady: false,
         roundScore: 0,
       });
     });
+  });
+};
+
+export const readyForNextRound = async (gameId: string, playerId: string) => {
+  const gameRef = doc(db, "games", gameId);
+  const playerRef = doc(db, "games", gameId, "players", playerId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+    assertCondition(game.status === "round-complete", "Round is not complete yet.");
+
+    const playerSnap = await transaction.get(playerRef);
+    assertCondition(playerSnap.exists(), "Player not found.");
+
+    transaction.update(playerRef, { isReady: true });
   });
 };

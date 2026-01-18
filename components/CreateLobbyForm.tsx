@@ -5,6 +5,8 @@ import { FormEvent, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
+const storageKey = "skyjo:username";
+
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,12 +28,15 @@ export default function CreateLobbyForm() {
     setError(null);
 
     try {
+      const storedName = window.localStorage.getItem(storageKey);
+      const resolvedName = storedName?.trim() || "A player";
       await addDoc(collection(db, "lobbies"), {
         name: name.trim(),
         createdAt: serverTimestamp(),
         status: "open",
         players: 1,
         hostId: uid,
+        hostDisplayName: resolvedName,
       });
       setName("");
     } catch (err) {

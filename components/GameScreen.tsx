@@ -1,6 +1,17 @@
 "use client";
 
-import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
@@ -9,6 +20,7 @@ import {
   drawFromDeck,
   drawFromDiscard,
   revealAfterDiscard,
+  readyForNextRound,
   selectDiscard,
   startNextRound,
   swapPendingDraw,
@@ -48,6 +60,14 @@ type GamePlayer = {
   totalScore?: number;
 };
 
+type LeaderboardEntry = {
+  id: string;
+  displayName: string;
+  score: number;
+  gameId?: string | null;
+  playerId?: string | null;
+};
+
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firstTimeTipsStorageKey = "skyjo-first-time-tips";
@@ -80,6 +100,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     useState<string | null>(null);
   const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
   const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const leaderboardUpdateRef = useRef(new Set<string>());
 
   const getCardValueClass = (value: number) => {
     if (value < 0) {
@@ -143,6 +166,40 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    if (!firebaseReady) {
+      return;
+    }
+
+    const leaderboardQuery = query(
+      collection(db, "leaderboard"),
+      orderBy("score", "asc"),
+      limit(10)
+    );
+    const unsubscribe = onSnapshot(
+      leaderboardQuery,
+      (snapshot) => {
+        setLeaderboardEntries(
+          snapshot.docs.map((entry) => {
+            const data = entry.data();
+            return {
+              id: entry.id,
+              displayName: (data.displayName as string | undefined) ?? "Anonymous player",
+              score: (data.score as number | undefined) ?? 0,
+              gameId: (data.gameId as string | null | undefined) ?? null,
+              playerId: (data.playerId as string | null | undefined) ?? null,
+            };
+          })
+        );
+      },
+      (err) => {
+        setError(err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseReady]);
 
   useEffect(() => {
     const storedPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
@@ -300,6 +357,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  const allPlayersReady = useMemo(() => {
+    if (!isRoundComplete || !orderedPlayers.length) {
+      return false;
+    }
+    return orderedPlayers.every((player) => player.isReady);
+  }, [isRoundComplete, orderedPlayers]);
+  const isLocalPlayerReady = useMemo(() => {
+    if (!uid) {
+      return false;
+    }
+    return orderedPlayers.find((player) => player.id === uid)?.isReady ?? false;
+  }, [orderedPlayers, uid]);
   const hasColdRoundScore = useMemo(() => {
     if (!isRoundComplete) {
       return false;
@@ -531,6 +600,63 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       });
   }, [isGameComplete, orderedPlayers]);
 
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !isGameComplete || !finalScores.length) {
+      return;
+    }
+
+    if (finalScores.length < 2) {
+      return;
+    }
+
+    if (leaderboardUpdateRef.current.has(gameId)) {
+      return;
+    }
+    leaderboardUpdateRef.current.add(gameId);
+
+    const updateLeaderboard = async () => {
+      const leaderboardRef = collection(db, "leaderboard");
+      const leaderboardQuery = query(leaderboardRef, orderBy("score", "asc"), limit(10));
+      const leaderboardSnapshot = await getDocs(leaderboardQuery);
+      const leaderboardScores = leaderboardSnapshot.docs
+        .map((entry) => entry.data().score)
+        .filter((score): score is number => typeof score === "number");
+      const cutoffScore =
+        leaderboardScores.length < 10 ? null : Math.max(...leaderboardScores);
+      const qualifyingScores = finalScores.filter((entry) => {
+        if (leaderboardScores.length < 10) {
+          return true;
+        }
+        if (cutoffScore === null) {
+          return true;
+        }
+        return entry.totalScore <= cutoffScore;
+      });
+
+      if (!qualifyingScores.length) {
+        return;
+      }
+
+      await Promise.all(
+        qualifyingScores.map((entry) =>
+          setDoc(
+            doc(leaderboardRef, `${gameId}_${entry.id}`),
+            {
+              displayName: entry.displayName,
+              score: entry.totalScore,
+              gameId,
+              playerId: entry.id,
+              createdAt: serverTimestamp(),
+            },
+            { merge: true }
+          )
+        )
+      );
+    };
+
+    updateLeaderboard().catch((err: Error) => setError(err.message));
+  }, [firebaseReady, finalScores, gameId, isGameComplete]);
+
   const getAccolade = (index: number) => {
     if (index === 0) {
       return "1st";
@@ -731,6 +857,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (game?.status !== "round-complete") {
       return;
     }
+    if (!allPlayersReady) {
+      setError("All players must be ready to start the next round.");
+      return;
+    }
 
     setIsStartingNextRound(true);
     setError(null);
@@ -741,6 +871,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setError(message);
     } finally {
       setIsStartingNextRound(false);
+    }
+  };
+
+  const handleReadyForNextRound = async () => {
+    if (!uid) {
+      setError("Sign in to ready up for the next round.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (game?.status !== "round-complete") {
+      return;
+    }
+
+    setError(null);
+    try {
+      await readyForNextRound(gameId, uid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
     }
   };
 
@@ -813,6 +965,38 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             )}
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => setIsSpectatorModalOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {isLeaderboardOpen ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leaderboard-title"
+          onClick={() => setIsLeaderboardOpen(false)}
+        >
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2 id="leaderboard-title">Leaderboard</h2>
+            <p>Lowest 10 scores of all time.</p>
+            {leaderboardEntries.length ? (
+              <ol className="leaderboard-list">
+                {leaderboardEntries.map((entry, index) => (
+                  <li key={entry.id} className="leaderboard-list__item">
+                    <span className="leaderboard-list__rank">{index + 1}.</span>
+                    <span className="leaderboard-list__name">{entry.displayName}</span>
+                    <span className="leaderboard-list__score">{entry.score}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p>No scores yet. Finish a game to claim a spot!</p>
+            )}
+            <div className="modal__actions">
+              <button className="form-button-full-width" type="button" onClick={() => setIsLeaderboardOpen(false)}>
                 Close
               </button>
             </div>
@@ -958,17 +1142,43 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             ))}
           </ol>
           <div className="game-results__actions">
+            <div className="game-results__ready">
+              <h3 className="charcoal-eyebrow-text">Ready status</h3>
+              <ol className="player-list">
+                {orderedPlayers.map((player) => (
+                  <li key={player.id} className="player-list-item">
+                    {player.displayName}
+                    {player.isReady ? " ✓" : ""}
+                  </li>
+                ))}
+              </ol>
+            </div>
+            {isLocalPlayerReady ? (
+              <p className="notice">You are ready for the next round.</p>
+            ) : (
+              <button
+                type="button"
+                className="form-button-full-width"
+                onClick={handleReadyForNextRound}
+              >
+                Ready up
+              </button>
+            )}
             {isHost ? (
               <button
                 type="button"
                 className="form-button-full-width"
                 onClick={handleStartNextRound}
-                disabled={isStartingNextRound}
+                disabled={isStartingNextRound || !allPlayersReady}
               >
                 {isStartingNextRound ? "Starting next round..." : "Start next round"}
               </button>
             ) : (
-              <p className="notice">Waiting for the host to start the next round.</p>
+              <p className="notice">
+                {allPlayersReady
+                  ? "Waiting for the host to start the next round."
+                  : "Waiting for everyone to ready up."}
+              </p>
             )}
           </div>
         </section>
