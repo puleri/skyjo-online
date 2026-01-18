@@ -605,6 +605,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
+    if (finalScores.length < 2) {
+      return;
+    }
+
     if (leaderboardUpdateRef.current.has(gameId)) {
       return;
     }
