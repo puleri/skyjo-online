@@ -9,6 +9,7 @@ import {
   drawFromDeck,
   drawFromDiscard,
   revealAfterDiscard,
+  readyForNextRound,
   selectDiscard,
   startNextRound,
   swapPendingDraw,
@@ -300,6 +301,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  const allPlayersReady = useMemo(() => {
+    if (!isRoundComplete || !orderedPlayers.length) {
+      return false;
+    }
+    return orderedPlayers.every((player) => player.isReady);
+  }, [isRoundComplete, orderedPlayers]);
+  const isLocalPlayerReady = useMemo(() => {
+    if (!uid) {
+      return false;
+    }
+    return orderedPlayers.find((player) => player.id === uid)?.isReady ?? false;
+  }, [orderedPlayers, uid]);
   const hasColdRoundScore = useMemo(() => {
     if (!isRoundComplete) {
       return false;
@@ -731,6 +744,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (game?.status !== "round-complete") {
       return;
     }
+    if (!allPlayersReady) {
+      setError("All players must be ready to start the next round.");
+      return;
+    }
 
     setIsStartingNextRound(true);
     setError(null);
@@ -741,6 +758,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setError(message);
     } finally {
       setIsStartingNextRound(false);
+    }
+  };
+
+  const handleReadyForNextRound = async () => {
+    if (!uid) {
+      setError("Sign in to ready up for the next round.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (game?.status !== "round-complete") {
+      return;
+    }
+
+    setError(null);
+    try {
+      await readyForNextRound(gameId, uid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
     }
   };
 
@@ -958,17 +997,43 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             ))}
           </ol>
           <div className="game-results__actions">
+            <div className="game-results__ready">
+              <h3 className="sage-eyebrow-text">Ready status</h3>
+              <ul className="player-list">
+                {orderedPlayers.map((player) => (
+                  <li key={player.id} className="player-list-item">
+                    {player.displayName}
+                    {player.isReady ? " ✓" : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {isLocalPlayerReady ? (
+              <p className="notice">You are ready for the next round.</p>
+            ) : (
+              <button
+                type="button"
+                className="form-button-full-width"
+                onClick={handleReadyForNextRound}
+              >
+                Ready up
+              </button>
+            )}
             {isHost ? (
               <button
                 type="button"
                 className="form-button-full-width"
                 onClick={handleStartNextRound}
-                disabled={isStartingNextRound}
+                disabled={isStartingNextRound || !allPlayersReady}
               >
                 {isStartingNextRound ? "Starting next round..." : "Start next round"}
               </button>
             ) : (
-              <p className="notice">Waiting for the host to start the next round.</p>
+              <p className="notice">
+                {allPlayersReady
+                  ? "Waiting for the host to start the next round."
+                  : "Waiting for everyone to ready up."}
+              </p>
             )}
           </div>
         </section>

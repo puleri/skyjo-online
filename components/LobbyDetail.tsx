@@ -248,6 +248,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             seatIndex: index,
             grid: playerGrids.get(playerDoc.id) ?? [],
             revealed: Array.from({ length: 12 }, () => false),
+            isReady: false,
             roundScore: 0,
             totalScore: 0,
           });
