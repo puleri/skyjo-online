@@ -248,6 +248,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           turnPhase: "choose-draw",
           deck: shuffledDeck,
           discard: [discardCard],
+          graveyard: [],
           spikeMode,
           lastTurnPlayerId: null,
           lastTurnAction: null,
