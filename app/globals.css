@@ -1208,6 +1208,12 @@ button.card:disabled {
   box-shadow: 0 8px 16px rgba(31, 41, 51, 0.25);
 }
 
+.player-grid__card--reveal-selectable .card {
+  outline: 3px solid var(--color-accent-secondary-strong);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px rgba(184, 137, 74, 0.2);
+}
+
 .card__target-overlay {
   position: absolute;
   inset: 6px;
