@@ -708,6 +708,43 @@ section {
 
 }
 
+.card--item {
+  color: var(--color-on-dark);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+}
+
+.card--item-A {
+  background: linear-gradient(135deg, #3b1f6f, #6f44bf);
+}
+
+.card--item-B {
+  background: linear-gradient(135deg, #0f6b4f, #24a07f);
+}
+
+.card--item-C {
+  background: linear-gradient(135deg, #7a1f3d, #c94d8c);
+}
+
+.card--item-D {
+  background: linear-gradient(135deg, #8b5a0a, #d5a32d);
+}
+
+.card--item-E {
+  background: linear-gradient(135deg, #24365b, #4f6fb2);
+}
+
+.card--item .card__value {
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
 
 
 button.card {
@@ -955,6 +992,144 @@ button.card:disabled {
   margin-top: 8px;
 }
 
+.item-panel {
+  margin: 16px auto 24px;
+  padding: 18px 22px;
+  max-width: 880px;
+  border-radius: 18px;
+  background: var(--color-surface-bright);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 20px rgba(31, 41, 51, 0.12);
+  display: grid;
+  gap: 16px;
+}
+
+.item-panel__summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.item-panel__badge {
+  width: 64px;
+  height: 92px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-panel__title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.item-panel__description {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.item-panel__instruction {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.item-panel__target-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.item-panel__target-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-dark);
+  font-weight: 600;
+}
+
+.item-panel__target-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.item-panel__warning {
+  margin: 0;
+  color: #b3530a;
+  font-weight: 600;
+}
+
+.item-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.item-panel__action {
+  margin-top: 0;
+  font-weight: 600;
+}
+
+.item-panel__action--primary {
+  background: var(--color-accent);
+  color: var(--color-on-dark);
+}
+
+.item-panel__action--primary:hover {
+  background: var(--color-accent-secondary);
+}
+
+.item-panel__action--ghost {
+  background: var(--color-surface-bright);
+  color: var(--color-dark);
+}
+
+.item-panel__action--ghost:hover {
+  background: var(--color-accent-soft);
+}
+
+.item-value-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.item-value-button {
+  margin-top: 0;
+  padding: 8px 10px;
+  font-weight: 700;
+  background: var(--color-surface-bright);
+  color: var(--color-dark);
+  border: 1px solid var(--color-border);
+}
+
+.item-value-button:hover {
+  background: var(--color-accent-soft);
+}
+
+.item-value-button--active {
+  background: var(--color-accent);
+  color: var(--color-on-dark);
+  border-color: var(--color-accent);
+}
+
 .player-grid__actions {
   font-family: "Merriweather", "sans-serif";
   position: absolute;
@@ -1020,6 +1195,34 @@ button.card:disabled {
 
 .player-grid__action--cancel {
   grid-column: 1 / -1;
+}
+
+.player-grid__card--item-selectable .card {
+  outline: 2px dashed var(--color-accent-secondary-strong);
+  outline-offset: 2px;
+}
+
+.player-grid__card--item-selected .card {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: 0 8px 16px rgba(31, 41, 51, 0.25);
+}
+
+.card__target-overlay {
+  position: absolute;
+  inset: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--color-on-dark);
+  border-radius: 8px;
+  z-index: 3;
+  pointer-events: none;
 }
 
 label {
@@ -1726,6 +1929,7 @@ small {
   .card--value-mid,
   .card--value-high,
   .card--value-max,
+  .card--item,
   .card,
   .card--back {
     scale: .9;
