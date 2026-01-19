@@ -589,7 +589,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!pendingItemReveal) {
       return;
     }
-    if (!isCurrentTurn || !isGameActive || game?.turnPhase !== "resolve") {
+    const isRevealPhase =
+      game?.turnPhase === "resolve" || game?.turnPhase === "resolve-item";
+    if (!isCurrentTurn || !isGameActive || !isRevealPhase) {
       setPendingItemReveal(false);
     }
   }, [game?.turnPhase, isCurrentTurn, isGameActive, pendingItemReveal]);
