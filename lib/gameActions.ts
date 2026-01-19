@@ -1,8 +1,20 @@
 import { deleteField, doc, runTransaction } from "firebase/firestore";
 import { db } from "./firebase";
-import { Card, createItemCards, createSkyjoDeck, shuffleDeck } from "./game/deck";
+import {
+  Card,
+  ItemCard,
+  ItemCode,
+  createItemCards,
+  createSkyjoDeck,
+  shuffleDeck,
+} from "./game/deck";
 
-export type TurnPhase = "choose-draw" | "resolve-draw" | "choose-swap" | "resolve";
+export type TurnPhase =
+  | "choose-draw"
+  | "resolve-draw"
+  | "choose-swap"
+  | "resolve"
+  | "resolve-item";
 
 type GameDoc = {
   activePlayerOrder: string[];
@@ -107,6 +119,81 @@ const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
 
 const calculateScore = (grid: Array<Card | null>) =>
   grid.reduce<number>((total, value) => total + (typeof value === "number" ? value : 0), 0);
+
+const isItemCard = (card: Card | null | undefined): card is ItemCard =>
+  Boolean(card) && typeof card === "object" && card.kind === "item";
+
+const drawRandomNumberCard = (deck: Card[]) => {
+  const numberIndices = deck
+    .map((card, index) => (typeof card === "number" ? index : -1))
+    .filter((index) => index >= 0);
+  assertCondition(numberIndices.length > 0, "Deck has no number cards.");
+  const randomIndex =
+    numberIndices[Math.floor(Math.random() * numberIndices.length)] ?? numberIndices[0];
+  const [drawn] = deck.splice(randomIndex, 1);
+  assertCondition(typeof drawn === "number", "Failed to draw a number card.");
+  return drawn;
+};
+
+const shuffleGridPositions = (grid: Array<Card | null>, revealed: boolean[]) => {
+  const combined = grid.map((card, index) => ({ card, revealed: revealed[index] }));
+  const shuffled = shuffleDeck(combined);
+  return {
+    grid: shuffled.map((entry) => entry.card),
+    revealed: shuffled.map((entry) => entry.revealed),
+  };
+};
+
+const clearPlayerColumns = (player: PlayerDoc) => {
+  const cleared = clearMatchedColumns([...player.grid], [...player.revealed]);
+  return { ...player, grid: cleared.grid, revealed: cleared.revealed };
+};
+
+const validateGridIndex = (player: PlayerDoc, targetIndex: number) => {
+  assertCondition(targetIndex >= 0 && targetIndex < player.grid.length, "Invalid index.");
+};
+
+const validateCardSlot = (player: PlayerDoc, targetIndex: number) => {
+  validateGridIndex(player, targetIndex);
+  assertCondition(
+    player.grid[targetIndex] !== null && player.grid[targetIndex] !== undefined,
+    "Slot is empty."
+  );
+};
+
+const assertItemCodeMatch = (pendingCard: Card | null | undefined, code: ItemCode) => {
+  assertCondition(isItemCard(pendingCard), "Pending draw is not an item.");
+  assertCondition(pendingCard.code === code, "Item card mismatch.");
+};
+
+type ItemTarget = {
+  playerId: string;
+  index: number;
+};
+
+type ItemUsage =
+  | { code: "A"; target: ItemTarget }
+  | { code: "B" }
+  | { code: "C"; target: ItemTarget; value: number }
+  | { code: "D"; first: ItemTarget; second: ItemTarget }
+  | { code: "E"; first: ItemTarget; second: ItemTarget };
+
+const describeItemAction = (usage: ItemUsage) => {
+  switch (usage.code) {
+    case "A":
+      return "used item A to reroll a card.";
+    case "B":
+      return "used item B to shuffle their grid.";
+    case "C":
+      return `used item C to set a card to ${usage.value}.`;
+    case "D":
+      return "used item D to swap two cards.";
+    case "E":
+      return "used item E to swap two cards.";
+    default:
+      return "used an item.";
+  }
+};
 
 type TurnResolution = {
   gameUpdates: Partial<GameDoc>;
@@ -248,12 +335,22 @@ export const drawFromDiscard = async (
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
     assertCondition(player.pendingDraw == null, "You already have a pending draw.");
-    assertCondition(targetIndex >= 0 && targetIndex < player.grid.length, "Invalid index.");
+    validateGridIndex(player, targetIndex);
 
     const discard = [...game.discard];
     const drawnCard = discard.pop();
     assertCondition(drawnCard !== undefined, "Discard pile is empty.");
     const drawn = drawnCard as Card;
+
+    if (isItemCard(drawn)) {
+      transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "discard" });
+      transaction.update(gameRef, {
+        discard,
+        selectedDiscardPlayerId: null,
+        turnPhase: "resolve-item",
+      });
+      return;
+    }
 
     const grid = [...player.grid];
     const revealed = [...player.revealed];
@@ -355,7 +452,7 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
     transaction.update(gameRef, {
       deck,
-      turnPhase: "resolve-draw",
+      turnPhase: isItemCard(drawn) ? "resolve-item" : "resolve-draw",
       selectedDiscardPlayerId: null,
     });
   });
@@ -412,7 +509,8 @@ export const swapPendingDraw = async (
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
     assertCondition(player.pendingDraw != null, "No pending draw to keep.");
-    assertCondition(targetIndex >= 0 && targetIndex < player.grid.length, "Invalid index.");
+    assertCondition(!isItemCard(player.pendingDraw), "Pending draw is an item.");
+    validateGridIndex(player, targetIndex);
 
     const grid = [...player.grid];
     const revealed = [...player.revealed];
@@ -503,11 +601,236 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
     assertCondition(player.pendingDraw != null, "No pending draw to discard.");
+    assertCondition(!isItemCard(player.pendingDraw), "Pending draw is an item.");
 
     const discard = [...game.discard, player.pendingDraw];
 
     transaction.update(playerRef, { pendingDraw: null, pendingDrawSource: null });
     transaction.update(gameRef, { discard, turnPhase: "resolve" });
+  });
+};
+
+export const discardItemForReveal = async (gameId: string, playerId: string) => {
+  const gameRef = doc(db, "games", gameId);
+  const playerRef = doc(db, "games", gameId, "players", playerId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    assertCondition(game.currentPlayerId === playerId, "Not your turn.");
+    assertCondition(game.turnPhase === "resolve-item", "Not in item resolve phase.");
+
+    const playerSnap = await transaction.get(playerRef);
+    assertCondition(playerSnap.exists(), "Player not found.");
+    const player = playerSnap.data() as PlayerDoc;
+    assertCondition(isItemCard(player.pendingDraw), "No item to discard.");
+    assertCondition(player.pendingDrawSource === "deck", "Discarded items must be used.");
+
+    const discard = [...game.discard, player.pendingDraw];
+
+    transaction.update(playerRef, { pendingDraw: null, pendingDrawSource: null });
+    transaction.update(gameRef, { discard, turnPhase: "resolve", selectedDiscardPlayerId: null });
+  });
+};
+
+export const useItemCard = async (
+  gameId: string,
+  playerId: string,
+  usage: ItemUsage
+) => {
+  const gameRef = doc(db, "games", gameId);
+  const playerRef = doc(db, "games", gameId, "players", playerId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    assertCondition(game.currentPlayerId === playerId, "Not your turn.");
+    assertCondition(game.turnPhase === "resolve-item", "Not in item resolve phase.");
+
+    const playerSnap = await transaction.get(playerRef);
+    assertCondition(playerSnap.exists(), "Player not found.");
+    const player = playerSnap.data() as PlayerDoc;
+    assertItemCodeMatch(player.pendingDraw, usage.code);
+
+    const pendingItem = player.pendingDraw as ItemCard;
+    const playersToUpdate = new Map<string, PlayerDoc>([[playerId, player]]);
+    const affectedPlayerIds = new Set<string>();
+    let nextDeck = [...game.deck];
+
+    const loadPlayer = async (targetPlayerId: string) => {
+      assertCondition(
+        game.activePlayerOrder.includes(targetPlayerId),
+        "Target player is not in this game."
+      );
+      const existing = playersToUpdate.get(targetPlayerId);
+      if (existing) {
+        return existing;
+      }
+      const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
+      const targetSnap = await transaction.get(targetRef);
+      assertCondition(targetSnap.exists(), "Player not found.");
+      const targetPlayer = targetSnap.data() as PlayerDoc;
+      playersToUpdate.set(targetPlayerId, targetPlayer);
+      return targetPlayer;
+    };
+
+    switch (usage.code) {
+      case "A": {
+        const targetPlayer = await loadPlayer(usage.target.playerId);
+        validateCardSlot(targetPlayer, usage.target.index);
+        const targetCard = targetPlayer.grid[usage.target.index];
+        assertCondition(typeof targetCard === "number", "Target card must be a number.");
+
+        nextDeck = shuffleDeck([...nextDeck, targetCard]);
+        const replacement = drawRandomNumberCard(nextDeck);
+
+        const nextGrid = [...targetPlayer.grid];
+        nextGrid[usage.target.index] = replacement;
+        playersToUpdate.set(usage.target.playerId, {
+          ...targetPlayer,
+          grid: nextGrid,
+        });
+        affectedPlayerIds.add(usage.target.playerId);
+        break;
+      }
+      case "B": {
+        const shuffled = shuffleGridPositions(player.grid, player.revealed);
+        playersToUpdate.set(playerId, { ...player, ...shuffled });
+        affectedPlayerIds.add(playerId);
+        break;
+      }
+      case "C": {
+        const targetPlayer = await loadPlayer(usage.target.playerId);
+        validateCardSlot(targetPlayer, usage.target.index);
+        assertCondition(Number.isInteger(usage.value), "Item value must be an integer.");
+        assertCondition(usage.value >= -2 && usage.value <= 12, "Item value is out of range.");
+
+        const nextGrid = [...targetPlayer.grid];
+        nextGrid[usage.target.index] = usage.value;
+        playersToUpdate.set(usage.target.playerId, {
+          ...targetPlayer,
+          grid: nextGrid,
+        });
+        affectedPlayerIds.add(usage.target.playerId);
+        break;
+      }
+      case "D":
+      case "E": {
+        const firstPlayer = await loadPlayer(usage.first.playerId);
+        const secondPlayer = await loadPlayer(usage.second.playerId);
+        validateCardSlot(firstPlayer, usage.first.index);
+        validateCardSlot(secondPlayer, usage.second.index);
+
+        const firstGrid = [...firstPlayer.grid];
+        const firstRevealed = [...firstPlayer.revealed];
+        const secondGrid = [...secondPlayer.grid];
+        const secondRevealed = [...secondPlayer.revealed];
+
+        const tempCard = firstGrid[usage.first.index];
+        const tempReveal = firstRevealed[usage.first.index];
+        firstGrid[usage.first.index] = secondGrid[usage.second.index];
+        firstRevealed[usage.first.index] = secondRevealed[usage.second.index];
+        secondGrid[usage.second.index] = tempCard;
+        secondRevealed[usage.second.index] = tempReveal;
+
+        playersToUpdate.set(usage.first.playerId, {
+          ...firstPlayer,
+          grid: firstGrid,
+          revealed: firstRevealed,
+        });
+        playersToUpdate.set(usage.second.playerId, {
+          ...secondPlayer,
+          grid: secondGrid,
+          revealed: secondRevealed,
+        });
+        affectedPlayerIds.add(usage.first.playerId);
+        affectedPlayerIds.add(usage.second.playerId);
+        break;
+      }
+      default:
+        throw new Error("Unknown item card.");
+    }
+
+    const updatedPlayers: Record<string, PlayerDoc> = {};
+    playersToUpdate.forEach((targetPlayer, targetPlayerId) => {
+      if (affectedPlayerIds.has(targetPlayerId)) {
+        updatedPlayers[targetPlayerId] = clearPlayerColumns(targetPlayer);
+      } else {
+        updatedPlayers[targetPlayerId] = targetPlayer;
+      }
+    });
+
+    const updatedCurrentPlayer = updatedPlayers[playerId] ?? player;
+    const lastTurnAction = describeItemAction(usage);
+    const resolution = resolveTurn(game, playerId, updatedCurrentPlayer);
+
+    let roundScores: Record<string, number> | null = null;
+    let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let gameStatusOverride: string | null = null;
+
+    if (resolution.roundComplete) {
+      const playersSnapshot: Record<string, PlayerDoc> = {};
+      await Promise.all(
+        game.activePlayerOrder.map(async (activePlayerId) => {
+          if (updatedPlayers[activePlayerId]) {
+            playersSnapshot[activePlayerId] = updatedPlayers[activePlayerId];
+            return;
+          }
+          const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
+          const playerSnap = await transaction.get(playerDocRef);
+          assertCondition(playerSnap.exists(), "Player not found.");
+          playersSnapshot[activePlayerId] = playerSnap.data() as PlayerDoc;
+        })
+      );
+
+      const scoring = computeRoundScores(
+        game.activePlayerOrder,
+        playersSnapshot,
+        resolution.endingPlayerId
+      );
+      roundScores = scoring.roundScores;
+      scoreUpdates = scoring.playerUpdates;
+      gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
+    }
+
+    transaction.update(playerRef, {
+      grid: updatedCurrentPlayer.grid,
+      revealed: updatedCurrentPlayer.revealed,
+      pendingDraw: null,
+      pendingDrawSource: null,
+    });
+    transaction.update(gameRef, {
+      deck: nextDeck,
+      discard: [...game.discard, pendingItem],
+      selectedDiscardPlayerId: null,
+      lastTurnPlayerId: playerId,
+      lastTurnAction,
+      ...resolution.gameUpdates,
+      ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
+      ...(roundScores ? { roundScores } : {}),
+    });
+
+    Object.entries(updatedPlayers).forEach(([targetPlayerId, updatedPlayer]) => {
+      if (targetPlayerId === playerId) {
+        return;
+      }
+      const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
+      transaction.update(targetRef, {
+        grid: updatedPlayer.grid,
+        revealed: updatedPlayer.revealed,
+      });
+    });
+
+    if (scoreUpdates) {
+      Object.entries(scoreUpdates).forEach(([targetPlayerId, updates]) => {
+        const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
+        transaction.update(targetRef, updates);
+      });
+    }
   });
 };
 
@@ -530,7 +853,7 @@ export const revealAfterDiscard = async (
     const playerSnap = await transaction.get(playerRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
-    assertCondition(targetIndex >= 0 && targetIndex < player.grid.length, "Invalid index.");
+    validateGridIndex(player, targetIndex);
     assertCondition(!player.revealed[targetIndex], "Slot already revealed.");
     assertCondition(player.grid[targetIndex] !== null, "Slot is empty.");
 
