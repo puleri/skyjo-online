@@ -1235,6 +1235,70 @@ small {
   color: var(--color-dark);
 }
 
+.form-helper-text {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: color-mix(in srgb, var(--color-dark) 65%, #ffffff);
+}
+
+.spike-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ios-toggle {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ios-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ios-toggle__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #d1d5db;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+  transition: background 0.2s ease;
+}
+
+.ios-toggle__thumb {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease;
+}
+
+.ios-toggle input:checked + .ios-toggle__track {
+  background: #34c759;
+}
+
+.ios-toggle input:checked + .ios-toggle__track + .ios-toggle__thumb {
+  transform: translateX(24px);
+}
+
+.ios-toggle input:focus-visible + .ios-toggle__track {
+  box-shadow:
+    0 0 0 3px rgba(52, 199, 89, 0.35),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+}
+
 .form-button-full-width {
   background-color: #8D9F8F;
   color: var(--color-dark);
