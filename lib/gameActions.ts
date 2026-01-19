@@ -1,17 +1,18 @@
 import { deleteField, doc, runTransaction } from "firebase/firestore";
 import { db } from "./firebase";
-import { createSkyjoDeck, shuffleDeck } from "./game/deck";
+import { Card, createItemCards, createSkyjoDeck, shuffleDeck } from "./game/deck";
 
 export type TurnPhase = "choose-draw" | "resolve-draw" | "choose-swap" | "resolve";
 
 type GameDoc = {
   activePlayerOrder: string[];
   currentPlayerId: string;
-  deck: number[];
-  discard: number[];
+  deck: Card[];
+  discard: Card[];
   hostId?: string | null;
   roundNumber?: number;
   turnPhase: TurnPhase;
+  spikeMode?: boolean;
   endingPlayerId?: string | null;
   finalTurnRemainingIds?: string[] | null;
   selectedDiscardPlayerId?: string | null;
@@ -22,9 +23,9 @@ type GameDoc = {
 };
 
 type PlayerDoc = {
-  grid: Array<number | null>;
+  grid: Array<Card | null>;
   revealed: boolean[];
-  pendingDraw?: number | null;
+  pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
   isReady?: boolean;
   roundScore?: number;
@@ -50,7 +51,7 @@ const getColumnIndices = (index: number) => {
   return [column, column + columns, column + columns * 2];
 };
 
-const clearColumnIfMatched = (grid: Array<number | null>, revealed: boolean[], index: number) => {
+const clearColumnIfMatched = (grid: Array<Card | null>, revealed: boolean[], index: number) => {
   const columnIndices = getColumnIndices(index);
   const values = columnIndices.map((columnIndex) => grid[columnIndex]);
   const hasNull = values.some((value) => value === null || value === undefined);
@@ -75,7 +76,7 @@ const clearColumnIfMatched = (grid: Array<number | null>, revealed: boolean[], i
   return { grid: nextGrid, revealed: nextRevealed };
 };
 
-const clearMatchedColumns = (grid: Array<number | null>, revealed: boolean[]) => {
+const clearMatchedColumns = (grid: Array<Card | null>, revealed: boolean[]) => {
   let nextGrid = [...grid];
   let nextRevealed = [...revealed];
   for (let column = 0; column < columns; column += 1) {
@@ -104,8 +105,8 @@ const clearMatchedColumns = (grid: Array<number | null>, revealed: boolean[]) =>
 
 const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
 
-const calculateScore = (grid: Array<number | null>) =>
-  grid.reduce<number>((total, value) => total + (value ?? 0), 0);
+const calculateScore = (grid: Array<Card | null>) =>
+  grid.reduce<number>((total, value) => total + (typeof value === "number" ? value : 0), 0);
 
 type TurnResolution = {
   gameUpdates: Partial<GameDoc>;
@@ -150,7 +151,7 @@ const resolveTurn = (
   }
 
   const nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
-  let refreshedDeck: number[] | null = null;
+  let refreshedDeck: Card[] | null = null;
   if (game.deck.length === 0) {
     const discardPile = game.discard;
     const remainingDiscard = discardPile.slice(0, -1);
@@ -251,8 +252,8 @@ export const drawFromDiscard = async (
 
     const discard = [...game.discard];
     const drawnCard = discard.pop();
-    assertCondition(typeof drawnCard === "number", "Discard pile is empty.");
-    const drawn = drawnCard as number;
+    assertCondition(drawnCard !== undefined, "Discard pile is empty.");
+    const drawn = drawnCard as Card;
 
     const grid = [...player.grid];
     const revealed = [...player.revealed];
@@ -261,7 +262,7 @@ export const drawFromDiscard = async (
 
     grid[targetIndex] = drawn;
     revealed[targetIndex] = true;
-    discard.push(replacedCard as number);
+    discard.push(replacedCard as Card);
 
     const cleared = clearColumnIfMatched(grid, revealed, targetIndex);
 
@@ -348,8 +349,8 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
 
     const deck = [...game.deck];
     const drawnCard = deck.pop();
-    assertCondition(typeof drawnCard === "number", "Deck is empty.");
-    const drawn = drawnCard as number;
+    assertCondition(drawnCard !== undefined, "Deck is empty.");
+    const drawn = drawnCard as Card;
 
     transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
     transaction.update(gameRef, {
@@ -410,7 +411,7 @@ export const swapPendingDraw = async (
     const playerSnap = await transaction.get(playerRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
-    assertCondition(typeof player.pendingDraw === "number", "No pending draw to keep.");
+    assertCondition(player.pendingDraw != null, "No pending draw to keep.");
     assertCondition(targetIndex >= 0 && targetIndex < player.grid.length, "Invalid index.");
 
     const grid = [...player.grid];
@@ -418,10 +419,10 @@ export const swapPendingDraw = async (
     const replacedCard = grid[targetIndex];
     assertCondition(replacedCard !== null && replacedCard !== undefined, "Slot is empty.");
 
-    grid[targetIndex] = player.pendingDraw as number;
+    grid[targetIndex] = player.pendingDraw as Card;
     revealed[targetIndex] = true;
 
-    const discard = [...game.discard, replacedCard as number];
+    const discard = [...game.discard, replacedCard as Card];
     const cleared = clearColumnIfMatched(grid, revealed, targetIndex);
 
     const updatedPlayer: PlayerDoc = {
@@ -501,7 +502,7 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
     const playerSnap = await transaction.get(playerRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
-    assertCondition(typeof player.pendingDraw === "number", "No pending draw to discard.");
+    assertCondition(player.pendingDraw != null, "No pending draw to discard.");
 
     const discard = [...game.discard, player.pendingDraw];
 
@@ -624,7 +625,8 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     );
     assertCondition(allPlayersReady, "All players must be ready to start the next round.");
 
-    const shuffledDeck = shuffleDeck(createSkyjoDeck());
+    const spikeMode = Boolean(game.spikeMode);
+    let shuffledDeck: Card[] = shuffleDeck(createSkyjoDeck());
     const playerGrids = new Map<string, number[]>();
 
     playerOrder.forEach((targetPlayerId) => {
@@ -632,13 +634,17 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       for (let i = 0; i < 12; i += 1) {
         const card = shuffledDeck.pop();
         assertCondition(typeof card === "number", "Not enough cards to deal the next round.");
-        grid.push(card as number);
+        grid.push(card);
       }
       playerGrids.set(targetPlayerId, grid);
     });
 
+    if (spikeMode) {
+      shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards()]);
+    }
+
     const discardCard = shuffledDeck.pop();
-    assertCondition(typeof discardCard === "number", "Deck is empty after dealing.");
+    assertCondition(discardCard !== undefined, "Deck is empty after dealing.");
     const roundScores = game.roundScores ?? {};
     const highestRoundScore = Object.values(roundScores).reduce<number | null>(
       (highest, score) => (highest === null || score > highest ? score : highest),
@@ -655,6 +661,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       turnPhase: "choose-draw",
       deck: shuffledDeck,
       discard: [discardCard],
+      spikeMode,
       endingPlayerId: null,
       finalTurnRemainingIds: null,
       lastTurnPlayerId: null,

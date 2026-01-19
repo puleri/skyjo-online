@@ -26,6 +26,7 @@ import {
   swapPendingDraw,
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
+import { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type GameScreenProps = {
@@ -36,11 +37,12 @@ type GameMeta = {
   status: string;
   currentPlayerId: string | null;
   activePlayerOrder: string[];
-  deck: number[];
-  discard: number[];
+  deck: Card[];
+  discard: Card[];
   hostId: string | null;
   roundNumber: number;
   turnPhase: string;
+  spikeMode: boolean;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
@@ -53,9 +55,9 @@ type GamePlayer = {
   id: string;
   displayName: string;
   isReady: boolean;
-  grid?: Array<number | null>;
+  grid?: Array<Card | null>;
   revealed?: boolean[];
-  pendingDraw?: number | null;
+  pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
   totalScore?: number;
 };
@@ -104,7 +106,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
 
-  const getCardValueClass = (value: number) => {
+  const getCardValueClass = (value: Card | null | undefined) => {
+    if (typeof value !== "number") {
+      return "";
+    }
     if (value < 0) {
       return " card--value-negative";
     }
@@ -143,11 +148,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           activePlayerOrder: Array.isArray(data.activePlayerOrder)
             ? (data.activePlayerOrder as string[])
             : [],
-          deck: Array.isArray(data.deck) ? (data.deck as number[]) : [],
-          discard: Array.isArray(data.discard) ? (data.discard as number[]) : [],
+          deck: Array.isArray(data.deck) ? (data.deck as Card[]) : [],
+          discard: Array.isArray(data.discard) ? (data.discard as Card[]) : [],
           hostId: (data.hostId as string | null | undefined) ?? null,
           roundNumber: (data.roundNumber as number | undefined) ?? 1,
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
+          spikeMode: Boolean(data.spikeMode),
           endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
             ? (data.finalTurnRemainingIds as string[])
@@ -237,9 +243,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             id: playerDoc.id,
             displayName: (data.displayName as string | undefined) ?? "Anonymous player",
             isReady: Boolean(data.isReady),
-            grid: Array.isArray(data.grid) ? (data.grid as Array<number | null>) : undefined,
+            grid: Array.isArray(data.grid) ? (data.grid as Array<Card | null>) : undefined,
             revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
-            pendingDraw: (data.pendingDraw as number | null | undefined) ?? null,
+            pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
             pendingDrawSource:
               (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
             totalScore: (data.totalScore as number | undefined) ?? undefined,
@@ -351,6 +357,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   );
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
+  const hasCardValue = (value: Card | null | undefined): value is Card =>
+    value !== null && value !== undefined;
+  const hasDiscard = hasCardValue(topDiscard);
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
   const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
   const isRoundComplete = game?.status === "round-complete";
@@ -377,7 +386,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return Object.values(scores).some((score) => score <= -5);
   }, [game?.roundScores, isRoundComplete]);
   const selectedPlayer = useMemo(
-    () => orderedPlayers.find((player) => typeof player.pendingDraw === "number") ?? null,
+    () => orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
     [orderedPlayers]
   );
   const selectedDiscardPlayer = useMemo(
@@ -387,8 +396,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         : null,
     [game?.selectedDiscardPlayerId, orderedPlayers]
   );
-  const discardSelectedCard =
-    selectedDiscardPlayer && typeof topDiscard === "number" ? topDiscard : null;
+  const discardSelectedCard = selectedDiscardPlayer && hasDiscard ? topDiscard : null;
   const selectedCardOwnerLabel = selectedPlayer
     ? selectedPlayer.id === uid
       ? "You drew this card"
@@ -416,18 +424,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isCurrentTurn &&
     isGameActive &&
     game?.turnPhase === "choose-draw" &&
-    typeof currentPlayer?.pendingDraw !== "number" &&
+    !hasCardValue(currentPlayer?.pendingDraw) &&
     !discardSelectionActive &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
     isGameActive &&
     game?.turnPhase === "choose-draw" &&
-    typeof currentPlayer?.pendingDraw !== "number" &&
+    !hasCardValue(currentPlayer?.pendingDraw) &&
     (game?.discard.length ?? 0) > 0;
-  const showDrawnCard = isCurrentTurn && typeof currentPlayer?.pendingDraw === "number";
-  const showSelectedCard =
-    typeof selectedPlayer?.pendingDraw === "number" || discardSelectedCard !== null;
+  const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
+  const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
   const isLocalFinalTurn =
@@ -1203,7 +1210,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
-            {typeof topDiscard === "number" ? (
+            {hasDiscard ? (
               <button
                 type="button"
                 className={`card card--discard-pile${getCardValueClass(topDiscard)}`}
@@ -1224,11 +1231,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div>
               {showSelectedCard ? (
                 <div
-                  className={`card card--discard-pile${
-                    typeof selectedCardValue === "number"
-                      ? getCardValueClass(selectedCardValue)
-                      : ""
-                  }`}
+                  className={`card card--discard-pile${getCardValueClass(selectedCardValue)}`}
                   aria-label="Selected card"
                 >
                   <span className="card__value">{selectedCardValue}</span>
@@ -1266,7 +1269,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
-            {typeof topDiscard === "number" ? (
+            {hasDiscard ? (
               <button
                 type="button"
                 className={`card card--discard-pile${getCardValueClass(topDiscard)}`}
@@ -1287,11 +1290,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <>
               {showSelectedCard ? (
                 <div
-                  className={`card card--discard-pile${
-                    typeof selectedCardValue === "number"
-                      ? getCardValueClass(selectedCardValue)
-                      : ""
-                  }`}
+                  className={`card card--discard-pile${getCardValueClass(selectedCardValue)}`}
                   aria-label="Selected card"
                 >
                   <span className="card__value">{selectedCardValue}</span>

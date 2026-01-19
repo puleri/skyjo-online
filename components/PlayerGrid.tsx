@@ -5,7 +5,7 @@ type PlayerGridProps = {
   size?: "main" | "mini";
   isActive?: boolean;
   isLocal?: boolean;
-  grid?: Array<number | null>;
+  grid?: Array<number | string | null>;
   revealed?: boolean[];
   onCardSelect?: (index: number) => void;
   activeActionIndex?: number | null;
