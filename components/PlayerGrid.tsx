@@ -15,6 +15,7 @@ type PlayerGridProps = {
   onReplace?: (index: number) => void;
   onReveal?: (index: number) => void;
   onCancel?: () => void;
+  revealSelectionActive?: boolean;
   itemSelection?: {
     active: boolean;
     targets: Array<{ playerId: string; index: number }>;
@@ -80,6 +81,7 @@ export default function PlayerGrid({
   onReplace,
   onReveal,
   onCancel,
+  revealSelectionActive = false,
   itemSelection,
 }: PlayerGridProps) {
   const cards = grid && grid.length === 12 ? grid : placeholderCards;
@@ -88,6 +90,7 @@ export default function PlayerGrid({
       ? revealed
       : Array.from({ length: cards.length }, () => false);
   const isSelectable = typeof onCardSelect === "function";
+  const isRevealSelectionActive = Boolean(revealSelectionActive) && isSelectable;
   const isItemSelectionActive =
     Boolean(itemSelection?.active) && typeof itemSelection?.onSelect === "function";
   const hasRealGrid = Boolean(grid && grid.length === 12);
@@ -120,6 +123,12 @@ export default function PlayerGrid({
             hasRealGrid &&
             value !== null &&
             value !== undefined;
+          const isRevealSelectable =
+            isRevealSelectionActive &&
+            hasRealGrid &&
+            !isRevealed &&
+            value !== null &&
+            value !== undefined;
           const targetOrderIndex = itemSelection?.targets.findIndex(
             (target) => target.playerId === playerId && target.index === index
           );
@@ -131,6 +140,7 @@ export default function PlayerGrid({
                 isActive ? " player-grid__card--active player-grid__card--menu-open" : ""
               }${isItemSelectable ? " player-grid__card--item-selectable" : ""}${
                 isTargetSelected ? " player-grid__card--item-selected" : ""
+              }${isRevealSelectable ? " player-grid__card--reveal-selectable" : ""
               }`}
             >
               {isSelectable || isItemSelectable ? (
@@ -147,7 +157,9 @@ export default function PlayerGrid({
                       onCardSelect(index);
                     }
                   }}
-                  disabled={!isItemSelectable && !isSelectable}
+                  disabled={
+                    !isItemSelectable && (!isSelectable || (isRevealSelectionActive && isRevealed))
+                  }
                 >
                   <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
                   {isItemSelectable ? (

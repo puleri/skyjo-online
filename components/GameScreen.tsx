@@ -1709,6 +1709,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
                     onReveal={isLocalPlayer && showDrawActions ? handleReveal : undefined}
                     onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
+                    revealSelectionActive={isLocalPlayer && isItemRevealPending}
                     itemSelection={
                       isCurrentTurn && itemSelectionActive
                         ? {
