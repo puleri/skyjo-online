@@ -83,6 +83,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const darkModeStorageKey = "skyjo-dark-mode";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
+  const itemRevealTipMessage = "Select an unrevealed card to reveal.";
   const firebaseReady = isFirebaseConfigured;
   const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
@@ -115,6 +116,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
+  const [pendingItemReveal, setPendingItemReveal] = useState(false);
 
   const getCardValueClass = (value: Card | null | undefined) => {
     if (typeof value !== "number") {
@@ -455,6 +457,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isPendingItem = isItemCard(pendingDrawnCard);
   const isResolvingItem =
     isCurrentTurn && isGameActive && game?.turnPhase === "resolve-item" && isPendingItem;
+  const isItemRevealPending =
+    pendingItemReveal && isCurrentTurn && isGameActive && game?.turnPhase === "resolve";
   const discardSelectionActive =
     Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
@@ -475,7 +479,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const discardCardLabel = getCardLabel(topDiscard);
-  const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive) && !isResolvingItem;
+  const canSelectGridCard =
+    isGameActive &&
+    (showDrawnCard || discardSelectionActive || isItemRevealPending) &&
+    !isResolvingItem;
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
   const pendingItem = isResolvingItem && isItemCard(pendingDrawnCard) ? pendingDrawnCard : null;
   const itemCode = pendingItem?.code ?? null;
@@ -567,6 +574,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setToastMessage(null);
     }
   }, [drawTipMessage, discardTipMessage, showFirstTimeTips, toastMessage]);
+
+  useEffect(() => {
+    if (pendingItemReveal) {
+      setToastMessage(itemRevealTipMessage);
+      return;
+    }
+    if (toastMessage === itemRevealTipMessage) {
+      setToastMessage(null);
+    }
+  }, [itemRevealTipMessage, pendingItemReveal, toastMessage]);
+
+  useEffect(() => {
+    if (!pendingItemReveal) {
+      return;
+    }
+    if (!isCurrentTurn || !isGameActive || game?.turnPhase !== "resolve") {
+      setPendingItemReveal(false);
+    }
+  }, [game?.turnPhase, isCurrentTurn, isGameActive, pendingItemReveal]);
 
   useEffect(() => {
     const element = gamePilesRef.current;
@@ -824,6 +850,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!canSelectGridCard) {
       return;
     }
+    if (isItemRevealPending) {
+      void handleRevealAfterItemDiscard(index);
+      return;
+    }
     if (discardSelectionActive) {
       void handleDrawFromDiscard(index);
       return;
@@ -911,6 +941,34 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     try {
       await discardPendingDraw(gameId, uid);
       await revealAfterDiscard(gameId, uid, index);
+      setActiveActionIndex(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
+  };
+
+  const handleRevealAfterItemDiscard = async (index: number) => {
+    if (!uid) {
+      setError("Sign in to reveal a card.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (!isItemRevealPending) {
+      return;
+    }
+    if (currentPlayer?.revealed?.[index]) {
+      setError("Choose an unrevealed card to reveal.");
+      return;
+    }
+
+    setError(null);
+    try {
+      await revealAfterDiscard(gameId, uid, index);
+      setPendingItemReveal(false);
       setActiveActionIndex(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
@@ -1018,6 +1076,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     try {
       await discardItemForReveal(gameId, uid);
       handleResetItemSelection();
+      setPendingItemReveal(true);
+      setActiveActionIndex(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
