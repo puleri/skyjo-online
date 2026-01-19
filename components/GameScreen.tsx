@@ -26,7 +26,7 @@ import {
   swapPendingDraw,
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
-import { Card } from "../lib/game/deck";
+import type { Card, ItemCard } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type GameScreenProps = {
@@ -126,6 +126,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return " card--value-high";
     }
     return " card--value-max";
+  };
+
+  const isItemCard = (value: Card | null | undefined): value is ItemCard =>
+    Boolean(value) && typeof value === "object" && value.kind === "item";
+
+  const getCardLabel = (value: Card | null | undefined) => {
+    if (typeof value === "number") {
+      return value;
+    }
+    if (isItemCard(value)) {
+      return value.code;
+    }
+    return "—";
   };
 
   useEffect(() => {
@@ -436,6 +449,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
+  const selectedCardLabel = getCardLabel(selectedCardValue);
+  const discardCardLabel = getCardLabel(topDiscard);
   const canSelectGridCard = isGameActive && (showDrawnCard || discardSelectionActive);
   const isLocalFinalTurn =
     uid !== null &&
@@ -1218,7 +1233,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
               >
-                <span className="card__value">{topDiscard}</span>
+                <span className="card__value">{discardCardLabel}</span>
               </button>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
@@ -1234,7 +1249,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   className={`card card--discard-pile${getCardValueClass(selectedCardValue)}`}
                   aria-label="Selected card"
                 >
-                  <span className="card__value">{selectedCardValue}</span>
+                  <span className="card__value">{selectedCardLabel}</span>
                 </div>
               ) : (
                 <div className="card card--empty-selected" aria-label="No selected card">
@@ -1277,7 +1292,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
               >
-                <span className="card__value">{topDiscard}</span>
+                <span className="card__value">{discardCardLabel}</span>
               </button>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
@@ -1293,7 +1308,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   className={`card card--discard-pile${getCardValueClass(selectedCardValue)}`}
                   aria-label="Selected card"
                 >
-                  <span className="card__value">{selectedCardValue}</span>
+                  <span className="card__value">{selectedCardLabel}</span>
                 </div>
               ) : (
                 <div className="card card--empty-selected" aria-label="No selected card">

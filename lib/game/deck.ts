@@ -1,4 +1,5 @@
-export type ItemCard = "A" | "B" | "C" | "D" | "E";
+export type ItemCode = "A" | "B" | "C" | "D" | "E";
+export type ItemCard = { kind: "item"; code: ItemCode };
 export type Card = number | ItemCard;
 
 const addCopies = (deck: number[], value: number, count: number) => {
@@ -18,7 +19,8 @@ export const createSkyjoDeck = () => {
   return deck;
 };
 
-export const createItemCards = (): ItemCard[] => ["A", "B", "C", "D", "E"];
+export const createItemCards = (): ItemCard[] =>
+  ["A", "B", "C", "D", "E"].map((code) => ({ kind: "item", code }));
 
 export const shuffleDeck = <T>(cards: T[], rng: () => number = Math.random) => {
   const deck = [...cards];

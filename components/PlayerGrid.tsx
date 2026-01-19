@@ -1,11 +1,13 @@
 "use client";
 
+import type { Card } from "../lib/game/deck";
+
 type PlayerGridProps = {
   label: string;
   size?: "main" | "mini";
   isActive?: boolean;
   isLocal?: boolean;
-  grid?: Array<number | string | null>;
+  grid?: Array<Card | null>;
   revealed?: boolean[];
   onCardSelect?: (index: number) => void;
   activeActionIndex?: number | null;
@@ -16,7 +18,7 @@ type PlayerGridProps = {
 
 const placeholderCards = Array.from({ length: 12 }, (_, index) => index + 1);
 
-const getCardValueClass = (value: number | null | undefined) => {
+const getCardValueClass = (value: Card | null | undefined) => {
   if (typeof value !== "number") {
     return "";
   }
@@ -37,6 +39,16 @@ const getCardValueClass = (value: number | null | undefined) => {
       return " card--value-high";
     }
     return " card--value-max";
+};
+
+const getCardLabel = (value: Card | null | undefined) => {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    return value.code;
+  }
+  return "—";
 };
 
 export default function PlayerGrid({
@@ -92,11 +104,11 @@ export default function PlayerGrid({
                   aria-haspopup={showActionMenu ? "menu" : undefined}
                   onClick={() => onCardSelect(index)}
                 >
-                  <span className="card__value">{isRevealed ? value ?? "—" : ""}</span>
+                  <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
                 </button>
               ) : (
                 <div className={cardClassName}>
-                  <span className="card__value">{isRevealed ? value ?? "—" : ""}</span>
+                  <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
                 </div>
               )}
               {showActionMenu && activeActionIndex === index ? (
