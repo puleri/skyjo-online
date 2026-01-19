@@ -1,6 +1,6 @@
 'use client';
 import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import UsernameForm from "./UsernameForm";
@@ -35,6 +35,12 @@ export default function LobbyScreen() {
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
   const firebaseReady = isFirebaseConfigured;
+  const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const settingsCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const leaderboardTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const leaderboardCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const wasSettingsOpen = useRef(false);
+  const wasLeaderboardOpen = useRef(false);
 
   useEffect(() => {
     const storedTipsPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
@@ -93,6 +99,50 @@ export default function LobbyScreen() {
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    if (isSettingsOpen) {
+      settingsCloseButtonRef.current?.focus();
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setIsSettingsOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      wasSettingsOpen.current = true;
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+
+    if (wasSettingsOpen.current) {
+      settingsTriggerRef.current?.focus();
+    }
+    wasSettingsOpen.current = false;
+  }, [isSettingsOpen]);
+
+  useEffect(() => {
+    if (isLeaderboardOpen) {
+      leaderboardCloseButtonRef.current?.focus();
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setIsLeaderboardOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      wasLeaderboardOpen.current = true;
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+
+    if (wasLeaderboardOpen.current) {
+      leaderboardTriggerRef.current?.focus();
+    }
+    wasLeaderboardOpen.current = false;
+  }, [isLeaderboardOpen]);
+
   return (
     <main>
       <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
@@ -107,6 +157,7 @@ export default function LobbyScreen() {
               className="menu-action-button"
               aria-label="Open leaderboard"
               aria-haspopup="dialog"
+              ref={leaderboardTriggerRef}
               onClick={() => setIsLeaderboardOpen(true)}
             >
               <img className="settings-icon" src="/leaderboard-icon.png" alt="Leaderboard icon" />
@@ -115,6 +166,7 @@ export default function LobbyScreen() {
               type="button"
               className="menu-action-button"
               aria-label="Open game settings"
+              ref={settingsTriggerRef}
               onClick={() => setIsSettingsOpen(true)}
             >
               <img className="settings-icon" src="/settings-icon.png" alt="Settings icon" />
@@ -179,7 +231,12 @@ export default function LobbyScreen() {
                 <p className="modal__option-help">Switch the interface to the dark theme.</p>
               </div>
               <div className="modal__actions">
-                <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  ref={settingsCloseButtonRef}
+                  onClick={() => setIsSettingsOpen(false)}
+                >
                   Close
                 </button>
               </div>
@@ -239,6 +296,7 @@ export default function LobbyScreen() {
                 <button
                   className="form-button-full-width"
                   type="button"
+                  ref={leaderboardCloseButtonRef}
                   onClick={() => setIsLeaderboardOpen(false)}
                 >
                   Close
