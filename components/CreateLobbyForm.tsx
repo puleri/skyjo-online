@@ -82,8 +82,10 @@ export default function CreateLobbyForm() {
         />
       </div>
       <div className="label-input-grid">
-        <span className="form-card-font">Spike mode</span>
-        <div className="remaining-grid spike-toggle">
+        <div className="">
+          <img className="spike-icon" src="/spike-icon.png"/>
+        </div>
+        <div className="remaining-grid label-input-grid">
           <label className="ios-toggle">
             <input
               type="checkbox"
@@ -95,9 +97,6 @@ export default function CreateLobbyForm() {
             <span className="ios-toggle__track" aria-hidden="true" />
             <span className="ios-toggle__thumb" aria-hidden="true" />
           </label>
-          <p className="form-helper-text" id="spike-mode-helper">
-            Adds spicy twists to the rules and scoring for this lobby.
-          </p>
         </div>
       </div>
       <button
