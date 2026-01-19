@@ -491,10 +491,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     itemTargets[0].playerId !== itemTargets[1].playerId;
   const showDrawActions = showDrawnCard && !isPendingItem;
   const itemSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
-  const canDiscardItem = isResolvingItem && currentPlayer?.pendingDrawSource === "deck";
+  const canDiscardItem =
+    isResolvingItem && itemCode === "B" && currentPlayer?.pendingDrawSource === "deck";
   const itemDescriptions: Record<string, string> = {
     A: "Reroll any card in play.",
-    B: "Shuffle your grid.",
+    B: "Shuffle your grid (or discard to reveal if drawn from the deck).",
     C: "Set any card to a wild value.",
     D: "Swap any two cards.",
     E: "Swap any two cards (confirm if across players).",

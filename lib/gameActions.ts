@@ -626,6 +626,7 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
     assertCondition(isItemCard(player.pendingDraw), "No item to discard.");
+    assertCondition(player.pendingDraw.code === "B", "Only item B can be discarded.");
     assertCondition(player.pendingDrawSource === "deck", "Discarded items must be used.");
 
     const discard = [...game.discard, player.pendingDraw];
