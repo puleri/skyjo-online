@@ -32,6 +32,7 @@ export default function LobbyList() {
   const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
   const [lobbyPlayerIds, setLobbyPlayerIds] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const { uid, error: authError } = useAnonymousAuth();
@@ -54,9 +55,11 @@ export default function LobbyList() {
           players: doc.data().players ?? 0,
         }));
         setLobbies(nextLobbies);
+        setIsLoading(false);
       },
       (err) => {
         setError(err.message);
+        setIsLoading(false);
       }
     );
 
@@ -211,6 +214,10 @@ export default function LobbyList() {
     return <p className="notice">Firestore error: {error}</p>;
   }
 
+  if (isLoading) {
+    return <p>Loading lobbies…</p>;
+  }
+
   if (!lobbies.length) {
     return <p>No lobbies yet. Create one above.</p>;
   }
@@ -264,7 +271,7 @@ export default function LobbyList() {
                   type="button"
                   className={buttonClassName}
                   onClick={() => handleJoin(lobby.id)}
-                  disabled={!uid || joiningLobbyId === lobby.id}
+                  disabled={isLoading || !uid || joiningLobbyId === lobby.id}
                 >
                   {buttonLabel}
                 </button>
@@ -273,13 +280,13 @@ export default function LobbyList() {
           );
         })}
       </ul>
-      {totalPages > 1 ? (
+      {!isLoading && totalPages > 1 ? (
         <div className="lobby-pagination">
           <button
             type="button"
             className="pagination-button"
             onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
-            disabled={pageIndex === 0}
+            disabled={isLoading || pageIndex === 0}
           >
             Previous
           </button>
@@ -290,7 +297,7 @@ export default function LobbyList() {
             type="button"
             className="pagination-button"
             onClick={() => setPageIndex((current) => Math.min(current + 1, totalPages - 1))}
-            disabled={pageIndex + 1 >= totalPages}
+            disabled={isLoading || pageIndex + 1 >= totalPages}
           >
             Next
           </button>
