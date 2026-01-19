@@ -21,6 +21,7 @@ type GameDoc = {
   currentPlayerId: string;
   deck: Card[];
   discard: Card[];
+  graveyard?: Card[];
   hostId?: string | null;
   roundNumber?: number;
   turnPhase: TurnPhase;
@@ -626,8 +627,6 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerDoc;
     assertCondition(isItemCard(player.pendingDraw), "No item to discard.");
-    assertCondition(player.pendingDraw.code === "B", "Only item B can be discarded.");
-    assertCondition(player.pendingDrawSource === "deck", "Discarded items must be used.");
 
     const discard = [...game.discard, player.pendingDraw];
 
@@ -806,7 +805,7 @@ export const useItemCard = async (
     });
     transaction.update(gameRef, {
       deck: nextDeck,
-      discard: [...game.discard, pendingItem],
+      graveyard: [...(game.graveyard ?? []), pendingItem],
       selectedDiscardPlayerId: null,
       lastTurnPlayerId: playerId,
       lastTurnAction,
@@ -985,6 +984,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       turnPhase: "choose-draw",
       deck: shuffledDeck,
       discard: [discardCard],
+      graveyard: [],
       spikeMode,
       endingPlayerId: null,
       finalTurnRemainingIds: null,
