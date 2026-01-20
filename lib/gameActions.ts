@@ -33,6 +33,7 @@ type GameDoc = {
   roundScores?: Record<string, number>;
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
+  skipNextTurnPlayerIds?: string[] | null;
 };
 
 type PlayerDoc = {
@@ -176,7 +177,7 @@ type ItemUsage =
   | { code: "A"; target: ItemTarget }
   | { code: "B" }
   | { code: "C"; target: ItemTarget; value: number }
-  | { code: "D"; first: ItemTarget; second: ItemTarget }
+  | { code: "D"; target: ItemTarget }
   | { code: "E"; first: ItemTarget; second: ItemTarget };
 
 const describeItemAction = (usage: ItemUsage) => {
@@ -188,7 +189,7 @@ const describeItemAction = (usage: ItemUsage) => {
     case "C":
       return `used item C to set a card to ${usage.value}.`;
     case "D":
-      return "used item D to swap two cards.";
+      return "used item D to freeze a player.";
     case "E":
       return "used item E to swap two cards.";
     default:
@@ -211,6 +212,7 @@ const resolveTurn = (
   const activeOrder = game.activePlayerOrder;
   let endingPlayerId = game.endingPlayerId ?? null;
   let finalTurnRemainingIds = game.finalTurnRemainingIds ?? null;
+  const skipNextTurnPlayerIds = new Set(game.skipNextTurnPlayerIds ?? []);
 
   if (!endingPlayerId && allCardsRevealed(updatedPlayer.revealed)) {
     endingPlayerId = updatedPlayerId;
@@ -231,6 +233,7 @@ const resolveTurn = (
         endingPlayerId,
         finalTurnRemainingIds: [],
         turnPhase: "choose-draw",
+        skipNextTurnPlayerIds: [],
       },
       roundComplete,
       endingPlayerId,
@@ -238,7 +241,13 @@ const resolveTurn = (
     };
   }
 
-  const nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
+  let nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
+  let safetyCounter = 0;
+  while (skipNextTurnPlayerIds.has(nextPlayerId) && safetyCounter < activeOrder.length) {
+    skipNextTurnPlayerIds.delete(nextPlayerId);
+    nextPlayerId = getNextPlayerId(activeOrder, nextPlayerId);
+    safetyCounter += 1;
+  }
   let refreshedDeck: Card[] | null = null;
   if (game.deck.length === 0) {
     const discardPile = game.discard;
@@ -254,6 +263,7 @@ const resolveTurn = (
       endingPlayerId,
       finalTurnRemainingIds,
       turnPhase: "choose-draw",
+      skipNextTurnPlayerIds: Array.from(skipNextTurnPlayerIds),
       ...(refreshedDeck ? { deck: refreshedDeck } : {}),
     },
     roundComplete,
@@ -660,6 +670,7 @@ export const useItemCard = async (
     const playersToUpdate = new Map<string, PlayerDoc>([[playerId, player]]);
     const affectedPlayerIds = new Set<string>();
     let nextDeck = [...game.deck];
+    let nextSkipNextTurnPlayerIds = new Set(game.skipNextTurnPlayerIds ?? []);
 
     const loadPlayer = async (targetPlayerId: string) => {
       assertCondition(
@@ -719,6 +730,10 @@ export const useItemCard = async (
         break;
       }
       case "D":
+        const frozenPlayer = await loadPlayer(usage.target.playerId);
+        validateGridIndex(frozenPlayer, usage.target.index);
+        nextSkipNextTurnPlayerIds.add(usage.target.playerId);
+        break;
       case "E": {
         const firstPlayer = await loadPlayer(usage.first.playerId);
         const secondPlayer = await loadPlayer(usage.second.playerId);
@@ -766,7 +781,11 @@ export const useItemCard = async (
 
     const updatedCurrentPlayer = updatedPlayers[playerId] ?? player;
     const lastTurnAction = describeItemAction(usage);
-    const resolution = resolveTurn(game, playerId, updatedCurrentPlayer);
+    const resolution = resolveTurn(
+      { ...game, skipNextTurnPlayerIds: Array.from(nextSkipNextTurnPlayerIds) },
+      playerId,
+      updatedCurrentPlayer
+    );
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
@@ -990,6 +1009,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       finalTurnRemainingIds: null,
       lastTurnPlayerId: null,
       lastTurnAction: null,
+      skipNextTurnPlayerIds: [],
       roundScores: deleteField(),
     });
 
