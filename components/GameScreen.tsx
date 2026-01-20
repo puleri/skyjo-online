@@ -487,13 +487,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const pendingItem = isResolvingItem && isItemCard(pendingDrawnCard) ? pendingDrawnCard : null;
   const itemCode = pendingItem?.code ?? null;
   const itemTargetsNeeded =
-    itemCode === "B" ? 0 : itemCode === "D" || itemCode === "E" ? 2 : itemCode ? 1 : 0;
+    itemCode === "B" ? 0 : itemCode === "E" ? 2 : itemCode ? 1 : 0;
   const itemRequiresValue = itemCode === "C";
   const itemTargetsReady = itemTargets.length === itemTargetsNeeded;
   const itemValueReady = !itemRequiresValue || itemValue !== null;
   const canUseItem = Boolean(itemCode && itemTargetsReady && itemValueReady);
   const isCrossPlayerSwap =
-    (itemCode === "D" || itemCode === "E") &&
+    itemCode === "E" &&
     itemTargets.length === 2 &&
     itemTargets[0].playerId !== itemTargets[1].playerId;
   const showDrawActions = showDrawnCard && !isPendingItem;
@@ -503,7 +503,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     A: "Pick any card on ANY board. Randomize it.",
     B: "Shuffle your grid.",
     C: "WILD CARD! Set any card to a ANY value.",
-    D: "Swap any two cards.",
+    D: "Freeze a player so they skip their next turn.",
     E: "Swap any two cards (confirm if across players).",
   };
   const isLocalFinalTurn =
@@ -1047,9 +1047,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           target: itemTargets[0],
           value: itemValue ?? 0,
         });
-      } else if (itemCode === "D" || itemCode === "E") {
+      } else if (itemCode === "D") {
         await useItemCard(gameId, uid, {
-          code: itemCode,
+          code: "D",
+          target: itemTargets[0],
+        });
+      } else if (itemCode === "E") {
+        await useItemCard(gameId, uid, {
+          code: "E",
           first: itemTargets[0],
           second: itemTargets[1],
         });
