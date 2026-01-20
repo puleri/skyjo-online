@@ -1231,6 +1231,10 @@ button.card:disabled {
   pointer-events: none;
 }
 
+.card__target-overlay:hover {
+  opacity: 0;
+}
+
 label {
   font-weight: 600;
 }

@@ -500,9 +500,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
   const canDiscardItem = isResolvingItem && Boolean(itemCode);
   const itemDescriptions: Record<string, string> = {
-    A: "Reroll any card in play.",
+    A: "Pick any card on ANY board. Randomize it.",
     B: "Shuffle your grid.",
-    C: "Set any card to a wild value.",
+    C: "WILD CARD! Set any card to a ANY value.",
     D: "Swap any two cards.",
     E: "Swap any two cards (confirm if across players).",
   };
