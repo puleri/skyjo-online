@@ -9,6 +9,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  Timestamp,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
@@ -51,6 +52,7 @@ type GameMeta = {
   roundScores?: Record<string, number>;
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
+  lastTurnActionAt?: Timestamp | null;
 };
 
 type GamePlayer = {
@@ -246,6 +248,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
           lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
           lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
+          lastTurnActionAt: (data.lastTurnActionAt as Timestamp | null | undefined) ?? null,
         });
       },
       (err) => {
@@ -291,7 +294,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     const action = game.lastTurnAction ?? null;
-    const actionKey = `${game.lastTurnPlayerId ?? "none"}:${action ?? "none"}`;
+    const actionKey = String(
+      game.lastTurnActionAt?.toMillis?.() ?? `${game.lastTurnPlayerId ?? "none"}:${action ?? "none"}`
+    );
     if (!hasInitializedActionSoundRef.current) {
       hasInitializedActionSoundRef.current = true;
       lastTurnActionRef.current = actionKey;
