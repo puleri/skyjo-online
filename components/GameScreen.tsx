@@ -115,6 +115,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
+  const podiumLabels = ["1st", "2nd", "3rd"];
   const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
@@ -1347,13 +1348,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <p>Lowest 10 scores of all time.</p>
             {leaderboardEntries.length ? (
               <ol className="leaderboard-list">
-                {leaderboardEntries.map((entry, index) => (
-                  <li key={entry.id} className="leaderboard-list__item">
-                    <span className="leaderboard-list__rank">{index + 1}.</span>
-                    <span className="leaderboard-list__name">{entry.displayName}</span>
-                    <span className="leaderboard-list__score">{entry.score}</span>
-                  </li>
-                ))}
+                {leaderboardEntries.map((entry, index) => {
+                  const isPodium = index < podiumLabels.length;
+
+                  return (
+                    <li key={entry.id} className="leaderboard-list__item">
+                      {isPodium ? (
+                        <span
+                          className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
+                          aria-label={`${podiumLabels[index]} place`}
+                        >
+                          {podiumLabels[index]}
+                        </span>
+                      ) : (
+                        <span className="leaderboard-list__rank">{index + 1}.</span>
+                      )}
+                      <span className="leaderboard-list__name">{entry.displayName}</span>
+                      <span className="leaderboard-list__score">{entry.score}</span>
+                    </li>
+                  );
+                })}
               </ol>
             ) : (
               <p>No scores yet. Finish a game to claim a spot!</p>
