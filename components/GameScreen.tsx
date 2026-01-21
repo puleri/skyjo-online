@@ -1587,7 +1587,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         </section>
       ) : null}
 
-      {showDockedPiles ? (
+      {showDockedPiles && game?.status !== "round-complete" ? (
         <div className="game-piles game-piles--dock">
           <div className="game-pile">
             <h6>Deck</h6>
