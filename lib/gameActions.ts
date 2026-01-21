@@ -1,4 +1,4 @@
-import { deleteField, doc, runTransaction } from "firebase/firestore";
+import { deleteField, doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import {
   Card,
@@ -33,6 +33,7 @@ type GameDoc = {
   roundScores?: Record<string, number>;
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
+  lastTurnActionAt?: unknown;
   skipNextTurnPlayerIds?: string[] | null;
 };
 
@@ -432,6 +433,7 @@ export const drawFromDiscard = async (
       selectedDiscardPlayerId: null,
       lastTurnPlayerId: playerId,
       lastTurnAction,
+      lastTurnActionAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
@@ -591,6 +593,7 @@ export const swapPendingDraw = async (
       discard,
       lastTurnPlayerId: playerId,
       lastTurnAction,
+      lastTurnActionAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
@@ -837,6 +840,7 @@ export const useItemCard = async (
       selectedDiscardPlayerId: null,
       lastTurnPlayerId: playerId,
       lastTurnAction,
+      lastTurnActionAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
@@ -935,6 +939,7 @@ export const revealAfterDiscard = async (
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
       lastTurnAction,
+      lastTurnActionAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),

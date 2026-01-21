@@ -253,6 +253,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           spikeMode,
           lastTurnPlayerId: null,
           lastTurnAction: null,
+          lastTurnActionAt: null,
           createdAt: serverTimestamp(),
         });
 
