@@ -19,8 +19,10 @@ export const createSkyjoDeck = () => {
   return deck;
 };
 
-export const createItemCards = (): ItemCard[] =>
-  ["A", "B", "C", "D", "E"].map((code) => ({ kind: "item", code }));
+export const createItemCards = (): ItemCard[] => {
+  const codes: ItemCode[] = ["A", "B", "C", "D", "E"];
+  return codes.map((code) => ({ kind: "item", code }));
+};
 
 export const shuffleDeck = <T>(cards: T[], rng: () => number = Math.random) => {
   const deck = [...cards];
