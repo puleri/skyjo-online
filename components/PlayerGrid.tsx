@@ -26,7 +26,11 @@ type PlayerGridProps = {
 const placeholderCards = Array.from({ length: 12 }, (_, index) => index + 1);
 
 const isItemCard = (value: Card | null | undefined): value is ItemCard =>
-  Boolean(value) && typeof value === "object" && value.kind === "item";
+  value !== null &&
+  value !== undefined &&
+  typeof value === "object" &&
+  "kind" in value &&
+  value.kind === "item";
 
 const getCardValueClass = (value: Card | null | undefined) => {
   if (typeof value !== "number") {
