@@ -143,7 +143,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const isItemCard = (value: Card | null | undefined): value is ItemCard =>
-    Boolean(value) && typeof value === "object" && value.kind === "item";
+    value != null && typeof value === "object" && value.kind === "item";
 
   const getCardLabel = (value: Card | null | undefined) => {
     if (typeof value === "number") {
