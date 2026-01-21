@@ -123,7 +123,7 @@ const calculateScore = (grid: Array<Card | null>) =>
   grid.reduce<number>((total, value) => total + (typeof value === "number" ? value : 0), 0);
 
 const isItemCard = (card: Card | null | undefined): card is ItemCard =>
-  Boolean(card) && typeof card === "object" && card.kind === "item";
+  card != null && typeof card === "object" && "kind" in card && card.kind === "item";
 
 const drawRandomNumberCard = (deck: Card[]) => {
   const numberIndices = deck
