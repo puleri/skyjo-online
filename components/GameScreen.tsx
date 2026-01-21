@@ -169,7 +169,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (value === -2) {
       return "/sounds/card-draw/minus-two.wav";
     }
-    if (value >= 0 && value <= 9) {
+    if (value === 0) {
+      return "/sounds/card-draw/zero.wav";
+    }
+    if (value >= 1 && value <= 9) {
       return "/sounds/card-draw/one-nine.wav";
     }
     if (value === 10 || value === 11) {
