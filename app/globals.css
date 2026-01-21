@@ -812,7 +812,6 @@ button.card:disabled {
 }
 
 .card--back {
-  border-color: #2c3742;
   color: var(--color-on-dark);
   background-image: var(--card-back-image-wide);
   background-size: cover;
@@ -2027,8 +2026,8 @@ small {
     width: 100%;
     max-width: 100%;
     height: 33vw;
-    border: 2px solid var(--color-card-edge);
     aspect-ratio: 4 / 6;
+    border-radius: 8px;
   }
 
   .game-piles--dock .card,
