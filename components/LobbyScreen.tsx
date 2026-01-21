@@ -143,6 +143,8 @@ export default function LobbyScreen() {
     wasLeaderboardOpen.current = false;
   }, [isLeaderboardOpen]);
 
+  const podiumLabels = ["1st", "2nd", "3rd"];
+
   return (
     <main>
       <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
@@ -281,13 +283,26 @@ export default function LobbyScreen() {
                 <p>Firestore error: {leaderboardError}</p>
               ) : leaderboardEntries.length ? (
                 <ol className="leaderboard-list">
-                  {leaderboardEntries.map((entry, index) => (
-                    <li key={entry.id} className="leaderboard-list__item">
-                      <span className="leaderboard-list__rank">{index + 1}.</span>
-                      <span className="leaderboard-list__name">{entry.displayName}</span>
-                      <span className="leaderboard-list__score">{entry.score}</span>
-                    </li>
-                  ))}
+                  {leaderboardEntries.map((entry, index) => {
+                    const isPodium = index < podiumLabels.length;
+
+                    return (
+                      <li key={entry.id} className="leaderboard-list__item">
+                        {isPodium ? (
+                          <span
+                            className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
+                            aria-label={`${podiumLabels[index]} place`}
+                          >
+                            {podiumLabels[index]}
+                          </span>
+                        ) : (
+                          <span className="leaderboard-list__rank">{index + 1}.</span>
+                        )}
+                        <span className="leaderboard-list__name">{entry.displayName}</span>
+                        <span className="leaderboard-list__score">{entry.score}</span>
+                      </li>
+                    );
+                  })}
                 </ol>
               ) : (
                 <p className="tiny-bold">No scores yet. Finish a game to claim a spot!</p>
