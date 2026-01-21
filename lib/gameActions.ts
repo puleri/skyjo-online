@@ -164,7 +164,9 @@ const validateCardSlot = (player: PlayerDoc, targetIndex: number) => {
 };
 
 const assertItemCodeMatch = (pendingCard: Card | null | undefined, code: ItemCode) => {
-  assertCondition(isItemCard(pendingCard), "Pending draw is not an item.");
+  if (!pendingCard || !isItemCard(pendingCard)) {
+    throw new Error("Pending draw is not an item.");
+  }
   assertCondition(pendingCard.code === code, "Item card mismatch.");
 };
 
