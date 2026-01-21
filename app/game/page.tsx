@@ -12,9 +12,9 @@ export default function GamePage() {
       </header>
 
       <section className="game-screen__players">
-        <PlayerGrid label="Avery" size="mini" />
-        <PlayerGrid label="Jordan" size="mini" />
-        <PlayerGrid label="Casey" size="mini" />
+        <PlayerGrid playerId="avery" label="Avery" size="mini" />
+        <PlayerGrid playerId="jordan" label="Jordan" size="mini" />
+        <PlayerGrid playerId="casey" label="Casey" size="mini" />
       </section>
 
       <section className="game-screen__table">
@@ -22,7 +22,7 @@ export default function GamePage() {
           <span>Deck</span>
           <div className="card-back-image" role="img" aria-label="Skyjo card back" />
         </div>
-        <PlayerGrid label="You" size="main" />
+        <PlayerGrid playerId="you" label="You" size="main" />
         <div className="pile">
           <span>Discard</span>
           <div className="card card--value-negative">-1</div>
