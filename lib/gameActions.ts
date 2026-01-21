@@ -984,7 +984,12 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       const grid: number[] = [];
       for (let i = 0; i < 12; i += 1) {
         const card = shuffledDeck.pop();
-        assertCondition(typeof card === "number", "Not enough cards to deal the next round.");
+        if (card === undefined) {
+          throw new Error("Not enough cards to deal the next round.");
+        }
+        if (typeof card !== "number") {
+          throw new Error("Expected a number card while dealing the next round.");
+        }
         grid.push(card);
       }
       playerGrids.set(targetPlayerId, grid);
