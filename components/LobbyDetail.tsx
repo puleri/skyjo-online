@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { createItemCards, createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
+import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
@@ -213,7 +214,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         }
 
         const playerOrder = playerSnapshot.docs.map((playerDoc) => playerDoc.id);
-        let shuffledDeck = shuffleDeck(createSkyjoDeck());
+        let shuffledDeck: Card[] = shuffleDeck(createSkyjoDeck());
         const playerGrids = new Map<string, number[]>();
         playerOrder.forEach((playerId) => {
           const grid: number[] = [];
