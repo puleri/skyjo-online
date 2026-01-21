@@ -269,8 +269,8 @@ export default function LobbyScreen() {
             onClick={() => setIsLeaderboardOpen(false)}
           >
             <div className="modal" onClick={(event) => event.stopPropagation()}>
-              <h2 id="leaderboard-title">Leaderboard</h2>
-              <p>Lowest 10 scores of all time.</p>
+              <h3 id="leaderboard-title">Leaderboard</h3>
+              <p className="leaderboard-sub">Lowest 10 scores of all time.</p>
               {!firebaseReady ? (
                 <p>
                   Provide your Firebase environment variables to load leaderboard results.

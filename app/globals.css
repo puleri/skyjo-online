@@ -1398,11 +1398,10 @@ small {
   text-wrap: balance;
 }
 
-/* on mobile, sage-eyebrow-text */
 @media (max-width: 640px) {
   .sage-eyebrow-text {
-    font-size: 16px;
-    letter-spacing: 0.8em;
+    font-size: 14px;
+    letter-spacing: 0.6em;
   }
 }
 
@@ -1944,17 +1943,37 @@ small {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
+#leaderboard-title {
+  margin: 0;
+  font-weight: 900;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6em;
+  color: var(--color-sage-500); 
+}
+.leaderboard-sub {
+  margin-top: 0;
+  font-size: 14px;
+}
+
 .leaderboard-list__badge--1 {
-  background: #d4af37a9;
-  border: 1px solid #f9d985;
+background: #FAD044B7;
+background: linear-gradient(130deg, rgba(250, 208, 68, 1) 30%, rgba(255, 252, 214, 1) 50%, rgba(250, 208, 68, 1) 69%);  
+border: 1px solid #fff4d7;
 }
 
 .leaderboard-list__badge--2 {
-  background: #c0c0c0;
+background: #C0C0C0;
+background: linear-gradient(130deg, rgba(192, 192, 192, 1) 30%, rgba(247, 247, 247, 1) 50%, rgba(192, 192, 192, 1) 69%);
+border: 1px solid #e7e7e7;
+
 }
 
 .leaderboard-list__badge--3 {
-  background: #b76e79;
+background: #B76E79;
+background: linear-gradient(130deg, rgba(183, 110, 121, 1) 30%, rgba(255, 227, 234, 1) 50%, rgba(183, 110, 121, 1) 69%);
+border: 1px solid #ffedef;
+
 }
 
 .leaderboard-list__name {
@@ -1966,8 +1985,10 @@ small {
   font-weight: 700;
 }
 
-.leaderboard-list__item:nth-child(n + 4) .leaderboard-list__score {
-  font-size: 0.85rem;
+.leaderboard-list__item:nth-child(n + 4) {
+  font-size: 0.75rem;
+    padding: 6px 10px;
+
 }
 
 /* on mobile all the cards have no border */
