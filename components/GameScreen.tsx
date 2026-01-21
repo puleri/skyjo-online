@@ -291,17 +291,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     const action = game.lastTurnAction ?? null;
+    const actionKey = `${game.lastTurnPlayerId ?? "none"}:${action ?? "none"}`;
     if (!hasInitializedActionSoundRef.current) {
       hasInitializedActionSoundRef.current = true;
-      lastTurnActionRef.current = action;
+      lastTurnActionRef.current = actionKey;
       return;
     }
 
-    if (action && action !== lastTurnActionRef.current && shouldPlayRevealTradeSound(action)) {
+    if (
+      action &&
+      actionKey !== lastTurnActionRef.current &&
+      shouldPlayRevealTradeSound(action)
+    ) {
       playRevealTradeSound();
     }
 
-    lastTurnActionRef.current = action;
+    lastTurnActionRef.current = actionKey;
   }, [firebaseReady, game]);
 
   useEffect(() => {
