@@ -125,6 +125,10 @@ const calculateScore = (grid: Array<Card | null>) =>
 const isItemCard = (card: Card | null | undefined): card is ItemCard =>
   card != null && typeof card === "object" && "kind" in card && card.kind === "item";
 
+const assertNumberCard = (card: Card | null, message: string): asserts card is number => {
+  assertCondition(typeof card === "number", message);
+};
+
 const drawRandomNumberCard = (deck: Card[]) => {
   const numberIndices = deck
     .map((card, index) => (typeof card === "number" ? index : -1))
@@ -696,7 +700,7 @@ export const useItemCard = async (
         const targetPlayer = await loadPlayer(usage.target.playerId);
         validateCardSlot(targetPlayer, usage.target.index);
         const targetCard = targetPlayer.grid[usage.target.index];
-        assertCondition(typeof targetCard === "number", "Target card must be a number.");
+        assertNumberCard(targetCard, "Target card must be a number.");
 
         nextDeck = shuffleDeck([...nextDeck, targetCard]);
         const replacement = drawRandomNumberCard(nextDeck);
