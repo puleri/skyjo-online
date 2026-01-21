@@ -1561,7 +1561,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             ) : (
               <button
                 type="button"
-                className="form-button-full-width"
+                className="form-button-full-width mb-20"
                 onClick={handleReadyForNextRound}
               >
                 Ready up
