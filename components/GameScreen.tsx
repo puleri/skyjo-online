@@ -117,6 +117,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
+  const pendingDrawRef = useRef<Map<string, Card | null>>(new Map());
+  const hasInitializedDrawSoundRef = useRef(false);
 
   const getCardValueClass = (value: Card | null | undefined) => {
     if (typeof value !== "number") {
@@ -158,6 +160,34 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return ` card--item card--item-${value.code}`;
     }
     return getCardValueClass(value);
+  };
+
+  const getDrawSoundPath = (value: number) => {
+    if (value === -1) {
+      return "/sounds/card-draw/minus-one.wav";
+    }
+    if (value === -2) {
+      return "/sounds/card-draw/minus-two.wav";
+    }
+    if (value >= 0 && value <= 9) {
+      return "/sounds/card-draw/one-nine.wav";
+    }
+    if (value === 10 || value === 11) {
+      return "/sounds/card-draw/ten-eleven.wav";
+    }
+    if (value === 12) {
+      return "/sounds/card-draw/twelve.wav";
+    }
+    return null;
+  };
+
+  const playDrawSound = (value: number) => {
+    const soundPath = getDrawSoundPath(value);
+    if (!soundPath || typeof window === "undefined") {
+      return;
+    }
+    const audio = new Audio(soundPath);
+    audio.play().catch(() => undefined);
   };
 
   useEffect(() => {
@@ -204,6 +234,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    if (!firebaseReady || !players.length) {
+      return;
+    }
+
+    const previousPendingDraws = pendingDrawRef.current;
+    const nextPendingDraws = new Map<string, Card | null>();
+
+    players.forEach((player) => {
+      const nextPending = player.pendingDraw ?? null;
+      nextPendingDraws.set(player.id, nextPending);
+      const previousPending = previousPendingDraws.get(player.id);
+
+      if (
+        hasInitializedDrawSoundRef.current &&
+        player.pendingDrawSource === "deck" &&
+        typeof nextPending === "number" &&
+        nextPending !== previousPending
+      ) {
+        playDrawSound(nextPending);
+      }
+    });
+
+    pendingDrawRef.current = nextPendingDraws;
+    if (!hasInitializedDrawSoundRef.current) {
+      hasInitializedDrawSoundRef.current = true;
+    }
+  }, [firebaseReady, players]);
 
   useEffect(() => {
     if (!firebaseReady) {
