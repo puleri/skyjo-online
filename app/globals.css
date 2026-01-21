@@ -1965,6 +1965,10 @@ small {
   font-weight: 700;
 }
 
+.leaderboard-list__item:nth-child(n + 4) .leaderboard-list__score {
+  font-size: 0.85rem;
+}
+
 /* on mobile all the cards have no border */
 @media (max-width: 540px) {
 
