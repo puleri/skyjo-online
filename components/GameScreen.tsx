@@ -119,6 +119,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
   const pendingDrawRef = useRef<Map<string, Card | null>>(new Map());
   const hasInitializedDrawSoundRef = useRef(false);
+  const lastTurnActionRef = useRef<string | null>(null);
+  const hasInitializedActionSoundRef = useRef(false);
 
   const getCardValueClass = (value: Card | null | undefined) => {
     if (typeof value !== "number") {
@@ -191,6 +193,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
     const audio = new Audio(soundPath);
     audio.play().catch(() => undefined);
+  };
+
+  const playRevealTradeSound = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const audio = new Audio("/sounds/card-draw/reveal-trade.wav");
+    audio.play().catch(() => undefined);
+  };
+
+  const shouldPlayRevealTradeSound = (action: string | null | undefined) => {
+    if (!action) {
+      return false;
+    }
+    const normalized = action.toLowerCase();
+    return normalized.includes("reveal") || normalized.includes("swap");
   };
 
   useEffect(() => {
@@ -266,6 +284,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       hasInitializedDrawSoundRef.current = true;
     }
   }, [firebaseReady, players]);
+
+  useEffect(() => {
+    if (!firebaseReady || !game) {
+      return;
+    }
+
+    const action = game.lastTurnAction ?? null;
+    if (!hasInitializedActionSoundRef.current) {
+      hasInitializedActionSoundRef.current = true;
+      lastTurnActionRef.current = action;
+      return;
+    }
+
+    if (action && action !== lastTurnActionRef.current && shouldPlayRevealTradeSound(action)) {
+      playRevealTradeSound();
+    }
+
+    lastTurnActionRef.current = action;
+  }, [firebaseReady, game]);
 
   useEffect(() => {
     if (!firebaseReady) {
