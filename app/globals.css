@@ -1920,7 +1920,7 @@ small {
   align-items: center;
   padding: 8px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-bg);
   color: var(--color-dark);
 }
 
@@ -1945,7 +1945,8 @@ small {
 }
 
 .leaderboard-list__badge--1 {
-  background: #d4af37;
+  background: #d4af37a9;
+  border: 1px solid #f9d985;
 }
 
 .leaderboard-list__badge--2 {
