@@ -70,13 +70,16 @@ export default function CreateLobbyForm() {
 
   return (
     <form onSubmit={handleSubmit}>
+
       <button
-        className="form-button-full-width form-card-font"
-        type="button"
-        onClick={() => setIsSettingsOpen(true)}
-      >
-        Game settings
-      </button>
+              type="button"
+              className="menu-action-button"
+              aria-label="Open slider settings"
+              aria-haspopup="dialog"
+              onClick={() => setIsSettingsOpen(true)}
+            >
+              <img className="settings-icon" src="/slider-icon.png" alt="slider icon" />
+            </button>
       <div className="label-input-grid">
         <label className="form-card-font" htmlFor="lobby-name">
           Lobby Name
