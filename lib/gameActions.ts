@@ -71,24 +71,25 @@ const clearColumnIfMatched = (grid: Array<Card | null>, revealed: boolean[], ind
   const values = columnIndices.map((columnIndex) => grid[columnIndex]);
   const hasNull = values.some((value) => value === null || value === undefined);
   if (hasNull) {
-    return { grid, revealed };
+    return { grid, revealed, clearedCards: [] as Card[] };
   }
   const allRevealed = columnIndices.every((columnIndex) => revealed[columnIndex]);
   if (!allRevealed) {
-    return { grid, revealed };
+    return { grid, revealed, clearedCards: [] as Card[] };
   }
   const [first, ...rest] = values;
   const isMatch = rest.every((value) => value === first);
   if (!isMatch) {
-    return { grid, revealed };
+    return { grid, revealed, clearedCards: [] as Card[] };
   }
   const nextGrid = [...grid];
   const nextRevealed = [...revealed];
+  const clearedCards = values.filter((value): value is Card => value !== null && value !== undefined);
   columnIndices.forEach((columnIndex) => {
     nextGrid[columnIndex] = null;
     nextRevealed[columnIndex] = true;
   });
-  return { grid: nextGrid, revealed: nextRevealed };
+  return { grid: nextGrid, revealed: nextRevealed, clearedCards };
 };
 
 const clearMatchedColumns = (grid: Array<Card | null>, revealed: boolean[]) => {
@@ -383,6 +384,9 @@ export const drawFromDiscard = async (
     discard.push(replacedCard as Card);
 
     const cleared = clearColumnIfMatched(grid, revealed, targetIndex);
+    if (cleared.clearedCards.length > 0) {
+      discard.push(...cleared.clearedCards);
+    }
 
     const updatedPlayer: PlayerDoc = {
       ...player,
@@ -544,6 +548,9 @@ export const swapPendingDraw = async (
 
     const discard = [...game.discard, replacedCard as Card];
     const cleared = clearColumnIfMatched(grid, revealed, targetIndex);
+    if (cleared.clearedCards.length > 0) {
+      discard.push(...cleared.clearedCards);
+    }
 
     const updatedPlayer: PlayerDoc = {
       ...player,
@@ -893,6 +900,8 @@ export const revealAfterDiscard = async (
     revealed[targetIndex] = true;
 
     const cleared = clearColumnIfMatched([...player.grid], revealed, targetIndex);
+    const clearedDiscard =
+      cleared.clearedCards.length > 0 ? [...game.discard, ...cleared.clearedCards] : null;
 
     const updatedPlayer: PlayerDoc = {
       ...player,
@@ -941,6 +950,7 @@ export const revealAfterDiscard = async (
       lastTurnAction,
       lastTurnActionAt: serverTimestamp(),
       ...resolution.gameUpdates,
+      ...(clearedDiscard ? { discard: clearedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
     });
