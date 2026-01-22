@@ -115,6 +115,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
+  const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
+  const hasGameCompletedRef = useRef(false);
   const podiumLabels = ["1st", "2nd", "3rd"];
   const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
   const [itemValue, setItemValue] = useState<number | null>(null);
@@ -511,6 +513,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  useEffect(() => {
+    if (isGameComplete && !hasGameCompletedRef.current) {
+      setIsFinalScoresOpen(true);
+      hasGameCompletedRef.current = true;
+      return;
+    }
+
+    if (!isGameComplete) {
+      setIsFinalScoresOpen(false);
+      hasGameCompletedRef.current = false;
+    }
+  }, [isGameComplete]);
   const allPlayersReady = useMemo(() => {
     if (!isRoundComplete || !orderedPlayers.length) {
       return false;
@@ -1313,6 +1327,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <img className="settings-icon" src="/settings-icon.png"/>
         </button>
       </div>
+      {isGameComplete && !isFinalScoresOpen ? (
+        <div className="game-complete-actions">
+          <button
+            type="button"
+            className="form-button-full-width"
+            onClick={() => setIsFinalScoresOpen(true)}
+          >
+            View final scores
+          </button>
+        </div>
+      ) : null}
       {isSpectatorModalOpen ? (
         <div
           className="modal-backdrop"
@@ -1526,7 +1551,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         </div>
       ) : null}
-      {isGameComplete ? (
+      {isGameComplete && isFinalScoresOpen ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 className="sage-eyebrow-text">Game over</h2>
@@ -1549,6 +1574,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div className="modal__actions">
               <button type="button" className="form-button-full-width" onClick={() => router.push("/")}>
                 Back to main menu
+              </button>
+              <button
+                type="button"
+                className="form-button-full-width"
+                onClick={() => setIsFinalScoresOpen(false)}
+              >
+                Close
               </button>
             </div>
           </div>

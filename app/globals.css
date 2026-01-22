@@ -1562,6 +1562,15 @@ small {
   gap: 12px;
 }
 
+.game-complete-actions {
+  margin: 16px 0;
+}
+
+.game-complete-actions .form-button-full-width {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
 .game-complete-item {
   display: flex;
   position: relative;
