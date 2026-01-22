@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { createItemCards, createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
+import type { SpikeItemCount } from "../lib/game/deck";
 import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
@@ -36,6 +37,7 @@ type LobbyMeta = {
   gameId: string | null;
   status: string;
   spikeMode: boolean;
+  spikeItemCount?: SpikeItemCount;
 };
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
@@ -102,6 +104,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           gameId: (data.gameId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
           spikeMode: Boolean(data.spikeMode),
+          spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
         });
       },
       (err) => {
@@ -204,6 +207,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         }
         const lobbyData = lobbySnap.data();
         const spikeMode = Boolean(lobbyData.spikeMode);
+        const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
         const playerQuery = query(
           collection(db, "lobbies", lobbyId, "players"),
           orderBy("joinedAt", "asc")
@@ -229,7 +233,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         });
 
         if (spikeMode) {
-          shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards()]);
+          shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards(spikeItemCount)]);
         }
 
         const discardCard = shuffledDeck.pop();
@@ -251,6 +255,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           discard: [discardCard],
           graveyard: [],
           spikeMode,
+          ...(spikeMode ? { spikeItemCount } : {}),
           lastTurnPlayerId: null,
           lastTurnAction: null,
           lastTurnActionAt: null,

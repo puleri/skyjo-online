@@ -4,12 +4,14 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { FormEvent, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import type { SpikeItemCount } from "../lib/game/deck";
 
 const storageKey = "skyjo:username";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [spikeMode, setSpikeMode] = useState(false);
+  const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("low");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export default function CreateLobbyForm() {
         hostId: uid,
         hostDisplayName: resolvedName,
         spikeMode,
+        ...(spikeMode ? { spikeItemCount } : {}),
       });
       setName("");
     } catch (err) {
@@ -131,6 +134,41 @@ export default function CreateLobbyForm() {
               <p className="modal__option-help" id="spike-mode-helper">
                 Add spike cards for an extra challenge.
               </p>
+              {spikeMode ? (
+                <div className="modal__subsettings" role="group" aria-label="Spike mode item count">
+                  <span className="modal__subsettings-label">Item count</span>
+                  <label className="modal__subsettings-option">
+                    <input
+                      type="radio"
+                      name="spike-item-count"
+                      value="low"
+                      checked={spikeItemCount === "low"}
+                      onChange={() => setSpikeItemCount("low")}
+                    />
+                    <span>Low</span>
+                  </label>
+                  <label className="modal__subsettings-option">
+                    <input
+                      type="radio"
+                      name="spike-item-count"
+                      value="medium"
+                      checked={spikeItemCount === "medium"}
+                      onChange={() => setSpikeItemCount("medium")}
+                    />
+                    <span>Medium</span>
+                  </label>
+                  <label className="modal__subsettings-option">
+                    <input
+                      type="radio"
+                      name="spike-item-count"
+                      value="high"
+                      checked={spikeItemCount === "high"}
+                      onChange={() => setSpikeItemCount("high")}
+                    />
+                    <span>High</span>
+                  </label>
+                </div>
+              ) : null}
             </div>
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>

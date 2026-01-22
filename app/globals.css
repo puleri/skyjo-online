@@ -420,6 +420,28 @@ section {
   font-size: 0.95rem;
 }
 
+.modal__subsettings {
+  margin-top: 12px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(31, 41, 51, 0.1);
+  display: grid;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+
+.modal__subsettings-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.modal__subsettings-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: inherit;
+}
+
 .modal__actions {
   display: flex;
   justify-content: flex-end;
