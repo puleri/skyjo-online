@@ -564,7 +564,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       ? "From discard pile"
       : awaitingDrawSourceLabel;
   const pendingDrawnCard = currentPlayer?.pendingDraw ?? null;
-  const isPendingItem = isItemCard(pendingDrawnCard);
+  const pendingItemCard = isItemCard(pendingDrawnCard) ? pendingDrawnCard : null;
+  const isPendingItem = pendingItemCard !== null;
   const isResolvingItem =
     isCurrentTurn && isGameActive && game?.turnPhase === "resolve-item" && isPendingItem;
   const isItemRevealPending =
@@ -594,7 +595,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     (showDrawnCard || discardSelectionActive || isItemRevealPending) &&
     !isResolvingItem;
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
-  const pendingItem = isResolvingItem && isItemCard(pendingDrawnCard) ? pendingDrawnCard : null;
+  const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
   const itemTargetsNeeded =
     itemCode === "B" ? 0 : itemCode === "E" ? 2 : itemCode ? 1 : 0;
@@ -616,6 +617,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     D: "Freeze a player so they skip their next turn.",
     E: "Swap any two cards (confirm if across players).",
   };
+  const isItemDrawnByOtherPlayer =
+    isGameActive &&
+    game?.turnPhase === "resolve-item" &&
+    isPendingItem &&
+    !isCurrentTurn;
+  const itemOwnerName = currentPlayer?.displayName ?? "A player";
   const isLocalFinalTurn =
     uid !== null &&
     Boolean(game?.endingPlayerId) &&
@@ -1808,6 +1815,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   Discard item to reveal
                 </button>
               ) : null}
+            </div>
+          </div>
+        ) : isItemDrawnByOtherPlayer && itemCode ? (
+          <div className="item-panel" role="status" aria-live="polite">
+            <div className="item-panel__summary">
+              <div className={`item-panel__badge card card--item card--item-${itemCode}`}>
+                <span className="card__value">{itemCode}</span>
+              </div>
+              <div>
+                <p className="item-panel__title">{itemOwnerName} drew Item {itemCode}</p>
+                <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
+              </div>
             </div>
           </div>
         ) : null}

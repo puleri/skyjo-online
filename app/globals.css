@@ -1215,17 +1215,20 @@ button.card:disabled {
 
 .card__target-overlay {
   position: absolute;
-  inset: 6px;
-  display: flex;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.2);
   color: var(--color-on-dark);
-  border-radius: 8px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   z-index: 3;
   pointer-events: none;
 }
