@@ -10,6 +10,7 @@ const storageKey = "skyjo:username";
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [spikeMode, setSpikeMode] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { uid } = useAnonymousAuth();
@@ -69,6 +70,13 @@ export default function CreateLobbyForm() {
 
   return (
     <form onSubmit={handleSubmit}>
+      <button
+        className="form-button-full-width form-card-font"
+        type="button"
+        onClick={() => setIsSettingsOpen(true)}
+      >
+        Game settings
+      </button>
       <div className="label-input-grid">
         <label className="form-card-font" htmlFor="lobby-name">
           Lobby Name
@@ -81,24 +89,6 @@ export default function CreateLobbyForm() {
           placeholder="Friday Night Skyjo"
         />
       </div>
-      <div className="label-input-grid">
-        <div className="">
-          <img className="spike-icon" src="/spike-icon.png"/>
-        </div>
-        <div className="remaining-grid label-input-grid">
-          <label className="ios-toggle">
-            <input
-              type="checkbox"
-              checked={spikeMode}
-              onChange={(event) => setSpikeMode(event.target.checked)}
-              aria-describedby="spike-mode-helper"
-              aria-label="Spike mode"
-            />
-            <span className="ios-toggle__track" aria-hidden="true" />
-            <span className="ios-toggle__thumb" aria-hidden="true" />
-          </label>
-        </div>
-      </div>
       <button
         className="form-button-full-width form-card-font"
         type="submit"
@@ -107,6 +97,46 @@ export default function CreateLobbyForm() {
         {isSubmitting ? "Creating..." : "Create Lobby"}
       </button>
       {error ? <p className="notice">{error}</p> : null}
+      {isSettingsOpen ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lobby-settings-title"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2 id="lobby-settings-title">Game settings</h2>
+            <p>Customize how your lobby plays.</p>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>
+                  <img className="spike-icon" src="/spike-icon.png" alt="" aria-hidden="true" />
+                  Spike mode
+                </span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={spikeMode}
+                    onChange={(event) => setSpikeMode(event.target.checked)}
+                    aria-describedby="spike-mode-helper"
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help" id="spike-mode-helper">
+                Add spike cards for an extra challenge.
+              </p>
+            </div>
+            <div className="modal__actions">
+              <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }
