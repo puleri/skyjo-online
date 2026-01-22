@@ -1,6 +1,7 @@
 export type ItemCode = "A" | "B" | "C" | "D" | "E";
 export type ItemCard = { kind: "item"; code: ItemCode };
 export type Card = number | ItemCard;
+export type SpikeItemCount = "low" | "medium" | "high";
 
 const addCopies = (deck: number[], value: number, count: number) => {
   for (let i = 0; i < count; i += 1) {
@@ -19,9 +20,24 @@ export const createSkyjoDeck = () => {
   return deck;
 };
 
-export const createItemCards = (): ItemCard[] => {
+const getItemCardCopies = (count: SpikeItemCount) => {
+  switch (count) {
+    case "medium":
+      return 2;
+    case "high":
+      return 3;
+    case "low":
+    default:
+      return 1;
+  }
+};
+
+export const createItemCards = (count: SpikeItemCount = "low"): ItemCard[] => {
   const codes: ItemCode[] = ["A", "B", "C", "D", "E"];
-  return codes.map((code) => ({ kind: "item", code }));
+  const copies = getItemCardCopies(count);
+  return codes.flatMap((code) =>
+    Array.from({ length: copies }, () => ({ kind: "item", code }))
+  );
 };
 
 export const shuffleDeck = <T>(cards: T[], rng: () => number = Math.random) => {

@@ -29,7 +29,7 @@ import {
   useItemCard,
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
-import type { Card, ItemCard } from "../lib/game/deck";
+import type { Card, ItemCard, SpikeItemCount } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type GameScreenProps = {
@@ -46,6 +46,7 @@ type GameMeta = {
   roundNumber: number;
   turnPhase: string;
   spikeMode: boolean;
+  spikeItemCount?: SpikeItemCount;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
@@ -242,6 +243,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           roundNumber: (data.roundNumber as number | undefined) ?? 1,
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
           spikeMode: Boolean(data.spikeMode),
+          spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
           endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
             ? (data.finalTurnRemainingIds as string[])

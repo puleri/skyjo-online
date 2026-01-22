@@ -4,6 +4,7 @@ import {
   Card,
   ItemCard,
   ItemCode,
+  SpikeItemCount,
   createItemCards,
   createSkyjoDeck,
   shuffleDeck,
@@ -26,6 +27,7 @@ type GameDoc = {
   roundNumber?: number;
   turnPhase: TurnPhase;
   spikeMode?: boolean;
+  spikeItemCount?: SpikeItemCount;
   endingPlayerId?: string | null;
   finalTurnRemainingIds?: string[] | null;
   selectedDiscardPlayerId?: string | null;
@@ -992,6 +994,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     assertCondition(allPlayersReady, "All players must be ready to start the next round.");
 
     const spikeMode = Boolean(game.spikeMode);
+    const spikeItemCount = game.spikeItemCount ?? "low";
     let shuffledDeck: Card[] = shuffleDeck(createSkyjoDeck());
     const playerGrids = new Map<string, number[]>();
 
@@ -1011,7 +1014,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     });
 
     if (spikeMode) {
-      shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards()]);
+      shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards(spikeItemCount)]);
     }
 
     const discardCard = shuffledDeck.pop();
@@ -1034,6 +1037,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       discard: [discardCard],
       graveyard: [],
       spikeMode,
+      ...(spikeMode ? { spikeItemCount } : {}),
       endingPlayerId: null,
       finalTurnRemainingIds: null,
       lastTurnPlayerId: null,
