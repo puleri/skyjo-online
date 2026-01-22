@@ -168,7 +168,7 @@ export default function PlayerGrid({
                   <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
                   {isItemSelectable ? (
                     <span className="card__target-overlay" aria-hidden="true">
-                      {isTargetSelected ? `${targetOrderIndex + 1}` : "Pick"}
+                      {isTargetSelected ? `${targetOrderIndex + 1}` : "+"}
                     </span>
                   ) : null}
                 </button>
@@ -177,7 +177,7 @@ export default function PlayerGrid({
                   <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
                   {isItemSelectable ? (
                     <span className="card__target-overlay" aria-hidden="true">
-                      {isTargetSelected ? `${targetOrderIndex + 1}` : "Pick"}
+                      {isTargetSelected ? `${targetOrderIndex + 1}` : "+"}
                     </span>
                   ) : null}
                 </div>
