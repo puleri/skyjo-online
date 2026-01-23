@@ -47,6 +47,7 @@ type GameMeta = {
   turnPhase: string;
   spikeMode: boolean;
   spikeItemCount?: SpikeItemCount;
+  spikeRowClear?: boolean;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
@@ -244,6 +245,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
           spikeMode: Boolean(data.spikeMode),
           spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
+          spikeRowClear: Boolean(data.spikeRowClear),
           endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
             ? (data.finalTurnRemainingIds as string[])

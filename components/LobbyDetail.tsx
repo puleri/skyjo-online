@@ -38,6 +38,7 @@ type LobbyMeta = {
   status: string;
   spikeMode: boolean;
   spikeItemCount?: SpikeItemCount;
+  spikeRowClear?: boolean;
 };
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
@@ -105,6 +106,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           status: (data.status as string | undefined) ?? "open",
           spikeMode: Boolean(data.spikeMode),
           spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
+          spikeRowClear: Boolean(data.spikeRowClear),
         });
       },
       (err) => {
@@ -208,6 +210,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         const lobbyData = lobbySnap.data();
         const spikeMode = Boolean(lobbyData.spikeMode);
         const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
+        const spikeRowClear = Boolean(lobbyData.spikeRowClear);
         const playerQuery = query(
           collection(db, "lobbies", lobbyId, "players"),
           orderBy("joinedAt", "asc")
@@ -255,7 +258,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           discard: [discardCard],
           graveyard: [],
           spikeMode,
-          ...(spikeMode ? { spikeItemCount } : {}),
+          ...(spikeMode ? { spikeItemCount, spikeRowClear } : {}),
           lastTurnPlayerId: null,
           lastTurnAction: null,
           lastTurnActionAt: null,
