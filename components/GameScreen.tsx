@@ -1380,7 +1380,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           onClick={() => setIsLeaderboardOpen(false)}
         >
           <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 id="leaderboard-title">Leaderboard</h2>
+            <h2 className="leaderboard-title" id="leaderboard-title">Leaderboard</h2>
             <p>Lowest 10 scores of all time.</p>
             {leaderboardEntries.length ? (
               <ol className="leaderboard-list">

@@ -77,12 +77,12 @@ export default function CreateLobbyForm() {
 
       <button
               type="button"
-              className="menu-action-button"
+              className="game-settings-action-button"
               aria-label="Open slider settings"
               aria-haspopup="dialog"
               onClick={() => setIsSettingsOpen(true)}
             >
-              <img className="settings-icon" src="/slider-icon.png" alt="slider icon" />
+              <img className="game-settings-icon" src="/slider-icon.png" alt="slider icon" />
             </button>
       <div className="label-input-grid">
         <label className="form-card-font" htmlFor="lobby-name">
@@ -97,7 +97,7 @@ export default function CreateLobbyForm() {
         />
       </div>
       <button
-        className="form-button-full-width form-card-font"
+        className="form-button-full-width form-card-font mb-10"
         type="submit"
         disabled={isSubmitting || !name.trim() || !uid}
       >
@@ -113,11 +113,11 @@ export default function CreateLobbyForm() {
           onClick={() => setIsSettingsOpen(false)}
         >
           <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 id="lobby-settings-title">Game settings</h2>
-            <p>Customize how your lobby plays.</p>
+            <h2 className="leaderboard-title" id="lobby-settings-title">Game settings</h2>
+            <p className="leaderboard-sub">Customize how your lobby plays.</p>
             <div className="modal__option">
               <label className="modal__option-label modal__option-toggle">
-                <span>
+                <span className="flex-full-center">
                   <img className="spike-icon" src="/spike-icon.png" alt="" aria-hidden="true" />
                   Spike mode
                 </span>
