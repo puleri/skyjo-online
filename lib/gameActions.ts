@@ -28,6 +28,7 @@ type GameDoc = {
   turnPhase: TurnPhase;
   spikeMode?: boolean;
   spikeItemCount?: SpikeItemCount;
+  spikeRowClear?: boolean;
   endingPlayerId?: string | null;
   finalTurnRemainingIds?: string[] | null;
   selectedDiscardPlayerId?: string | null;
@@ -68,56 +69,82 @@ const getColumnIndices = (index: number) => {
   return [column, column + columns, column + columns * 2];
 };
 
-const clearColumnIfMatched = (grid: Array<Card | null>, revealed: boolean[], index: number) => {
-  const columnIndices = getColumnIndices(index);
-  const values = columnIndices.map((columnIndex) => grid[columnIndex]);
+const getRowIndices = (index: number) => {
+  const row = Math.floor(index / columns);
+  return Array.from({ length: columns }, (_, offset) => row * columns + offset);
+};
+
+const isLineMatch = (grid: Array<Card | null>, revealed: boolean[], indices: number[]) => {
+  const values = indices.map((lineIndex) => grid[lineIndex]);
   const hasNull = values.some((value) => value === null || value === undefined);
   if (hasNull) {
-    return { grid, revealed, clearedCards: [] as Card[] };
+    return false;
   }
-  const allRevealed = columnIndices.every((columnIndex) => revealed[columnIndex]);
+  const allRevealed = indices.every((lineIndex) => revealed[lineIndex]);
   if (!allRevealed) {
-    return { grid, revealed, clearedCards: [] as Card[] };
+    return false;
   }
   const [first, ...rest] = values;
-  const isMatch = rest.every((value) => value === first);
-  if (!isMatch) {
+  return rest.every((value) => value === first);
+};
+
+const clearMatchesAtIndex = (
+  grid: Array<Card | null>,
+  revealed: boolean[],
+  index: number,
+  rowClear: boolean
+) => {
+  const matchedIndices = new Set<number>();
+  const columnIndices = getColumnIndices(index);
+  if (isLineMatch(grid, revealed, columnIndices)) {
+    columnIndices.forEach((columnIndex) => matchedIndices.add(columnIndex));
+  }
+  if (rowClear) {
+    const rowIndices = getRowIndices(index);
+    if (isLineMatch(grid, revealed, rowIndices)) {
+      rowIndices.forEach((rowIndex) => matchedIndices.add(rowIndex));
+    }
+  }
+  if (matchedIndices.size === 0) {
     return { grid, revealed, clearedCards: [] as Card[] };
   }
   const nextGrid = [...grid];
   const nextRevealed = [...revealed];
-  const clearedCards = values.filter((value): value is Card => value !== null && value !== undefined);
-  columnIndices.forEach((columnIndex) => {
-    nextGrid[columnIndex] = null;
-    nextRevealed[columnIndex] = true;
+  const clearedCards: Card[] = [];
+  matchedIndices.forEach((matchedIndex) => {
+    const value = grid[matchedIndex];
+    if (value !== null && value !== undefined) {
+      clearedCards.push(value);
+    }
+    nextGrid[matchedIndex] = null;
+    nextRevealed[matchedIndex] = true;
   });
   return { grid: nextGrid, revealed: nextRevealed, clearedCards };
 };
 
-const clearMatchedColumns = (grid: Array<Card | null>, revealed: boolean[]) => {
-  let nextGrid = [...grid];
-  let nextRevealed = [...revealed];
+const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowClear: boolean) => {
+  const nextGrid = [...grid];
+  const nextRevealed = [...revealed];
+  const matchedIndices = new Set<number>();
   for (let column = 0; column < columns; column += 1) {
     const columnIndices = getColumnIndices(column);
-    const values = columnIndices.map((columnIndex) => nextGrid[columnIndex]);
-    const hasNull = values.some((value) => value === null || value === undefined);
-    if (hasNull) {
-      continue;
+    if (isLineMatch(grid, revealed, columnIndices)) {
+      columnIndices.forEach((columnIndex) => matchedIndices.add(columnIndex));
     }
-    const allRevealed = columnIndices.every((columnIndex) => nextRevealed[columnIndex]);
-    if (!allRevealed) {
-      continue;
-    }
-    const [first, ...rest] = values;
-    const isMatch = rest.every((value) => value === first);
-    if (!isMatch) {
-      continue;
-    }
-    columnIndices.forEach((columnIndex) => {
-      nextGrid[columnIndex] = null;
-      nextRevealed[columnIndex] = true;
-    });
   }
+  if (rowClear) {
+    const rowCount = Math.floor(grid.length / columns);
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowIndices = Array.from({ length: columns }, (_, offset) => row * columns + offset);
+      if (isLineMatch(grid, revealed, rowIndices)) {
+        rowIndices.forEach((rowIndex) => matchedIndices.add(rowIndex));
+      }
+    }
+  }
+  matchedIndices.forEach((matchedIndex) => {
+    nextGrid[matchedIndex] = null;
+    nextRevealed[matchedIndex] = true;
+  });
   return { grid: nextGrid, revealed: nextRevealed };
 };
 
@@ -157,8 +184,8 @@ const shuffleGridPositions = (grid: Array<Card | null>, revealed: boolean[]) => 
   };
 };
 
-const clearPlayerColumns = (player: PlayerDoc) => {
-  const cleared = clearMatchedColumns([...player.grid], [...player.revealed]);
+const clearPlayerMatches = (player: PlayerDoc, rowClear: boolean) => {
+  const cleared = clearMatchedLines([...player.grid], [...player.revealed], rowClear);
   return { ...player, grid: cleared.grid, revealed: cleared.revealed };
 };
 
@@ -288,13 +315,14 @@ const resolveTurn = (
 const computeRoundScores = (
   activeOrder: string[],
   players: Record<string, PlayerDoc>,
-  endingPlayerId: string | null
+  endingPlayerId: string | null,
+  rowClear: boolean
 ) => {
   const roundScores: Record<string, number> = {};
   const scoresByPlayer = activeOrder.map((playerId) => {
     const player = players[playerId];
     const revealed = player.revealed.map(() => true);
-    const cleared = clearMatchedColumns(player.grid, revealed);
+    const cleared = clearMatchedLines(player.grid, revealed, rowClear);
     const score = calculateScore(cleared.grid);
     roundScores[playerId] = score;
     return { playerId, score, cleared };
@@ -385,7 +413,8 @@ export const drawFromDiscard = async (
     revealed[targetIndex] = true;
     discard.push(replacedCard as Card);
 
-    const cleared = clearColumnIfMatched(grid, revealed, targetIndex);
+    const rowClear = Boolean(game.spikeMode && game.spikeRowClear);
+    const cleared = clearMatchesAtIndex(grid, revealed, targetIndex, rowClear);
     if (cleared.clearedCards.length > 0) {
       discard.push(...cleared.clearedCards);
     }
@@ -421,7 +450,8 @@ export const drawFromDiscard = async (
       const scoring = computeRoundScores(
         game.activePlayerOrder,
         players,
-        resolution.endingPlayerId
+        resolution.endingPlayerId,
+        rowClear
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
@@ -549,7 +579,8 @@ export const swapPendingDraw = async (
     revealed[targetIndex] = true;
 
     const discard = [...game.discard, replacedCard as Card];
-    const cleared = clearColumnIfMatched(grid, revealed, targetIndex);
+    const rowClear = Boolean(game.spikeMode && game.spikeRowClear);
+    const cleared = clearMatchesAtIndex(grid, revealed, targetIndex, rowClear);
     if (cleared.clearedCards.length > 0) {
       discard.push(...cleared.clearedCards);
     }
@@ -585,7 +616,8 @@ export const swapPendingDraw = async (
       const scoring = computeRoundScores(
         game.activePlayerOrder,
         players,
-        resolution.endingPlayerId
+        resolution.endingPlayerId,
+        rowClear
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
@@ -794,7 +826,10 @@ export const useItemCard = async (
     const updatedPlayers: Record<string, PlayerDoc> = {};
     playersToUpdate.forEach((targetPlayer, targetPlayerId) => {
       if (affectedPlayerIds.has(targetPlayerId)) {
-        updatedPlayers[targetPlayerId] = clearPlayerColumns(targetPlayer);
+        updatedPlayers[targetPlayerId] = clearPlayerMatches(
+          targetPlayer,
+          Boolean(game.spikeMode && game.spikeRowClear)
+        );
       } else {
         updatedPlayers[targetPlayerId] = targetPlayer;
       }
@@ -830,7 +865,8 @@ export const useItemCard = async (
       const scoring = computeRoundScores(
         game.activePlayerOrder,
         playersSnapshot,
-        resolution.endingPlayerId
+        resolution.endingPlayerId,
+        Boolean(game.spikeMode && game.spikeRowClear)
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
@@ -901,7 +937,8 @@ export const revealAfterDiscard = async (
     const revealed = [...player.revealed];
     revealed[targetIndex] = true;
 
-    const cleared = clearColumnIfMatched([...player.grid], revealed, targetIndex);
+    const rowClear = Boolean(game.spikeMode && game.spikeRowClear);
+    const cleared = clearMatchesAtIndex([...player.grid], revealed, targetIndex, rowClear);
     const clearedDiscard =
       cleared.clearedCards.length > 0 ? [...game.discard, ...cleared.clearedCards] : null;
 
@@ -936,7 +973,8 @@ export const revealAfterDiscard = async (
       const scoring = computeRoundScores(
         game.activePlayerOrder,
         players,
-        resolution.endingPlayerId
+        resolution.endingPlayerId,
+        rowClear
       );
       roundScores = scoring.roundScores;
       scoreUpdates = scoring.playerUpdates;
@@ -995,6 +1033,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
 
     const spikeMode = Boolean(game.spikeMode);
     const spikeItemCount = game.spikeItemCount ?? "low";
+    const spikeRowClear = Boolean(game.spikeRowClear);
     let shuffledDeck: Card[] = shuffleDeck(createSkyjoDeck());
     const playerGrids = new Map<string, number[]>();
 
@@ -1037,7 +1076,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       discard: [discardCard],
       graveyard: [],
       spikeMode,
-      ...(spikeMode ? { spikeItemCount } : {}),
+      ...(spikeMode ? { spikeItemCount, spikeRowClear } : {}),
       endingPlayerId: null,
       finalTurnRemainingIds: null,
       lastTurnPlayerId: null,

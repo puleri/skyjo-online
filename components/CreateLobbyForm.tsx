@@ -12,6 +12,7 @@ export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [spikeMode, setSpikeMode] = useState(false);
   const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("low");
+  const [spikeRowClear, setSpikeRowClear] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function CreateLobbyForm() {
         hostId: uid,
         hostDisplayName: resolvedName,
         spikeMode,
-        ...(spikeMode ? { spikeItemCount } : {}),
+        ...(spikeMode ? { spikeItemCount, spikeRowClear } : {}),
       });
       setName("");
     } catch (err) {
@@ -125,7 +126,13 @@ export default function CreateLobbyForm() {
                     className="toggle__input"
                     type="checkbox"
                     checked={spikeMode}
-                    onChange={(event) => setSpikeMode(event.target.checked)}
+                    onChange={(event) => {
+                      const nextValue = event.target.checked;
+                      setSpikeMode(nextValue);
+                      if (!nextValue) {
+                        setSpikeRowClear(false);
+                      }
+                    }}
                     aria-describedby="spike-mode-helper"
                   />
                   <span className="toggle__track" aria-hidden="true" />
@@ -135,7 +142,7 @@ export default function CreateLobbyForm() {
                 Add spike cards for an extra challenge.
               </p>
               {spikeMode ? (
-                <div className="modal__subsettings" role="group" aria-label="Spike mode item count">
+                <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
                   <span className="modal__subsettings-label">Item count</span>
                   <label className="modal__subsettings-option">
                     <input
@@ -167,6 +174,23 @@ export default function CreateLobbyForm() {
                     />
                     <span>High</span>
                   </label>
+                  <span className="modal__subsettings-label">Row clearing</span>
+                  <label className="modal__subsettings-option">
+                    <span>Enable matching row clears</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={spikeRowClear}
+                        onChange={(event) => setSpikeRowClear(event.target.checked)}
+                        aria-describedby="spike-row-clear-helper"
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help" id="spike-row-clear-helper">
+                    Clear a row when all revealed cards match.
+                  </p>
                 </div>
               ) : null}
             </div>
