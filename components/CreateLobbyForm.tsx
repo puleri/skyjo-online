@@ -19,16 +19,16 @@ export default function CreateLobbyForm() {
   const { uid } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const spikeItemCountOptions: { value: SpikeItemCount; label: string }[] = [
-    { value: "none", label: "0" },
-    { value: "low", label: "1" },
-    { value: "medium", label: "2" },
-    { value: "high", label: "3" },
+    { value: "none", label: "None" },
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
   ];
   const spikeItemCountIndex = Math.max(
     0,
     spikeItemCountOptions.findIndex((option) => option.value === spikeItemCount)
   );
-  const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "1";
+  const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "Low";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
