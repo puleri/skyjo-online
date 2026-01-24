@@ -18,6 +18,17 @@ export default function CreateLobbyForm() {
   const [error, setError] = useState<string | null>(null);
   const { uid } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
+  const spikeItemCountOptions: { value: SpikeItemCount; label: string }[] = [
+    { value: "none", label: "0" },
+    { value: "low", label: "1" },
+    { value: "medium", label: "2" },
+    { value: "high", label: "3" },
+  ];
+  const spikeItemCountIndex = Math.max(
+    0,
+    spikeItemCountOptions.findIndex((option) => option.value === spikeItemCount)
+  );
+  const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "1";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -143,37 +154,37 @@ export default function CreateLobbyForm() {
               </p>
               {spikeMode ? (
                 <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
-                  <span className="modal__subsettings-label">Item count</span>
-                  <label className="modal__subsettings-option">
+                  <div className="modal__slider">
+                    <div className="modal__slider-header">
+                      <span className="modal__subsettings-label">Item card count</span>
+                      <span className="modal__slider-value">
+                        {spikeItemCountLabel} per item
+                      </span>
+                    </div>
                     <input
-                      type="radio"
-                      name="spike-item-count"
-                      value="low"
-                      checked={spikeItemCount === "low"}
-                      onChange={() => setSpikeItemCount("low")}
+                      className="modal__slider-input"
+                      type="range"
+                      min="0"
+                      max={spikeItemCountOptions.length - 1}
+                      step="1"
+                      value={spikeItemCountIndex}
+                      onChange={(event) => {
+                        const nextIndex = Number(event.target.value);
+                        const nextValue =
+                          spikeItemCountOptions[nextIndex]?.value ?? spikeItemCountOptions[0].value;
+                        setSpikeItemCount(nextValue);
+                      }}
+                      aria-describedby="spike-item-count-helper"
                     />
-                    <span>Low</span>
-                  </label>
-                  <label className="modal__subsettings-option">
-                    <input
-                      type="radio"
-                      name="spike-item-count"
-                      value="medium"
-                      checked={spikeItemCount === "medium"}
-                      onChange={() => setSpikeItemCount("medium")}
-                    />
-                    <span>Medium</span>
-                  </label>
-                  <label className="modal__subsettings-option">
-                    <input
-                      type="radio"
-                      name="spike-item-count"
-                      value="high"
-                      checked={spikeItemCount === "high"}
-                      onChange={() => setSpikeItemCount("high")}
-                    />
-                    <span>High</span>
-                  </label>
+                    <div className="modal__slider-labels" aria-hidden="true">
+                      {spikeItemCountOptions.map((option) => (
+                        <span key={option.value}>{option.label}</span>
+                      ))}
+                    </div>
+                    <p className="modal__option-help" id="spike-item-count-helper">
+                      Choose how many item cards appear for each item type ({spikeItemCountLabel} selected).
+                    </p>
+                  </div>
                   <span className="modal__subsettings-label">Row clearing</span>
                   <label className="modal__subsettings-option">
                     <span>Enable matching row clears</span>
