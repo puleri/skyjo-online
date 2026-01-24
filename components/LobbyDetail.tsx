@@ -15,7 +15,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
-import { createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
+import { createItemCards, createSkyjoDeck, shuffleDeck } from "../lib/game/deck";
+import type { SpikeItemCount } from "../lib/game/deck";
+import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
@@ -34,6 +36,9 @@ type LobbyMeta = {
   hostId: string | null;
   gameId: string | null;
   status: string;
+  spikeMode: boolean;
+  spikeItemCount?: SpikeItemCount;
+  spikeRowClear?: boolean;
 };
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
@@ -99,6 +104,9 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           hostId: (data.hostId as string | undefined) ?? null,
           gameId: (data.gameId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
+          spikeMode: Boolean(data.spikeMode),
+          spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
+          spikeRowClear: Boolean(data.spikeRowClear),
         });
       },
       (err) => {
@@ -195,6 +203,14 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       const lobbyRef = doc(db, "lobbies", lobbyId);
       const gameRef = doc(collection(db, "games"));
       await runTransaction(db, async (transaction) => {
+        const lobbySnap = await transaction.get(lobbyRef);
+        if (!lobbySnap.exists()) {
+          throw new Error("Lobby not found.");
+        }
+        const lobbyData = lobbySnap.data();
+        const spikeMode = Boolean(lobbyData.spikeMode);
+        const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
+        const spikeRowClear = Boolean(lobbyData.spikeRowClear);
         const playerQuery = query(
           collection(db, "lobbies", lobbyId, "players"),
           orderBy("joinedAt", "asc")
@@ -205,7 +221,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         }
 
         const playerOrder = playerSnapshot.docs.map((playerDoc) => playerDoc.id);
-        const shuffledDeck = shuffleDeck(createSkyjoDeck());
+        let shuffledDeck: Card[] = shuffleDeck(createSkyjoDeck());
         const playerGrids = new Map<string, number[]>();
         playerOrder.forEach((playerId) => {
           const grid: number[] = [];
@@ -219,8 +235,12 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           playerGrids.set(playerId, grid);
         });
 
+        if (spikeMode) {
+          shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards(spikeItemCount)]);
+        }
+
         const discardCard = shuffledDeck.pop();
-        if (typeof discardCard !== "number") {
+        if (discardCard === undefined) {
           throw new Error("Deck is empty after dealing.");
         }
         const startingPlayerId =
@@ -236,8 +256,12 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           turnPhase: "choose-draw",
           deck: shuffledDeck,
           discard: [discardCard],
+          graveyard: [],
+          spikeMode,
+          ...(spikeMode ? { spikeItemCount, spikeRowClear } : {}),
           lastTurnPlayerId: null,
           lastTurnAction: null,
+          lastTurnActionAt: null,
           createdAt: serverTimestamp(),
         });
 
