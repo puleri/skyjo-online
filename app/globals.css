@@ -466,6 +466,7 @@ section {
 .modal__slider-input {
   width: 100%;
   accent-color: var(--color-accent);
+  padding: 0;
 }
 
 .modal__slider-labels {

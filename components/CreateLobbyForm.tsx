@@ -156,7 +156,7 @@ export default function CreateLobbyForm() {
                 <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
                   <div className="modal__slider">
                     <div className="modal__slider-header">
-                      <span className="modal__subsettings-label">Item frequency</span>
+                      <span className="modal__subsettings-option">Item frequency</span>
                     </div>
                     <input
                       className="modal__slider-input"
@@ -182,7 +182,6 @@ export default function CreateLobbyForm() {
                        ({spikeItemCountLabel} selected).
                     </p>
                   </div>
-                  <span className="modal__subsettings-label">Row clearing</span>
                   <label className="modal__subsettings-option">
                     <span>Enable matching row clears</span>
                     <span className="toggle">
