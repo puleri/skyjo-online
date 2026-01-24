@@ -140,6 +140,32 @@ section {
   max-width: 1200px;
 }
 
+.game-screen__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0 16px;
+}
+
+.game-screen__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--color-surface-bright);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.game-screen__tag--mode {
+  background: var(--color-accent-soft);
+  color: var(--color-dark);
+}
+
 .game-screen--current-turn {
   position: relative;
 }
