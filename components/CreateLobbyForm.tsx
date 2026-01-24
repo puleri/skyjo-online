@@ -156,10 +156,7 @@ export default function CreateLobbyForm() {
                 <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
                   <div className="modal__slider">
                     <div className="modal__slider-header">
-                      <span className="modal__subsettings-label">Item card count</span>
-                      <span className="modal__slider-value">
-                        {spikeItemCountLabel} per item
-                      </span>
+                      <span className="modal__subsettings-label">Item frequency</span>
                     </div>
                     <input
                       className="modal__slider-input"
@@ -182,7 +179,7 @@ export default function CreateLobbyForm() {
                       ))}
                     </div>
                     <p className="modal__option-help" id="spike-item-count-helper">
-                      Choose how many item cards appear for each item type ({spikeItemCountLabel} selected).
+                       ({spikeItemCountLabel} selected).
                     </p>
                   </div>
                   <span className="modal__subsettings-label">Row clearing</span>
