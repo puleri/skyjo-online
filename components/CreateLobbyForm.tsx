@@ -150,7 +150,7 @@ export default function CreateLobbyForm() {
                 </span>
               </label>
               <p className="modal__option-help" id="spike-mode-helper">
-                Add spike cards for an extra challenge.
+                Special rules for a more challenging game.
               </p>
               {spikeMode ? (
                 <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
