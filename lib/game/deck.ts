@@ -1,7 +1,7 @@
 export type ItemCode = "A" | "B" | "C" | "D" | "E";
 export type ItemCard = { kind: "item"; code: ItemCode };
 export type Card = number | ItemCard;
-export type SpikeItemCount = "low" | "medium" | "high";
+export type SpikeItemCount = "none" | "low" | "medium" | "high";
 
 const addCopies = (deck: number[], value: number, count: number) => {
   for (let i = 0; i < count; i += 1) {
@@ -22,6 +22,8 @@ export const createSkyjoDeck = () => {
 
 const getItemCardCopies = (count: SpikeItemCount) => {
   switch (count) {
+    case "none":
+      return 0;
     case "medium":
       return 2;
     case "high":

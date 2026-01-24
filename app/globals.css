@@ -445,6 +445,36 @@ section {
   color: inherit;
 }
 
+.modal__slider {
+  display: grid;
+  gap: 6px;
+}
+
+.modal__slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal__slider-value {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.modal__slider-input {
+  width: 100%;
+  accent-color: var(--color-accent);
+}
+
+.modal__slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
 .modal__actions {
   display: flex;
   justify-content: flex-end;
