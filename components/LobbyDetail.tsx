@@ -60,7 +60,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       return;
     }
 
-    const audioUrl = "/sounds/theme/main-theme-loop.mp3";
+    const audioUrl = "/sounds/theme/main-theme-loop.wav";
     const audioContext = new AudioContext();
     const gainNode = audioContext.createGain();
     gainNode.connect(audioContext.destination);
