@@ -41,6 +41,8 @@ type LobbyMeta = {
   spikeRowClear?: boolean;
 };
 
+const backgroundMusicStorageKey = "skyjo-background-music";
+
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [lobby, setLobby] = useState<LobbyMeta | null>(null);
@@ -49,6 +51,12 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
+  const [isBackgroundMusicEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(backgroundMusicStorageKey) === "true";
+  });
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const { uid, error: authError } = useAnonymousAuth();
@@ -57,6 +65,9 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") {
+      return;
+    }
+    if (!isBackgroundMusicEnabled) {
       return;
     }
 
@@ -103,7 +114,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       audioContextRef.current?.close().catch(() => undefined);
       audioContextRef.current = null;
     };
-  }, []);
+  }, [isBackgroundMusicEnabled]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

@@ -86,6 +86,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firstTimeTipsStorageKey = "skyjo-first-time-tips";
   const darkModeStorageKey = "skyjo-dark-mode";
+  const cardSoundsStorageKey = "skyjo-card-sounds";
+  const backgroundMusicStorageKey = "skyjo-background-music";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
@@ -105,6 +107,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return false;
     }
     return window.localStorage.getItem(darkModeStorageKey) === "true";
+  });
+  const [isCardSoundsEnabled, setIsCardSoundsEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(cardSoundsStorageKey) === "true";
+  });
+  const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(backgroundMusicStorageKey) === "true";
   });
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
@@ -136,6 +150,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
+  const backgroundMusicContextRef = useRef<AudioContext | null>(null);
+  const backgroundMusicSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const spikeItemCountLabels: Record<SpikeItemCount, string> = {
     none: "No items",
     low: "Low items",
@@ -260,6 +276,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const playSound = (soundPath: string) => {
+    if (!isCardSoundsEnabled) {
+      return;
+    }
     const audioContext = audioContextRef.current;
     if (!audioContext || typeof window === "undefined") {
       return;
@@ -510,6 +529,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [isDarkMode]);
 
   useEffect(() => {
+    window.localStorage.setItem(cardSoundsStorageKey, String(isCardSoundsEnabled));
+  }, [isCardSoundsEnabled]);
+
+  useEffect(() => {
+    window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
+  }, [isBackgroundMusicEnabled]);
+
+  useEffect(() => {
     if (!firebaseReady || !gameId) {
       return;
     }
@@ -649,6 +676,59 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isRoundComplete = game?.status === "round-complete";
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !isBackgroundMusicEnabled || !isRoundComplete) {
+      return;
+    }
+
+    const audioUrl = "/sounds/theme/theme-reprised-quiet.wav";
+    const audioContext = new AudioContext();
+    const gainNode = audioContext.createGain();
+    gainNode.connect(audioContext.destination);
+    backgroundMusicContextRef.current = audioContext;
+
+    let isActive = true;
+    const abortController = new AbortController();
+
+    const handleResume = () => {
+      audioContext.resume().catch(() => undefined);
+    };
+
+    window.addEventListener("click", handleResume, { once: true });
+    window.addEventListener("keydown", handleResume, { once: true });
+    window.addEventListener("touchstart", handleResume, { once: true });
+
+    fetch(audioUrl, { signal: abortController.signal })
+      .then((response) => response.arrayBuffer())
+      .then((buffer) => audioContext.decodeAudioData(buffer))
+      .then((decodedBuffer) => {
+        if (!isActive) {
+          return;
+        }
+        const source = audioContext.createBufferSource();
+        source.buffer = decodedBuffer;
+        source.loop = true;
+        source.connect(gainNode);
+        source.start(0);
+        backgroundMusicSourceRef.current = source;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+      abortController.abort();
+      window.removeEventListener("click", handleResume);
+      window.removeEventListener("keydown", handleResume);
+      window.removeEventListener("touchstart", handleResume);
+      backgroundMusicSourceRef.current?.stop();
+      backgroundMusicSourceRef.current?.disconnect();
+      backgroundMusicSourceRef.current = null;
+      gainNode.disconnect();
+      audioContext.close().catch(() => undefined);
+      backgroundMusicContextRef.current = null;
+    };
+  }, [isBackgroundMusicEnabled, isRoundComplete]);
   const shouldPlayBetweenRounds = isRoundComplete || isGameComplete;
   const lobbyLabel = lobbyName ? `Lobby: ${lobbyName}` : "Lobby: Loading...";
   const modeLabel = useMemo(() => {
@@ -1756,6 +1836,40 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </span>
               </label>
               <p className="modal__option-help">Switch the interface to the dark theme.</p>
+            </div>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>Card sounds</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={isCardSoundsEnabled}
+                    onChange={(event) => setIsCardSoundsEnabled(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help">
+                Mute card draws, turn alerts, reveal sounds, and swap effects.
+              </p>
+            </div>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>Background music</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={isBackgroundMusicEnabled}
+                    onChange={(event) => setIsBackgroundMusicEnabled(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help">
+                Play theme music during round breaks and in the lobby.
+              </p>
             </div>
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
