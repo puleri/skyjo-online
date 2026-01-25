@@ -132,6 +132,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedActionSoundRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const betweenRoundsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const spikeItemCountLabels: Record<SpikeItemCount, string> = {
@@ -161,6 +163,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       audioBufferCacheRef.current.clear();
       audioContext.close().catch(() => undefined);
       audioContextRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const audio = new Audio("/sounds/theme/theme-reprised-quiet.wav");
+    audio.loop = true;
+    betweenRoundsAudioRef.current = audio;
+
+    const handleResume = () => {
+      if (shouldPlayBetweenRoundsRef.current) {
+        audio.play().catch(() => undefined);
+      }
+    };
+
+    window.addEventListener("click", handleResume);
+    window.addEventListener("keydown", handleResume);
+    window.addEventListener("touchstart", handleResume);
+
+    return () => {
+      window.removeEventListener("click", handleResume);
+      window.removeEventListener("keydown", handleResume);
+      window.removeEventListener("touchstart", handleResume);
+      audio.pause();
+      audio.currentTime = 0;
+      betweenRoundsAudioRef.current = null;
     };
   }, []);
 
@@ -618,6 +649,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isRoundComplete = game?.status === "round-complete";
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
+  const shouldPlayBetweenRounds = isRoundComplete || isGameComplete;
   const lobbyLabel = lobbyName ? `Lobby: ${lobbyName}` : "Lobby: Loading...";
   const modeLabel = useMemo(() => {
     if (!game) {
@@ -650,6 +682,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       hasGameCompletedRef.current = false;
     }
   }, [isGameComplete]);
+
+  useEffect(() => {
+    const audio = betweenRoundsAudioRef.current;
+    shouldPlayBetweenRoundsRef.current = shouldPlayBetweenRounds;
+    if (!audio) {
+      return;
+    }
+
+    if (shouldPlayBetweenRounds) {
+      audio.play().catch(() => undefined);
+      return;
+    }
+
+    audio.pause();
+    audio.currentTime = 0;
+  }, [shouldPlayBetweenRounds]);
   const allPlayersReady = useMemo(() => {
     if (!isRoundComplete || !orderedPlayers.length) {
       return false;
