@@ -146,7 +146,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedActionSoundRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
-  const betweenRoundsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const betweenRoundsBufferRef = useRef<AudioBuffer | null>(null);
+  const betweenRoundsSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const betweenRoundsGainRef = useRef<GainNode | null>(null);
   const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
@@ -187,13 +189,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const audio = new Audio("/sounds/theme/theme-reprised-quiet.wav");
-    audio.loop = true;
-    betweenRoundsAudioRef.current = audio;
+    const audioContext = audioContextRef.current;
+    if (!audioContext) {
+      return;
+    }
+
+    const gainNode = audioContext.createGain();
+    gainNode.connect(audioContext.destination);
+    betweenRoundsGainRef.current = gainNode;
 
     const handleResume = () => {
+      if (audioContext.state === "suspended") {
+        audioContext.resume().catch(() => undefined);
+      }
       if (shouldPlayBetweenRoundsRef.current) {
-        audio.play().catch(() => undefined);
+        void startBetweenRoundsAudio();
       }
     };
 
@@ -205,9 +215,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       window.removeEventListener("click", handleResume);
       window.removeEventListener("keydown", handleResume);
       window.removeEventListener("touchstart", handleResume);
-      audio.pause();
-      audio.currentTime = 0;
-      betweenRoundsAudioRef.current = null;
+      stopBetweenRoundsAudio();
+      gainNode.disconnect();
+      betweenRoundsGainRef.current = null;
+      betweenRoundsBufferRef.current = null;
     };
   }, []);
 
@@ -297,6 +308,53 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       source.connect(audioContext.destination);
       source.start(0);
     });
+  };
+
+  const startBetweenRoundsAudio = async () => {
+    const audioContext = audioContextRef.current;
+    const gainNode = betweenRoundsGainRef.current;
+    if (!audioContext || !gainNode || betweenRoundsSourceRef.current) {
+      return;
+    }
+
+    if (audioContext.state === "suspended") {
+      await audioContext.resume().catch(() => undefined);
+    }
+
+    let buffer = betweenRoundsBufferRef.current;
+    if (!buffer) {
+      buffer = await loadAudioBuffer("/sounds/theme/theme-reprised-quiet.wav");
+      if (!buffer) {
+        return;
+      }
+      betweenRoundsBufferRef.current = buffer;
+    }
+
+    if (audioContextRef.current !== audioContext) {
+      return;
+    }
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(gainNode);
+    source.onended = () => {
+      if (betweenRoundsSourceRef.current === source) {
+        betweenRoundsSourceRef.current = null;
+      }
+    };
+    source.start(0);
+    betweenRoundsSourceRef.current = source;
+  };
+
+  const stopBetweenRoundsAudio = () => {
+    const source = betweenRoundsSourceRef.current;
+    if (!source) {
+      return;
+    }
+    source.stop();
+    source.disconnect();
+    betweenRoundsSourceRef.current = null;
   };
 
   const getDrawSoundPath = (value: number) => {
@@ -764,19 +822,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [isGameComplete]);
 
   useEffect(() => {
-    const audio = betweenRoundsAudioRef.current;
     shouldPlayBetweenRoundsRef.current = shouldPlayBetweenRounds;
-    if (!audio) {
-      return;
-    }
-
     if (shouldPlayBetweenRounds) {
-      audio.play().catch(() => undefined);
+      void startBetweenRoundsAudio();
       return;
     }
-
-    audio.pause();
-    audio.currentTime = 0;
+    stopBetweenRoundsAudio();
   }, [shouldPlayBetweenRounds]);
   const allPlayersReady = useMemo(() => {
     if (!isRoundComplete || !orderedPlayers.length) {
