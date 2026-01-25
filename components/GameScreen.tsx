@@ -130,12 +130,39 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedDrawSoundRef = useRef(false);
   const lastTurnActionRef = useRef<string | null>(null);
   const hasInitializedActionSoundRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const hasInitializedTurnSoundRef = useRef(false);
+  const lastTurnSoundKeyRef = useRef<string | null>(null);
   const spikeItemCountLabels: Record<SpikeItemCount, string> = {
     none: "No items",
     low: "Low items",
     medium: "Medium items",
     high: "High items",
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const audioContext = new AudioContext();
+    audioContextRef.current = audioContext;
+
+    const handleResume = () => {
+      audioContext.resume().catch(() => undefined);
+    };
+
+    window.addEventListener("click", handleResume, { once: true });
+    window.addEventListener("keydown", handleResume, { once: true });
+    window.addEventListener("touchstart", handleResume, { once: true });
+
+    return () => {
+      audioBufferCacheRef.current.clear();
+      audioContext.close().catch(() => undefined);
+      audioContextRef.current = null;
+    };
+  }, []);
 
   const getCardValueClass = (value: Card | null | undefined) => {
     if (typeof value !== "number") {
@@ -179,6 +206,49 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return getCardValueClass(value);
   };
 
+  const loadAudioBuffer = async (soundPath: string) => {
+    const audioContext = audioContextRef.current;
+    if (!audioContext) {
+      return null;
+    }
+
+    const cached = audioBufferCacheRef.current.get(soundPath);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const response = await fetch(soundPath);
+      const buffer = await response.arrayBuffer();
+      const decoded = await audioContext.decodeAudioData(buffer);
+      audioBufferCacheRef.current.set(soundPath, decoded);
+      return decoded;
+    } catch {
+      return null;
+    }
+  };
+
+  const playSound = (soundPath: string) => {
+    const audioContext = audioContextRef.current;
+    if (!audioContext || typeof window === "undefined") {
+      return;
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => undefined);
+    }
+
+    loadAudioBuffer(soundPath).then((buffer) => {
+      if (!buffer || audioContextRef.current !== audioContext) {
+        return;
+      }
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+    });
+  };
+
   const getDrawSoundPath = (value: number) => {
     if (value === -1) {
       return "/sounds/card-draw/minus-one.wav";
@@ -206,16 +276,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!soundPath || typeof window === "undefined") {
       return;
     }
-    const audio = new Audio(soundPath);
-    audio.play().catch(() => undefined);
+    playSound(soundPath);
   };
 
   const playRevealTradeSound = () => {
     if (typeof window === "undefined") {
       return;
     }
-    const audio = new Audio("/sounds/card-draw/reveal-trade.wav");
-    audio.play().catch(() => undefined);
+    playSound("/sounds/card-draw/reveal-trade.wav");
   };
 
   const shouldPlayRevealTradeSound = (action: string | null | undefined) => {
@@ -700,6 +768,42 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     game?.endingPlayerId !== uid &&
     game?.currentPlayerId === uid &&
     Boolean(game?.finalTurnRemainingIds?.includes(uid));
+
+  useEffect(() => {
+    if (!game || !uid || !isGameActive) {
+      return;
+    }
+
+    const turnKey = `${game.roundNumber}-${game.currentPlayerId ?? "none"}`;
+
+    if (!hasInitializedTurnSoundRef.current) {
+      hasInitializedTurnSoundRef.current = true;
+      lastTurnSoundKeyRef.current = turnKey;
+      return;
+    }
+
+    if (game.currentPlayerId === uid && lastTurnSoundKeyRef.current !== turnKey) {
+      if (isLocalFinalTurn) {
+        playSound("/sounds/notifications/final-turn.wav");
+      } else {
+        playSound("/sounds/notifications/your-turn.wav");
+      }
+    }
+
+    lastTurnSoundKeyRef.current = turnKey;
+  }, [game, isGameActive, isLocalFinalTurn, uid]);
+
+  useEffect(() => {
+    if (!isCurrentTurn || !isGameActive) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      playSound("/sounds/notifications/hey-your-turn.wav");
+    }, 20000);
+
+    return () => window.clearTimeout(timeout);
+  }, [isCurrentTurn, isGameActive]);
   const spectatorCount = useMemo(() => {
     if (!spectators.length) {
       return 0;
