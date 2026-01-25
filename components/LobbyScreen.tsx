@@ -8,6 +8,8 @@ import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase
 
 const darkModeStorageKey = "skyjo-dark-mode";
 const firstTimeTipsStorageKey = "skyjo-first-time-tips";
+const cardSoundsStorageKey = "skyjo-card-sounds";
+const backgroundMusicStorageKey = "skyjo-background-music";
 const heroBannerLight = "/images/skyjo-hero-banner.png";
 const heroBannerDark = "/images/skyjo-hero-banner-darkmode.png";
 
@@ -26,10 +28,23 @@ function getInitialDarkModePreference() {
   return window.localStorage.getItem(darkModeStorageKey) === "true";
 }
 
+function getInitialSoundPreference(storageKey: string) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.localStorage.getItem(storageKey) === "true";
+}
+
 export default function LobbyScreen() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(getInitialDarkModePreference);
+  const [isCardSoundsEnabled, setIsCardSoundsEnabled] = useState(() =>
+    getInitialSoundPreference(cardSoundsStorageKey)
+  );
+  const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() =>
+    getInitialSoundPreference(backgroundMusicStorageKey)
+  );
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -98,6 +113,14 @@ export default function LobbyScreen() {
       document.documentElement.removeAttribute("data-theme");
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(cardSoundsStorageKey, String(isCardSoundsEnabled));
+  }, [isCardSoundsEnabled]);
+
+  useEffect(() => {
+    window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
+  }, [isBackgroundMusicEnabled]);
 
   useEffect(() => {
     if (isSettingsOpen) {
@@ -231,6 +254,40 @@ export default function LobbyScreen() {
                   </span>
                 </label>
                 <p className="modal__option-help">Switch the interface to the dark theme.</p>
+              </div>
+              <div className="modal__option">
+                <label className="modal__option-label modal__option-toggle">
+                  <span>Card sounds</span>
+                  <span className="toggle">
+                    <input
+                      className="toggle__input"
+                      type="checkbox"
+                      checked={isCardSoundsEnabled}
+                      onChange={(event) => setIsCardSoundsEnabled(event.target.checked)}
+                    />
+                    <span className="toggle__track" aria-hidden="true" />
+                  </span>
+                </label>
+                <p className="modal__option-help">
+                  Mute card draws, turn alerts, reveal sounds, and swap effects.
+                </p>
+              </div>
+              <div className="modal__option">
+                <label className="modal__option-label modal__option-toggle">
+                  <span>Background music</span>
+                  <span className="toggle">
+                    <input
+                      className="toggle__input"
+                      type="checkbox"
+                      checked={isBackgroundMusicEnabled}
+                      onChange={(event) => setIsBackgroundMusicEnabled(event.target.checked)}
+                    />
+                    <span className="toggle__track" aria-hidden="true" />
+                  </span>
+                </label>
+                <p className="modal__option-help">
+                  Play theme music during round breaks and in the lobby.
+                </p>
               </div>
               <div className="modal__actions">
                 <button
