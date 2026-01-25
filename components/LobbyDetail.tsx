@@ -321,6 +321,13 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   return (
     <div className="lobby-detail">
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+      <audio
+        src="/sounds/theme/main-theme-loop.mp3"
+        autoPlay
+        loop
+        preload="auto"
+        aria-hidden="true"
+      />
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
