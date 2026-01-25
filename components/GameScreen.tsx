@@ -38,6 +38,7 @@ type GameScreenProps = {
 
 type GameMeta = {
   status: string;
+  lobbyId: string | null;
   currentPlayerId: string | null;
   activePlayerOrder: string[];
   deck: Card[];
@@ -91,6 +92,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const firebaseReady = isFirebaseConfigured;
   const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
+  const [lobbyName, setLobbyName] = useState<string | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -128,6 +130,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedDrawSoundRef = useRef(false);
   const lastTurnActionRef = useRef<string | null>(null);
   const hasInitializedActionSoundRef = useRef(false);
+  const spikeItemCountLabels: Record<SpikeItemCount, string> = {
+    none: "No items",
+    low: "Low items",
+    medium: "Medium items",
+    high: "High items",
+  };
 
   const getCardValueClass = (value: Card | null | undefined) => {
     if (typeof value !== "number") {
@@ -234,6 +242,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         const data = snapshot.data();
         setGame({
           status: (data.status as string | undefined) ?? "pending",
+          lobbyId: (data.lobbyId as string | null | undefined) ?? null,
           currentPlayerId: (data.currentPlayerId as string | undefined) ?? null,
           activePlayerOrder: Array.isArray(data.activePlayerOrder)
             ? (data.activePlayerOrder as string[])
@@ -265,6 +274,31 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    if (!firebaseReady || !game?.lobbyId) {
+      setLobbyName(null);
+      return;
+    }
+
+    const lobbyRef = doc(db, "lobbies", game.lobbyId);
+    const unsubscribe = onSnapshot(
+      lobbyRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setLobbyName("Unknown lobby");
+          return;
+        }
+        const data = snapshot.data();
+        setLobbyName((data.name as string | undefined) ?? "Untitled lobby");
+      },
+      (err) => {
+        setError(err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseReady, game?.lobbyId]);
 
   useEffect(() => {
     if (!firebaseReady || !players.length) {
@@ -516,6 +550,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isRoundComplete = game?.status === "round-complete";
   const isGameComplete = game?.status === "game-complete";
   const isGameActive = game?.status === "playing";
+  const lobbyLabel = lobbyName ? `Lobby: ${lobbyName}` : "Lobby: Loading...";
+  const modeLabel = useMemo(() => {
+    if (!game) {
+      return "Mode: Loading...";
+    }
+    return `Mode: ${game.spikeMode ? "Spike" : "Classic"}`;
+  }, [game]);
+  const modeLabelTitle = useMemo(() => {
+    if (!game) {
+      return "Loading mode details.";
+    }
+    if (!game.spikeMode) {
+      return "Classic rules with standard deck.";
+    }
+    const itemLabel =
+      spikeItemCountLabels[game.spikeItemCount ?? "low"] ?? spikeItemCountLabels.low;
+    const rowClearLabel = game.spikeRowClear ? "Row clears enabled." : "Row clears disabled.";
+    return `Spike mode • ${itemLabel} • ${rowClearLabel}`;
+  }, [game, spikeItemCountLabels]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   useEffect(() => {
     if (isGameComplete && !hasGameCompletedRef.current) {
@@ -1311,6 +1364,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
+      <div className="game-screen__tags">
+        <span className="game-screen__tag" title={lobbyLabel}>
+          {lobbyLabel}
+        </span>
+        <span className="game-screen__tag game-screen__tag--mode" title={modeLabelTitle}>
+          {modeLabel}
+        </span>
+      </div>
       <div className="spectator-count">
         <button
           type="button"
