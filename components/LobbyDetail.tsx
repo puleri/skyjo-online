@@ -11,7 +11,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
@@ -49,9 +49,61 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const audioUrl = "/sounds/theme/main-theme-loop.mp3";
+    const audioContext = new AudioContext();
+    const gainNode = audioContext.createGain();
+    gainNode.connect(audioContext.destination);
+    audioContextRef.current = audioContext;
+
+    let isActive = true;
+    const abortController = new AbortController();
+
+    const handleResume = () => {
+      audioContext.resume().catch(() => undefined);
+    };
+
+    window.addEventListener("click", handleResume, { once: true });
+    window.addEventListener("keydown", handleResume, { once: true });
+    window.addEventListener("touchstart", handleResume, { once: true });
+
+    fetch(audioUrl, { signal: abortController.signal })
+      .then((response) => response.arrayBuffer())
+      .then((buffer) => audioContext.decodeAudioData(buffer))
+      .then((decodedBuffer) => {
+        if (!isActive) {
+          return;
+        }
+        const source = audioContext.createBufferSource();
+        source.buffer = decodedBuffer;
+        source.loop = true;
+        source.connect(gainNode);
+        source.start(0);
+        audioSourceRef.current = source;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+      abortController.abort();
+      audioSourceRef.current?.stop();
+      audioSourceRef.current?.disconnect();
+      audioSourceRef.current = null;
+      gainNode.disconnect();
+      audioContextRef.current?.close().catch(() => undefined);
+      audioContextRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -321,13 +373,6 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   return (
     <div className="lobby-detail">
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
-      <audio
-        src="/sounds/theme/main-theme-loop.mp3"
-        autoPlay
-        loop
-        preload="auto"
-        aria-hidden="true"
-      />
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
