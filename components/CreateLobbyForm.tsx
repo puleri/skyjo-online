@@ -29,6 +29,7 @@ export default function CreateLobbyForm() {
     spikeItemCountOptions.findIndex((option) => option.value === spikeItemCount)
   );
   const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "Low";
+  const modeTagLabel = spikeMode ? "spike" : "classic";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -86,6 +87,9 @@ export default function CreateLobbyForm() {
   return (
     <form onSubmit={handleSubmit}>
 
+      <span className="lobby-mode-tag" aria-label={`Mode: ${modeTagLabel}`}>
+        {modeTagLabel}
+      </span>
       <button
               type="button"
               className="game-settings-action-button"
