@@ -1850,6 +1850,24 @@ small {
   object-fit: contain;
   z-index: 2;
   opacity: .8;
+  animation: lobby-glyph-breathe 3.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes lobby-glyph-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lobby-player__glyph {
+    animation: none;
+  }
 }
 
 .lobby-player__platform {
