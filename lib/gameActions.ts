@@ -793,30 +793,47 @@ export const useItemCard = async (
         validateCardSlot(firstPlayer, usage.first.index);
         validateCardSlot(secondPlayer, usage.second.index);
 
-        const firstGrid = [...firstPlayer.grid];
-        const firstRevealed = [...firstPlayer.revealed];
-        const secondGrid = [...secondPlayer.grid];
-        const secondRevealed = [...secondPlayer.revealed];
+        if (usage.first.playerId === usage.second.playerId) {
+          const nextGrid = [...firstPlayer.grid];
+          const nextRevealed = [...firstPlayer.revealed];
+          const tempCard = nextGrid[usage.first.index];
+          const tempReveal = nextRevealed[usage.first.index];
+          nextGrid[usage.first.index] = nextGrid[usage.second.index];
+          nextRevealed[usage.first.index] = nextRevealed[usage.second.index];
+          nextGrid[usage.second.index] = tempCard;
+          nextRevealed[usage.second.index] = tempReveal;
+          playersToUpdate.set(usage.first.playerId, {
+            ...firstPlayer,
+            grid: nextGrid,
+            revealed: nextRevealed,
+          });
+          affectedPlayerIds.add(usage.first.playerId);
+        } else {
+          const firstGrid = [...firstPlayer.grid];
+          const firstRevealed = [...firstPlayer.revealed];
+          const secondGrid = [...secondPlayer.grid];
+          const secondRevealed = [...secondPlayer.revealed];
 
-        const tempCard = firstGrid[usage.first.index];
-        const tempReveal = firstRevealed[usage.first.index];
-        firstGrid[usage.first.index] = secondGrid[usage.second.index];
-        firstRevealed[usage.first.index] = secondRevealed[usage.second.index];
-        secondGrid[usage.second.index] = tempCard;
-        secondRevealed[usage.second.index] = tempReveal;
+          const tempCard = firstGrid[usage.first.index];
+          const tempReveal = firstRevealed[usage.first.index];
+          firstGrid[usage.first.index] = secondGrid[usage.second.index];
+          firstRevealed[usage.first.index] = secondRevealed[usage.second.index];
+          secondGrid[usage.second.index] = tempCard;
+          secondRevealed[usage.second.index] = tempReveal;
 
-        playersToUpdate.set(usage.first.playerId, {
-          ...firstPlayer,
-          grid: firstGrid,
-          revealed: firstRevealed,
-        });
-        playersToUpdate.set(usage.second.playerId, {
-          ...secondPlayer,
-          grid: secondGrid,
-          revealed: secondRevealed,
-        });
-        affectedPlayerIds.add(usage.first.playerId);
-        affectedPlayerIds.add(usage.second.playerId);
+          playersToUpdate.set(usage.first.playerId, {
+            ...firstPlayer,
+            grid: firstGrid,
+            revealed: firstRevealed,
+          });
+          playersToUpdate.set(usage.second.playerId, {
+            ...secondPlayer,
+            grid: secondGrid,
+            revealed: secondRevealed,
+          });
+          affectedPlayerIds.add(usage.first.playerId);
+          affectedPlayerIds.add(usage.second.playerId);
+        }
         break;
       }
       default:
