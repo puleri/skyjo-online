@@ -1850,7 +1850,7 @@ small {
   object-fit: contain;
   z-index: 2;
   opacity: .8;
-  animation: lobby-glyph-breathe 3.5s ease-in-out infinite;
+  animation: lobby-glyph-breathe 5.5s ease-in-out infinite;
   will-change: transform;
 }
 
@@ -1860,7 +1860,7 @@ small {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translateY(-5px);
   }
 }
 
