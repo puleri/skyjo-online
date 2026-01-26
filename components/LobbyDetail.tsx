@@ -51,7 +51,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
-  const [isBackgroundMusicEnabled] = useState(() => {
+  const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() => {
     if (typeof window === "undefined") {
       return false;
     }
@@ -114,6 +114,13 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       audioContextRef.current?.close().catch(() => undefined);
       audioContextRef.current = null;
     };
+  }, [isBackgroundMusicEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
   }, [isBackgroundMusicEnabled]);
 
   useEffect(() => {
@@ -417,6 +424,30 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
           </div>
           <div className="lobby-detail__actions">
+            <button
+              type="button"
+              className="lobby-detail__audio-toggle"
+              onClick={() => setIsBackgroundMusicEnabled((current) => !current)}
+              aria-pressed={isBackgroundMusicEnabled}
+              aria-label={
+                isBackgroundMusicEnabled ? "Mute background music" : "Unmute background music"
+              }
+            >
+              {isBackgroundMusicEnabled ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M3 9v6h4l5 4V5L7 9H3z" />
+                  <path d="M15.5 8.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" />
+                  <path d="M18.5 6a7 7 0 0 1 0 12" fill="none" stroke="currentColor" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M3 9v6h4l5 4V5L7 9H3z" />
+                  <path d="M16 8l5 8" fill="none" stroke="currentColor" />
+                  <path d="M21 8l-5 8" fill="none" stroke="currentColor" />
+                </svg>
+              )}
+              <span>{isBackgroundMusicEnabled ? "Music on" : "Music muted"}</span>
+            </button>
             <button
               type="button"
               className={`form-button-full-width ${currentPlayer?.isReady ? "ready" : ""}`}
