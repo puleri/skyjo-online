@@ -744,12 +744,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isGameActive = game?.status === "playing";
 
   const shouldPlayBetweenRounds = isRoundComplete || isGameComplete;
-  const lobbyLabel = lobbyName ? `Lobby: ${lobbyName}` : "Lobby: Loading...";
+  const lobbyLabel = lobbyName ? `${lobbyName}` : "Lobby Name Loading...";
   const modeLabel = useMemo(() => {
     if (!game) {
-      return "Mode: Loading...";
+      return "Mode Loading...";
     }
-    return `Mode: ${game.spikeMode ? "Spike" : "Classic"}`;
+    return `${game.spikeMode ? "Spike" : "Classic"}`;
   }, [game]);
   const modeLabelTitle = useMemo(() => {
     if (!game) {
