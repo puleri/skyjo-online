@@ -123,13 +123,13 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
   }, [isBackgroundMusicEnabled]);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setShowLoadingOverlay(false);
-    }, 1000);
+  // useEffect(() => {
+  //   const timer = window.setTimeout(() => {
+  //     setShowLoadingOverlay(false);
+  //   }, 1000);
 
-    return () => window.clearTimeout(timer);
-  }, []);
+  //   return () => window.clearTimeout(timer);
+  // }, []);
 
   useEffect(() => {
     if (!firebaseReady || !lobbyId) {
@@ -434,19 +434,18 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
               }
             >
               {isBackgroundMusicEnabled ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <svg viewBox="0 0 24 24" className="svg" aria-hidden="true" focusable="false">
                   <path d="M3 9v6h4l5 4V5L7 9H3z" />
                   <path d="M15.5 8.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" />
                   <path d="M18.5 6a7 7 0 0 1 0 12" fill="none" stroke="currentColor" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <svg viewBox="0 0 24 24" className="svg"aria-hidden="true" focusable="false">
                   <path d="M3 9v6h4l5 4V5L7 9H3z" />
                   <path d="M16 8l5 8" fill="none" stroke="currentColor" />
                   <path d="M21 8l-5 8" fill="none" stroke="currentColor" />
                 </svg>
               )}
-              <span>{isBackgroundMusicEnabled ? "Music on" : "Music muted"}</span>
             </button>
             <button
               type="button"

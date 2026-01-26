@@ -1880,15 +1880,19 @@ small {
 }
 
 .lobby-detail__audio-toggle {
+  position: absolute;
+  top: 20px;
+  left: 20px;
   display: inline-flex;
+  background: none;
   align-items: center;
   justify-content: center;
   gap: 10px;
   padding: 10px 16px;
   border-radius: 999px;
-  border: 2px solid rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 0.7);
+  opacity: .6;
   color: var(--color-dark);
+  box-shadow: none;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1896,14 +1900,21 @@ small {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.svg {
+  fill: var(--color-dark);
+}
+
 .lobby-detail__audio-toggle svg {
-  width: 20px;
-  height: 20px;
+  color: var(--color-dark);
+  width: 30px;
+  height: 30px;
 }
 
 .lobby-detail__audio-toggle:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+  opacity: .3;
+  background: none;
+  box-shadow: none;
 }
 
 .lobby-detail__audio-toggle:focus-visible {
