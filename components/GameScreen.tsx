@@ -82,6 +82,9 @@ type ItemTarget = {
   index: number;
 };
 
+const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
+const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
+
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firstTimeTipsStorageKey = "skyjo-first-time-tips";
@@ -341,6 +344,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         betweenRoundsSourceRef.current = null;
       }
     };
+    const now = audioContext.currentTime;
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(
+      BETWEEN_ROUNDS_TARGET_VOLUME,
+      now + BETWEEN_ROUNDS_FADE_IN_SECONDS
+    );
     source.start(0);
     betweenRoundsSourceRef.current = source;
   };
