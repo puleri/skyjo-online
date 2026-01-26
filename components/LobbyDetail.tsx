@@ -42,6 +42,8 @@ type LobbyMeta = {
 };
 
 const backgroundMusicStorageKey = "skyjo-background-music";
+const THEME_FADE_IN_SECONDS = 1.5;
+const THEME_TARGET_VOLUME = 1;
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -99,6 +101,10 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         source.buffer = decodedBuffer;
         source.loop = true;
         source.connect(gainNode);
+        const now = audioContext.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(THEME_TARGET_VOLUME, now + THEME_FADE_IN_SECONDS);
         source.start(0);
         audioSourceRef.current = source;
       })
