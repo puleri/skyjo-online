@@ -91,6 +91,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const darkModeStorageKey = "skyjo-dark-mode";
   const cardSoundsStorageKey = "skyjo-card-sounds";
   const backgroundMusicStorageKey = "skyjo-background-music";
+  const snowStorageKey = "skyjo-snow";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
@@ -123,6 +124,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return false;
     }
     return window.localStorage.getItem(backgroundMusicStorageKey) === "true";
+  });
+  const [isSnowEnabled, setIsSnowEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(snowStorageKey) === "true";
   });
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
@@ -603,6 +610,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   useEffect(() => {
     window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
   }, [isBackgroundMusicEnabled]);
+
+  useEffect(() => {
+    window.localStorage.setItem(snowStorageKey, String(isSnowEnabled));
+  }, [isSnowEnabled]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -1636,6 +1647,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
+      {isSnowEnabled ? <div className="snow-overlay" aria-hidden="true" /> : null}
       <div className="game-screen__tags">
         <span className="game-screen__tag" title={lobbyLabel}>
           {lobbyLabel}
@@ -1879,6 +1891,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 Show the quick hints about revealing, replacing, and swapping cards.
               </p>
             </div>
+            <h3 className="modal__section-title">UI Preferences</h3>
             <div className="modal__option">
               <label className="modal__option-label modal__option-toggle">
                 <span>Dark mode</span>
@@ -1893,6 +1906,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </span>
               </label>
               <p className="modal__option-help">Switch the interface to the dark theme.</p>
+            </div>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>Let it snow</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={isSnowEnabled}
+                    onChange={(event) => setIsSnowEnabled(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help">
+                Sprinkle a light snowfall across the screen.
+              </p>
             </div>
             <div className="modal__option">
               <label className="modal__option-label modal__option-toggle">

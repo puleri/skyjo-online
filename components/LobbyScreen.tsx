@@ -10,6 +10,7 @@ const darkModeStorageKey = "skyjo-dark-mode";
 const firstTimeTipsStorageKey = "skyjo-first-time-tips";
 const cardSoundsStorageKey = "skyjo-card-sounds";
 const backgroundMusicStorageKey = "skyjo-background-music";
+const snowStorageKey = "skyjo-snow";
 const heroBannerLight = "/images/skyjo-hero-banner.png";
 const heroBannerDark = "/images/skyjo-hero-banner-darkmode.png";
 
@@ -44,6 +45,9 @@ export default function LobbyScreen() {
   );
   const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() =>
     getInitialSoundPreference(backgroundMusicStorageKey)
+  );
+  const [isSnowEnabled, setIsSnowEnabled] = useState(() =>
+    getInitialSoundPreference(snowStorageKey)
   );
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
@@ -123,6 +127,10 @@ export default function LobbyScreen() {
   }, [isBackgroundMusicEnabled]);
 
   useEffect(() => {
+    window.localStorage.setItem(snowStorageKey, String(isSnowEnabled));
+  }, [isSnowEnabled]);
+
+  useEffect(() => {
     if (isSettingsOpen) {
       settingsCloseButtonRef.current?.focus();
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -170,6 +178,7 @@ export default function LobbyScreen() {
 
   return (
     <main>
+      {isSnowEnabled ? <div className="snow-overlay" aria-hidden="true" /> : null}
       <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
 
       <div className="container">
@@ -240,6 +249,7 @@ export default function LobbyScreen() {
                   Show the quick hints about revealing, replacing, and swapping cards.
                 </p>
               </div>
+              <h3 className="modal__section-title">UI Preferences</h3>
               <div className="modal__option">
                 <label className="modal__option-label modal__option-toggle">
                   <span>Dark mode</span>
@@ -254,6 +264,23 @@ export default function LobbyScreen() {
                   </span>
                 </label>
                 <p className="modal__option-help">Switch the interface to the dark theme.</p>
+              </div>
+              <div className="modal__option">
+                <label className="modal__option-label modal__option-toggle">
+                  <span>Let it snow</span>
+                  <span className="toggle">
+                    <input
+                      className="toggle__input"
+                      type="checkbox"
+                      checked={isSnowEnabled}
+                      onChange={(event) => setIsSnowEnabled(event.target.checked)}
+                    />
+                    <span className="toggle__track" aria-hidden="true" />
+                  </span>
+                </label>
+                <p className="modal__option-help">
+                  Sprinkle a light snowfall across the screen.
+                </p>
               </div>
               <div className="modal__option">
                 <label className="modal__option-label modal__option-toggle">
