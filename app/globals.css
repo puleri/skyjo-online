@@ -144,6 +144,7 @@ section {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  justify-content: center;
   margin: 8px 0 16px;
 }
 
@@ -152,17 +153,20 @@ section {
   align-items: center;
   padding: 6px 12px;
   border-radius: 999px;
-  background: var(--color-surface-bright);
-  border: 1px solid var(--color-border);
+  background: var(--color-bg);
   color: var(--color-text);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 2rem;
+  font-weight: 100;
+  letter-spacing: 0em;
 }
 
 .game-screen__tag--mode {
-  background: var(--color-accent-soft);
+  background: var(--color-bg);
   color: var(--color-dark);
+    border: 1px solid var(--color-border);
+  font-size: .7rem;
+
+  box-shadow: none;
   cursor: pointer;
   font-family: inherit;
   appearance: none;
@@ -179,17 +183,16 @@ section {
   top: calc(100% + 8px);
   left: 50%;
   transform: translate(-50%, -4px);
-  min-width: 180px;
-  max-width: 240px;
+  min-width: max-content;
   padding: 8px 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border);
-  background: var(--color-surface-bright);
+  background: var(--color-bg);
   color: var(--color-text);
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 400;
   text-align: center;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.05);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;

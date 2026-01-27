@@ -769,12 +769,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return "Loading mode details.";
     }
     if (!game.spikeMode) {
-      return "Classic rules • Items: none • Row clears disabled.";
+      return "Classic rules";
     }
     const itemLabel =
       spikeItemCountLabels[game.spikeItemCount ?? "low"] ?? spikeItemCountLabels.low;
-    const rowClearLabel = game.spikeRowClear ? "Row clears enabled." : "Row clears disabled.";
-    return `Spike mode • Items: ${itemLabel} • ${rowClearLabel}`;
+    const rowClearLabel = game.spikeRowClear ? "Row clears" : "";
+    return `${itemLabel} • ${rowClearLabel}`;
   }, [game, spikeItemCountLabels]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   useEffect(() => {
