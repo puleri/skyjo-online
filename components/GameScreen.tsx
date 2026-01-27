@@ -104,6 +104,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === "undefined") {
@@ -155,6 +156,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
+  const modeTooltipRef = useRef<HTMLDivElement | null>(null);
   const spikeItemCountLabels: Record<SpikeItemCount, string> = {
     none: "No items",
     low: "Low items",
@@ -756,14 +758,44 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return "Loading mode details.";
     }
     if (!game.spikeMode) {
-      return "Classic rules with standard deck.";
+      return "Classic rules • Items: none • Row clears disabled.";
     }
     const itemLabel =
       spikeItemCountLabels[game.spikeItemCount ?? "low"] ?? spikeItemCountLabels.low;
     const rowClearLabel = game.spikeRowClear ? "Row clears enabled." : "Row clears disabled.";
-    return `Spike mode • ${itemLabel} • ${rowClearLabel}`;
+    return `Spike mode • Items: ${itemLabel} • ${rowClearLabel}`;
   }, [game, spikeItemCountLabels]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  useEffect(() => {
+    if (!isModeTooltipOpen) {
+      return;
+    }
+
+    const handlePointer = (event: MouseEvent | TouchEvent) => {
+      if (!modeTooltipRef.current) {
+        return;
+      }
+      if (!modeTooltipRef.current.contains(event.target as Node)) {
+        setIsModeTooltipOpen(false);
+      }
+    };
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsModeTooltipOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("touchstart", handlePointer);
+    document.addEventListener("keydown", handleKey);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("touchstart", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [isModeTooltipOpen]);
   useEffect(() => {
     if (isGameComplete && !hasGameCompletedRef.current) {
       setIsFinalScoresOpen(true);
@@ -1608,9 +1640,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <span className="game-screen__tag" title={lobbyLabel}>
           {lobbyLabel}
         </span>
-        <span className="game-screen__tag game-screen__tag--mode" title={modeLabelTitle}>
-          {modeLabel}
-        </span>
+        <div className="game-screen__tag-tooltip" ref={modeTooltipRef}>
+          <button
+            type="button"
+            className="game-screen__tag game-screen__tag--mode"
+            aria-describedby="game-mode-tooltip"
+            aria-expanded={isModeTooltipOpen}
+            onClick={() => setIsModeTooltipOpen((prev) => !prev)}
+          >
+            {modeLabel}
+          </button>
+          <span
+            id="game-mode-tooltip"
+            role="tooltip"
+            className={`game-screen__tag-tooltip-content${
+              isModeTooltipOpen ? " is-visible" : ""
+            }`}
+          >
+            {modeLabelTitle}
+          </span>
+        </div>
       </div>
       <div className="spectator-count">
         <button
