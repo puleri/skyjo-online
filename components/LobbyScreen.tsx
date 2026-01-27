@@ -3,6 +3,7 @@ import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestor
 import { useEffect, useRef, useState } from "react";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
+import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -178,7 +179,7 @@ export default function LobbyScreen() {
 
   return (
     <main>
-      {isSnowEnabled ? <div className="snow-overlay" aria-hidden="true" /> : null}
+      {isSnowEnabled ? <SnowfallLayer /> : null}
       <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
 
       <div className="container">
