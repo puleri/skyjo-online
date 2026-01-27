@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
+import SnowfallLayer from "./SnowfallLayer";
 import {
   discardPendingDraw,
   discardItemForReveal,
@@ -1647,7 +1648,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   return (
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
-      {isSnowEnabled ? <div className="snow-overlay" aria-hidden="true" /> : null}
+      {isSnowEnabled ? <SnowfallLayer /> : null}
       <div className="game-screen__tags">
         <span className="game-screen__tag" title={lobbyLabel}>
           {lobbyLabel}
