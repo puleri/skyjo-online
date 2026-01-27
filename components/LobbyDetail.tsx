@@ -12,6 +12,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
@@ -42,8 +43,12 @@ type LobbyMeta = {
 };
 
 const backgroundMusicStorageKey = "skyjo-background-music";
+const darkModeStorageKey = "skyjo-dark-mode";
+const snowStorageKey = "skyjo-snow";
 const THEME_FADE_IN_SECONDS = 1.5;
 const THEME_TARGET_VOLUME = 1;
+const lobbyBgSnowLight = "/images/skyjo-lobby-bg-snow.png";
+const lobbyBgSnowDark = "/images/skyjo-lobby-bg-snow-dark.png";
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -53,11 +58,23 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [isStarting, setIsStarting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(darkModeStorageKey) === "true";
+  });
   const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() => {
     if (typeof window === "undefined") {
       return false;
     }
     return window.localStorage.getItem(backgroundMusicStorageKey) === "true";
+  });
+  const [isSnowEnabled, setIsSnowEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(snowStorageKey) === "true";
   });
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
@@ -128,6 +145,22 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     }
     window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
   }, [isBackgroundMusicEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === darkModeStorageKey) {
+        setIsDarkMode(event.newValue === "true");
+      }
+      if (event.key === snowStorageKey) {
+        setIsSnowEnabled(event.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   // useEffect(() => {
   //   const timer = window.setTimeout(() => {
@@ -217,6 +250,13 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const allPlayersReady = players.length > 0 && players.every((player) => player.isReady);
   const inviteLink =
     typeof window === "undefined" ? "" : `${window.location.origin}/invite/${lobbyId}`;
+  const lobbySceneStyle = useMemo(() => {
+    if (!isSnowEnabled) {
+      return undefined;
+    }
+    const snowImage = isDarkMode ? lobbyBgSnowDark : lobbyBgSnowLight;
+    return { ["--lobby-bg-image"]: `url("${snowImage}")` } as CSSProperties;
+  }, [isDarkMode, isSnowEnabled]);
 
   const handleCopyInvite = async () => {
     if (!inviteLink) {
@@ -402,7 +442,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       {!players.length ? (
         <p>No players have joined this lobby yet.</p>
       ) : (
-        <div className="lobby-scene-wrapper">
+        <div className="lobby-scene-wrapper" style={lobbySceneStyle}>
           <div className="lobby-scene" aria-label="Lobby players">
             {players.map((player) => (
               <div key={player.id} className="lobby-player">
