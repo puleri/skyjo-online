@@ -126,6 +126,7 @@ const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowCle
   const nextGrid = [...grid];
   const nextRevealed = [...revealed];
   const matchedIndices = new Set<number>();
+  const clearedCards: Card[] = [];
   for (let column = 0; column < columns; column += 1) {
     const columnIndices = getColumnIndices(column);
     if (isLineMatch(grid, revealed, columnIndices)) {
@@ -142,10 +143,14 @@ const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowCle
     }
   }
   matchedIndices.forEach((matchedIndex) => {
+    const value = grid[matchedIndex];
+    if (value !== null && value !== undefined) {
+      clearedCards.push(value);
+    }
     nextGrid[matchedIndex] = null;
     nextRevealed[matchedIndex] = true;
   });
-  return { grid: nextGrid, revealed: nextRevealed };
+  return { grid: nextGrid, revealed: nextRevealed, clearedCards };
 };
 
 const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
@@ -186,7 +191,10 @@ const shuffleGridPositions = (grid: Array<Card | null>, revealed: boolean[]) => 
 
 const clearPlayerMatches = (player: PlayerDoc, rowClear: boolean) => {
   const cleared = clearMatchedLines([...player.grid], [...player.revealed], rowClear);
-  return { ...player, grid: cleared.grid, revealed: cleared.revealed };
+  return {
+    player: { ...player, grid: cleared.grid, revealed: cleared.revealed },
+    clearedCards: cleared.clearedCards,
+  };
 };
 
 const validateGridIndex = (player: PlayerDoc, targetIndex: number) => {
@@ -841,12 +849,17 @@ export const useItemCard = async (
     }
 
     const updatedPlayers: Record<string, PlayerDoc> = {};
+    const clearedItemDiscards: Card[] = [];
     playersToUpdate.forEach((targetPlayer, targetPlayerId) => {
       if (affectedPlayerIds.has(targetPlayerId)) {
-        updatedPlayers[targetPlayerId] = clearPlayerMatches(
+        const cleared = clearPlayerMatches(
           targetPlayer,
           Boolean(game.spikeMode && game.spikeRowClear)
         );
+        updatedPlayers[targetPlayerId] = cleared.player;
+        if (cleared.clearedCards.length > 0) {
+          clearedItemDiscards.push(...cleared.clearedCards);
+        }
       } else {
         updatedPlayers[targetPlayerId] = targetPlayer;
       }
@@ -896,6 +909,9 @@ export const useItemCard = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
+    const updatedDiscard =
+      clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
+
     transaction.update(gameRef, {
       deck: nextDeck,
       graveyard: [...(game.graveyard ?? []), pendingItem],
@@ -904,6 +920,7 @@ export const useItemCard = async (
       lastTurnAction,
       lastTurnActionAt: serverTimestamp(),
       ...resolution.gameUpdates,
+      ...(updatedDiscard ? { discard: updatedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
     });
