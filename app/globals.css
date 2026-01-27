@@ -1488,6 +1488,7 @@ small {
 .welcome-div {
   width: 100vw;
   height: auto;
+  z-index: -50;
   position: relative;
   /* May need this for alignment */
 }
@@ -1751,6 +1752,8 @@ small {
 }
 
 .game-complete-actions {
+  display: flex ;
+  justify-content: center;
   margin: 16px 0;
 }
 

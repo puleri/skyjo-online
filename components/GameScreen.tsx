@@ -1694,7 +1694,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <img className="settings-icon" src="/settings-icon.png"/>
         </button>
       </div>
-      {isGameComplete && !isFinalScoresOpen ? (
+      {isGameComplete ? (
         <div className="game-complete-actions">
           <button
             type="button"
