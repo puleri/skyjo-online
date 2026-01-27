@@ -137,6 +137,8 @@ section {
 
 .game-screen {
   max-width: 1200px;
+  position: relative;
+  z-index: 0;
 }
 
 .game-screen__tags {

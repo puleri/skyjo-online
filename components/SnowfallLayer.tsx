@@ -12,7 +12,7 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 const randomInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
-export default function SnowfallLayer({ zIndex = 50 }: SnowfallLayerProps) {
+export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
   // Start somewhere in-range; adjust if you want a fixed start.
   const [count, setCount] = useState<number>(randomInt(200, 500));
 
