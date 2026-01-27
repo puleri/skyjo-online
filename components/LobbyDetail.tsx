@@ -21,6 +21,7 @@ import type { SpikeItemCount } from "../lib/game/deck";
 import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
+import SnowfallLayer from "./SnowfallLayer";
 
 type LobbyPlayer = {
   id: string;
@@ -437,6 +438,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   return (
     <div className="lobby-detail">
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+      {isSnowEnabled ? <SnowfallLayer /> : null}
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
