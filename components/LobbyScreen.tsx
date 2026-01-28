@@ -76,6 +76,10 @@ export default function LobbyScreen() {
       return;
     }
 
+    if (!isLeaderboardOpen) {
+      return;
+    }
+
     const leaderboardQuery = query(
       collection(db, "leaderboard"),
       orderBy("score", "asc"),
@@ -104,7 +108,7 @@ export default function LobbyScreen() {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady]);
+  }, [firebaseReady, isLeaderboardOpen]);
 
   useEffect(() => {
     window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
