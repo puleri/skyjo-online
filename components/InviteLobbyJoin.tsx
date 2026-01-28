@@ -57,6 +57,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
       (snapshot) => {
         if (!snapshot.exists()) {
           setLobby(null);
+          setHostName("A player");
           return;
         }
         const data = snapshot.data();
@@ -64,6 +65,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
           hostId: (data.hostId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
         });
+        setHostName((data.hostDisplayName as string | undefined) ?? "A player");
       },
       (err) => {
         setError(err.message);
@@ -72,29 +74,6 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, lobbyId]);
-
-  useEffect(() => {
-    if (!firebaseReady || !lobby?.hostId || !lobbyId) {
-      return;
-    }
-
-    const hostRef = doc(db, "lobbies", lobbyId, "players", lobby.hostId);
-    const unsubscribe = onSnapshot(
-      hostRef,
-      (snapshot) => {
-        if (!snapshot.exists()) {
-          setHostName("A player");
-          return;
-        }
-        setHostName((snapshot.data().displayName as string | undefined) ?? "A player");
-      },
-      () => {
-        setHostName("A player");
-      }
-    );
-
-    return () => unsubscribe();
-  }, [firebaseReady, lobby?.hostId, lobbyId]);
 
   useEffect(() => {
     if (authError) {
@@ -147,9 +126,37 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         const isHost = (lobbyData.hostId as string | undefined) === uid;
         if (playerSnapshot.exists()) {
           transaction.update(playerRef, { displayName: trimmedName });
-          if (isHost) {
-            transaction.update(lobbyRef, { hostDisplayName: trimmedName });
+          const currentPlayerIds = Array.isArray(lobbyData.playerIds)
+            ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
+            : [];
+          const currentPlayerNames = Array.isArray(lobbyData.playerNames)
+            ? lobbyData.playerNames.filter((name): name is string => typeof name === "string")
+            : [];
+          const playerNameMap = new Map<string, string>();
+          currentPlayerIds.forEach((playerId, index) => {
+            const existingName = currentPlayerNames[index];
+            playerNameMap.set(
+              playerId,
+              typeof existingName === "string" ? existingName : "Anonymous player"
+            );
+          });
+          if (!playerNameMap.has(uid)) {
+            currentPlayerIds.push(uid);
           }
+          playerNameMap.set(uid, trimmedName);
+          const nextPlayerIds = currentPlayerIds.filter(
+            (playerId, index) => currentPlayerIds.indexOf(playerId) === index
+          );
+          const nextPlayerNames = nextPlayerIds.map(
+            (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
+          );
+          transaction.update(lobbyRef, {
+            ...(isHost ? { hostDisplayName: trimmedName } : {}),
+            playerCount: nextPlayerIds.length,
+            playerIds: nextPlayerIds,
+            playerNames: nextPlayerNames,
+            players: nextPlayerIds.length,
+          });
           return;
         }
 
@@ -170,8 +177,34 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
         const glyph = glyphPool[Math.floor(Math.random() * glyphPool.length)];
         const nextAssignedGlyphs = Array.from(new Set([...assignedGlyphs, glyph]));
+        const currentPlayerIds = Array.isArray(lobbyData.playerIds)
+          ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
+          : [];
+        const currentPlayerNames = Array.isArray(lobbyData.playerNames)
+          ? lobbyData.playerNames.filter((name): name is string => typeof name === "string")
+          : [];
+        const playerNameMap = new Map<string, string>();
+        currentPlayerIds.forEach((playerId, index) => {
+          const existingName = currentPlayerNames[index];
+          playerNameMap.set(
+            playerId,
+            typeof existingName === "string" ? existingName : "Anonymous player"
+          );
+        });
+        currentPlayerIds.push(uid);
+        playerNameMap.set(uid, trimmedName);
+        const nextPlayerIds = currentPlayerIds.filter(
+          (playerId, index) => currentPlayerIds.indexOf(playerId) === index
+        );
+        const nextPlayerNames = nextPlayerIds.map(
+          (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
+        );
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
+          playerCount: nextPlayerIds.length,
+          playerIds: nextPlayerIds,
+          playerNames: nextPlayerNames,
+          players: nextPlayerIds.length,
         };
         if (isHost) {
           lobbyUpdates.hostDisplayName = trimmedName;
