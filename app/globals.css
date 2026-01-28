@@ -1899,6 +1899,7 @@ small {
   gap: 24px;
   background-image: var(--lobby-bg-image);
   background-size: cover;
+  z-index: -100;
   background-position: bottom;
   min-height: 100vh;
 
@@ -1969,6 +1970,7 @@ small {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  z-index: 2 ;
   margin-top: 30px;
   min-width: 230px;
   max-width: 300px;
@@ -1997,6 +1999,11 @@ small {
 
 .svg {
   fill: var(--color-dark);
+}
+
+.lobby-detail {
+  position: relative;
+  z-index: 2;
 }
 
 .lobby-detail__audio-toggle svg {

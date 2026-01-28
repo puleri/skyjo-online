@@ -14,11 +14,11 @@ const randomInt = (min: number, max: number) =>
 
 export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
   // Start somewhere in-range; adjust if you want a fixed start.
-  const [count, setCount] = useState<number>(randomInt(200, 500));
+  const [count, setCount] = useState<number>(randomInt(100, 300));
 
   // Heavier weight on -100 to balance larger + increments.
   // Tune these if you want it even “slower” or “faster”.
-  const weights = useMemo(() => ({ minus: 0.65, plus: 0.35 }), []);
+  const weights = useMemo(() => ({ minus: 0.75, plus: 0.25 }), []);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -29,14 +29,14 @@ export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
       timeoutId = setTimeout(() => {
         setCount((prev) => {
           // If we're near bounds, nudge direction to avoid getting stuck.
-          if (prev <= 450) return clamp(prev + randomInt(200, 500), 200, 1500);
-          if (prev >= 1050) return clamp(prev - 100, 200, 1500);
+          if (prev <= 450) return clamp(prev + randomInt(100, 300), 200, 800);
+          if (prev >= 1050) return clamp(prev - 100, 200, 1800);
 
           const roll = Math.random();
           const delta =
             roll < weights.minus ? -100 : randomInt(200, 500);
 
-          return clamp(prev + delta, 200, 1500);
+          return clamp(prev + delta, 200, 800);
         });
 
         tick(); // schedule next update
@@ -53,8 +53,8 @@ export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
   return (
     <Snowfall
       snowflakeCount={count}
-      wind={[1,5]}
-      speed={[1,3]}
+      wind={[0,.5]}
+      speed={[.5,.5]}
       style={{
         position: 'absolute',
         inset: 0,
@@ -63,7 +63,7 @@ export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
         pointerEvents: 'none',
         zIndex,
       }}
-      radius={[1, .5]}
+      radius={[.5, .5]}
     />
   );
 }
