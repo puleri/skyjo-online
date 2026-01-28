@@ -1899,10 +1899,16 @@ small {
   gap: 24px;
   background-image: var(--lobby-bg-image);
   background-size: cover;
-  z-index: -100;
   background-position: bottom;
   min-height: 100vh;
+  position: relative;
+  z-index: 0;
+}
 
+.lobby-scene-wrapper .lobby-scene,
+.lobby-scene-wrapper .lobby-detail__actions {
+  position: relative;
+  z-index: 1;
 }
 
 .lobby-scene {
@@ -1970,7 +1976,6 @@ small {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  z-index: 2 ;
   margin-top: 30px;
   min-width: 230px;
   max-width: 300px;
