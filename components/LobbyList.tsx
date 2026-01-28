@@ -22,6 +22,8 @@ type Lobby = {
   name: string;
   status: string;
   players: number;
+  playerIds: string[];
+  playerNames: string[];
 };
 
 const MAX_PLAYER_NAMES_LENGTH = 60;
@@ -29,8 +31,6 @@ const LOBBIES_PER_PAGE = 5;
 
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
-  const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
-  const [lobbyPlayerIds, setLobbyPlayerIds] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
@@ -52,7 +52,9 @@ export default function LobbyList() {
           id: doc.id,
           name: doc.data().name ?? "Untitled lobby",
           status: doc.data().status ?? "open",
-          players: doc.data().players ?? 0,
+          players: doc.data().playerCount ?? doc.data().players ?? 0,
+          playerIds: Array.isArray(doc.data().playerIds) ? doc.data().playerIds : [],
+          playerNames: Array.isArray(doc.data().playerNames) ? doc.data().playerNames : [],
         }));
         setLobbies(nextLobbies);
         setIsLoading(false);
@@ -65,50 +67,6 @@ export default function LobbyList() {
 
     return () => unsubscribe();
   }, [firebaseReady]);
-
-  useEffect(() => {
-    if (!firebaseReady) {
-      return;
-    }
-
-    if (!lobbies.length) {
-      setLobbyPlayers({});
-      setLobbyPlayerIds({});
-      return;
-    }
-
-    const unsubscribers = lobbies.map((lobby) => {
-      const playerQuery = query(
-        collection(db, "lobbies", lobby.id, "players"),
-        orderBy("joinedAt", "asc")
-      );
-      return onSnapshot(
-        playerQuery,
-        (snapshot) => {
-          const playerDocs = snapshot.docs;
-          const playerNames = playerDocs.map(
-            (playerDoc) => playerDoc.data().displayName ?? "Anonymous player"
-          );
-          const playerIds = playerDocs.map((playerDoc) => playerDoc.id);
-          setLobbyPlayers((prev) => ({
-            ...prev,
-            [lobby.id]: playerNames,
-          }));
-          setLobbyPlayerIds((prev) => ({
-            ...prev,
-            [lobby.id]: playerIds,
-          }));
-        },
-        (err) => {
-          setError(err.message);
-        }
-      );
-    });
-
-    return () => {
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [firebaseReady, lobbies]);
 
   useEffect(() => {
     if (authError) {
@@ -147,6 +105,7 @@ export default function LobbyList() {
 
         const lobbyData = lobbySnapshot.data();
         const displayName = resolvedName || "Anonymous player";
+        const existingPlayerSnapshot = await transaction.get(playerRef);
         const isHost = (lobbyData.hostId as string | undefined) === uid;
         const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
           ? lobbyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
@@ -158,32 +117,68 @@ export default function LobbyList() {
           availableGlyphs && availableGlyphs.length > 0
             ? availableGlyphs
             : GLYPHS.filter((glyph) => !assignedGlyphs.includes(glyph));
+        const isExistingPlayer = existingPlayerSnapshot.exists();
 
-        if (!glyphPool.length) {
+        if (!glyphPool.length && !isExistingPlayer) {
           throw new Error("No glyphs are available for this lobby.");
         }
-
-        const glyph = glyphPool[Math.floor(Math.random() * glyphPool.length)];
-        const nextAssignedGlyphs = Array.from(new Set([...assignedGlyphs, glyph]));
+        const glyph = isExistingPlayer
+          ? null
+          : glyphPool[Math.floor(Math.random() * glyphPool.length)];
+        const nextAssignedGlyphs = isExistingPlayer
+          ? assignedGlyphs
+          : Array.from(new Set([...assignedGlyphs, glyph]));
+        const currentPlayerIds = Array.isArray(lobbyData.playerIds)
+          ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
+          : [];
+        const currentPlayerNames = Array.isArray(lobbyData.playerNames)
+          ? lobbyData.playerNames.filter((name): name is string => typeof name === "string")
+          : [];
+        const playerNameMap = new Map<string, string>();
+        currentPlayerIds.forEach((playerId, index) => {
+          const existingName = currentPlayerNames[index];
+          playerNameMap.set(
+            playerId,
+            typeof existingName === "string" ? existingName : "Anonymous player"
+          );
+        });
+        if (!playerNameMap.has(uid)) {
+          currentPlayerIds.push(uid);
+        }
+        playerNameMap.set(uid, displayName);
+        const nextPlayerIds = currentPlayerIds.filter(
+          (playerId, index) => currentPlayerIds.indexOf(playerId) === index
+        );
+        const nextPlayerNames = nextPlayerIds.map(
+          (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
+        );
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
+          playerCount: nextPlayerIds.length,
+          playerIds: nextPlayerIds,
+          playerNames: nextPlayerNames,
+          players: nextPlayerIds.length,
         };
         if (isHost) {
           lobbyUpdates.hostDisplayName = displayName;
         }
 
-        if (availableGlyphs && availableGlyphs.length > 0) {
+        if (!isExistingPlayer && availableGlyphs && availableGlyphs.length > 0) {
           lobbyUpdates.availableGlyphs = availableGlyphs.filter(
             (availableGlyph) => availableGlyph !== glyph
           );
         }
 
-        transaction.set(playerRef, {
-          displayName,
-          joinedAt: serverTimestamp(),
-          isReady: false,
-          glyph,
-        });
+        if (isExistingPlayer) {
+          transaction.update(playerRef, { displayName });
+        } else {
+          transaction.set(playerRef, {
+            displayName,
+            joinedAt: serverTimestamp(),
+            isReady: false,
+            glyph,
+          });
+        }
         transaction.update(lobbyRef, lobbyUpdates);
       });
       router.push(`/lobby/${lobbyId}`);
@@ -243,7 +238,7 @@ export default function LobbyList() {
     <div>
       <ul>
         {visibleLobbies.map((lobby) => {
-          const isPlayerInLobby = uid ? lobbyPlayerIds[lobby.id]?.includes(uid) : false;
+          const isPlayerInLobby = uid ? lobby.playerIds.includes(uid) : false;
           const buttonLabel =
             joiningLobbyId === lobby.id
               ? "Joining..."
@@ -261,7 +256,7 @@ export default function LobbyList() {
                 <strong className="name-lobby-list">{lobby.name}</strong>
                 <div>
                   <small className="player-lobby-list">
-                    {formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}
+                    {formatPlayerNames(lobby.playerNames)}
                   </small>
                 </div>
               </div>
