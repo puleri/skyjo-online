@@ -438,13 +438,13 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   return (
     <div className="lobby-detail">
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
-      {isSnowEnabled ? <SnowfallLayer /> : null}
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
       {!players.length ? (
         <p>No players have joined this lobby yet.</p>
       ) : (
         <div className="lobby-scene-wrapper" style={lobbySceneStyle}>
+          {isSnowEnabled ? <SnowfallLayer zIndex={0} /> : null}
           <div className="lobby-scene" aria-label="Lobby players">
             {players.map((player) => (
               <div key={player.id} className="lobby-player">
