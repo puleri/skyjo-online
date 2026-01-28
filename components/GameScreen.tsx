@@ -550,7 +550,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [firebaseReady, game]);
 
   useEffect(() => {
-    if (!firebaseReady) {
+    if (!firebaseReady || !isLeaderboardOpen) {
       return;
     }
 
@@ -581,7 +581,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady]);
+  }, [firebaseReady, isLeaderboardOpen]);
 
   useEffect(() => {
     const storedPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
