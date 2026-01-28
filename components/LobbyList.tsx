@@ -3,12 +3,16 @@
 import {
   collection,
   doc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  startAfter,
   type DocumentData,
+  type QueryDocumentSnapshot,
   type UpdateData,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -35,6 +39,10 @@ export default function LobbyList() {
   const [isLoading, setIsLoading] = useState(true);
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
+  const [pageCursors, setPageCursors] = useState<
+    Array<QueryDocumentSnapshot<DocumentData> | null>
+  >([]);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
@@ -44,10 +52,29 @@ export default function LobbyList() {
       return;
     }
 
-    const lobbyQuery = query(collection(db, "lobbies"), orderBy("createdAt", "desc"));
+    const cursor = pageIndex > 0 ? pageCursors[pageIndex - 1] : null;
+    if (pageIndex > 0 && !cursor) {
+      return;
+    }
+
+    setIsLoading(true);
+    setHasNextPage(false);
+    const lobbyQuery = cursor
+      ? query(
+          collection(db, "lobbies"),
+          orderBy("createdAt", "desc"),
+          startAfter(cursor),
+          limit(LOBBIES_PER_PAGE)
+        )
+      : query(
+          collection(db, "lobbies"),
+          orderBy("createdAt", "desc"),
+          limit(LOBBIES_PER_PAGE)
+        );
+    let isCancelled = false;
     const unsubscribe = onSnapshot(
       lobbyQuery,
-      (snapshot) => {
+      async (snapshot) => {
         const nextLobbies = snapshot.docs.map((doc) => ({
           id: doc.id,
           name: doc.data().name ?? "Untitled lobby",
@@ -56,33 +83,64 @@ export default function LobbyList() {
           playerIds: Array.isArray(doc.data().playerIds) ? doc.data().playerIds : [],
           playerNames: Array.isArray(doc.data().playerNames) ? doc.data().playerNames : [],
         }));
+        if (isCancelled) {
+          return;
+        }
         setLobbies(nextLobbies);
         setIsLoading(false);
+        const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
+        setPageCursors((current) => {
+          const existing = current[pageIndex];
+          if (existing?.id === lastDoc?.id) {
+            return current;
+          }
+          const next = [...current];
+          next[pageIndex] = lastDoc;
+          return next;
+        });
+        if (!lastDoc) {
+          setHasNextPage(false);
+          return;
+        }
+        try {
+          const nextPageSnapshot = await getDocs(
+            query(
+              collection(db, "lobbies"),
+              orderBy("createdAt", "desc"),
+              startAfter(lastDoc),
+              limit(1)
+            )
+          );
+          if (!isCancelled) {
+            setHasNextPage(!nextPageSnapshot.empty);
+          }
+        } catch (err) {
+          if (!isCancelled) {
+            const message = err instanceof Error ? err.message : "Unknown error.";
+            setError(message);
+            setHasNextPage(false);
+          }
+        }
       },
       (err) => {
-        setError(err.message);
-        setIsLoading(false);
+        if (!isCancelled) {
+          setError(err.message);
+          setIsLoading(false);
+        }
       }
     );
 
-    return () => unsubscribe();
-  }, [firebaseReady]);
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
+  }, [firebaseReady, pageIndex]);
 
   useEffect(() => {
     if (authError) {
       setError(authError);
     }
   }, [authError]);
-
-  useEffect(() => {
-    if (!lobbies.length) {
-      setPageIndex(0);
-      return;
-    }
-
-    const maxPageIndex = Math.max(Math.ceil(lobbies.length / LOBBIES_PER_PAGE) - 1, 0);
-    setPageIndex((current) => Math.min(current, maxPageIndex));
-  }, [lobbies.length]);
 
   const handleJoin = async (lobbyId: string) => {
     if (!uid) {
@@ -230,9 +288,7 @@ export default function LobbyList() {
     return `${joinedNames.slice(0, MAX_PLAYER_NAMES_LENGTH)}…`;
   };
 
-  const totalPages = Math.ceil(lobbies.length / LOBBIES_PER_PAGE);
-  const startIndex = pageIndex * LOBBIES_PER_PAGE;
-  const visibleLobbies = lobbies.slice(startIndex, startIndex + LOBBIES_PER_PAGE);
+  const visibleLobbies = lobbies;
 
   return (
     <div>
@@ -275,7 +331,7 @@ export default function LobbyList() {
           );
         })}
       </ul>
-      {!isLoading && totalPages > 1 ? (
+      {!isLoading && (pageIndex > 0 || hasNextPage) ? (
         <div className="lobby-pagination">
           <button
             type="button"
@@ -285,14 +341,12 @@ export default function LobbyList() {
           >
             Previous
           </button>
-          <span className="pagination-status">
-            Page {pageIndex + 1} of {totalPages}
-          </span>
+          <span className="pagination-status">Page {pageIndex + 1}</span>
           <button
             type="button"
             className="pagination-button"
-            onClick={() => setPageIndex((current) => Math.min(current + 1, totalPages - 1))}
-            disabled={isLoading || pageIndex + 1 >= totalPages}
+            onClick={() => setPageIndex((current) => current + 1)}
+            disabled={isLoading || !hasNextPage}
           >
             Next
           </button>
