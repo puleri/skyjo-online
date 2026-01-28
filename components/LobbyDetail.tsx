@@ -471,8 +471,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             ))}
 
           </div>
-          <div className="lobby-detail__actions">
-            <button
+          <button
               type="button"
               className="lobby-detail__audio-toggle"
               onClick={() => setIsBackgroundMusicEnabled((current) => !current)}
@@ -495,6 +494,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
                 </svg>
               )}
             </button>
+          <div className="lobby-detail__actions">
+            
             <button
               type="button"
               className={`form-button-full-width ${currentPlayer?.isReady ? "ready" : ""}`}
