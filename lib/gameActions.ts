@@ -40,17 +40,28 @@ type GameDoc = {
   skipNextTurnPlayerIds?: string[] | null;
 };
 
-type PlayerDoc = {
+type PlayerStateDoc = {
   grid: Array<Card | null>;
   revealed: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
+};
+
+type PlayerSummaryDoc = {
+  displayName?: string;
   isReady?: boolean;
   roundScore?: number;
   totalScore?: number;
+  revealedCount?: number;
 };
 
 const columns = 4;
+const getPlayerStateRef = (gameId: string, playerId: string) =>
+  doc(db, "games", gameId, "playerStates", playerId);
+const getPlayerSummaryRef = (gameId: string, playerId: string) =>
+  doc(db, "games", gameId, "players", playerId);
+const getRevealedCount = (revealed: boolean[]) =>
+  revealed.reduce((total, value) => total + (value ? 1 : 0), 0);
 
 const assertCondition = (condition: boolean, message: string) => {
   if (!condition) {
@@ -189,7 +200,7 @@ const shuffleGridPositions = (grid: Array<Card | null>, revealed: boolean[]) => 
   };
 };
 
-const clearPlayerMatches = (player: PlayerDoc, rowClear: boolean) => {
+const clearPlayerMatches = (player: PlayerStateDoc, rowClear: boolean) => {
   const cleared = clearMatchedLines([...player.grid], [...player.revealed], rowClear);
   return {
     player: { ...player, grid: cleared.grid, revealed: cleared.revealed },
@@ -197,11 +208,11 @@ const clearPlayerMatches = (player: PlayerDoc, rowClear: boolean) => {
   };
 };
 
-const validateGridIndex = (player: PlayerDoc, targetIndex: number) => {
+const validateGridIndex = (player: PlayerStateDoc, targetIndex: number) => {
   assertCondition(targetIndex >= 0 && targetIndex < player.grid.length, "Invalid index.");
 };
 
-const validateCardSlot = (player: PlayerDoc, targetIndex: number) => {
+const validateCardSlot = (player: PlayerStateDoc, targetIndex: number) => {
   validateGridIndex(player, targetIndex);
   assertCondition(
     player.grid[targetIndex] !== null && player.grid[targetIndex] !== undefined,
@@ -255,7 +266,7 @@ type TurnResolution = {
 const resolveTurn = (
   game: GameDoc,
   updatedPlayerId: string,
-  updatedPlayer: PlayerDoc
+  updatedPlayer: PlayerStateDoc
 ): TurnResolution => {
   const activeOrder = game.activePlayerOrder;
   let endingPlayerId = game.endingPlayerId ?? null;
@@ -320,9 +331,11 @@ const resolveTurn = (
   };
 };
 
+type PlayerSnapshot = PlayerStateDoc & PlayerSummaryDoc;
+
 const computeRoundScores = (
   activeOrder: string[],
-  players: Record<string, PlayerDoc>,
+  players: Record<string, PlayerSnapshot>,
   endingPlayerId: string | null,
   rowClear: boolean
 ) => {
@@ -353,25 +366,29 @@ const computeRoundScores = (
     }
   }
 
-  const playerUpdates: Record<string, Partial<PlayerDoc>> = {};
+  const stateUpdates: Record<string, Partial<PlayerStateDoc>> = {};
+  const summaryUpdates: Record<string, Partial<PlayerSummaryDoc>> = {};
   const totalScores: number[] = [];
   activeOrder.forEach((playerId, index) => {
     const cleared = scoresByPlayer[index].cleared;
     const previousTotal = players[playerId].totalScore ?? 0;
     const totalScore = previousTotal + roundScores[playerId];
     totalScores.push(totalScore);
-    playerUpdates[playerId] = {
+    stateUpdates[playerId] = {
       grid: cleared.grid,
       revealed: cleared.revealed,
+    };
+    summaryUpdates[playerId] = {
       isReady: false,
       roundScore: roundScores[playerId],
       totalScore,
+      revealedCount: getRevealedCount(cleared.revealed),
     };
   });
 
   const isGameComplete = totalScores.some((totalScore) => totalScore >= 100);
 
-  return { roundScores, playerUpdates, isGameComplete };
+  return { roundScores, stateUpdates, summaryUpdates, isGameComplete };
 };
 
 export const drawFromDiscard = async (
@@ -380,7 +397,8 @@ export const drawFromDiscard = async (
   targetIndex: number
 ) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -391,9 +409,9 @@ export const drawFromDiscard = async (
     assertCondition(game.turnPhase === "choose-draw", "Not in draw phase.");
     assertCondition(game.discard.length > 0, "Discard pile is empty.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(player.pendingDraw == null, "You already have a pending draw.");
     validateGridIndex(player, targetIndex);
 
@@ -403,7 +421,7 @@ export const drawFromDiscard = async (
     const drawn = drawnCard as Card;
 
     if (isItemCard(drawn)) {
-      transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "discard" });
+      transaction.update(playerStateRef, { pendingDraw: drawn, pendingDrawSource: "discard" });
       transaction.update(gameRef, {
         discard,
         selectedDiscardPlayerId: null,
@@ -427,7 +445,7 @@ export const drawFromDiscard = async (
       discard.push(...cleared.clearedCards);
     }
 
-    const updatedPlayer: PlayerDoc = {
+    const updatedPlayer: PlayerStateDoc = {
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
@@ -437,21 +455,39 @@ export const drawFromDiscard = async (
     const resolution = resolveTurn(game, playerId, updatedPlayer);
 
     let roundScores: Record<string, number> | null = null;
-    let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let scoreUpdates: {
+      stateUpdates: Record<string, Partial<PlayerStateDoc>>;
+      summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
+    } | null = null;
     let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
-      const players: Record<string, PlayerDoc> = {};
+      const players: Record<string, PlayerSnapshot> = {};
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
-            players[activePlayerId] = updatedPlayer;
+            const summarySnap = await transaction.get(
+              getPlayerSummaryRef(gameId, activePlayerId)
+            );
+            assertCondition(summarySnap.exists(), "Player not found.");
+            players[activePlayerId] = {
+              ...updatedPlayer,
+              ...(summarySnap.data() as PlayerSummaryDoc),
+            };
             return;
           }
-          const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
-          const playerSnap = await transaction.get(playerDocRef);
-          assertCondition(playerSnap.exists(), "Player not found.");
-          players[activePlayerId] = playerSnap.data() as PlayerDoc;
+          const playerStateSnap = await transaction.get(
+            getPlayerStateRef(gameId, activePlayerId)
+          );
+          const playerSummarySnap = await transaction.get(
+            getPlayerSummaryRef(gameId, activePlayerId)
+          );
+          assertCondition(playerStateSnap.exists(), "Player not found.");
+          assertCondition(playerSummarySnap.exists(), "Player not found.");
+          players[activePlayerId] = {
+            ...(playerStateSnap.data() as PlayerStateDoc),
+            ...(playerSummarySnap.data() as PlayerSummaryDoc),
+          };
         })
       );
 
@@ -462,15 +498,21 @@ export const drawFromDiscard = async (
         rowClear
       );
       roundScores = scoring.roundScores;
-      scoreUpdates = scoring.playerUpdates;
+      scoreUpdates = {
+        stateUpdates: scoring.stateUpdates,
+        summaryUpdates: scoring.summaryUpdates,
+      };
       gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
-    transaction.update(playerRef, {
+    transaction.update(playerStateRef, {
       grid: cleared.grid,
       revealed: cleared.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+    });
+    transaction.update(playerSummaryRef, {
+      revealedCount: getRevealedCount(cleared.revealed),
     });
     transaction.update(gameRef, {
       discard,
@@ -484,9 +526,11 @@ export const drawFromDiscard = async (
     });
 
     if (scoreUpdates) {
-      Object.entries(scoreUpdates).forEach(([targetPlayerId, updates]) => {
-        const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
-        transaction.update(targetRef, updates);
+      Object.entries(scoreUpdates.stateUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerStateRef(gameId, targetPlayerId), updates);
+      });
+      Object.entries(scoreUpdates.summaryUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), updates);
       });
     }
   });
@@ -494,7 +538,7 @@ export const drawFromDiscard = async (
 
 export const drawFromDeck = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -505,9 +549,9 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     assertCondition(game.turnPhase === "choose-draw", "Not in draw phase.");
     assertCondition(game.deck.length > 0, "Deck is empty.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(player.pendingDraw == null, "You already have a pending draw.");
 
     const deck = [...game.deck];
@@ -515,7 +559,7 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     assertCondition(drawnCard !== undefined, "Deck is empty.");
     const drawn = drawnCard as Card;
 
-    transaction.update(playerRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
+    transaction.update(playerStateRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
     transaction.update(gameRef, {
       deck,
       turnPhase: isItemCard(drawn) ? "resolve-item" : "resolve-draw",
@@ -558,7 +602,8 @@ export const swapPendingDraw = async (
   targetIndex: number
 ) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -571,9 +616,9 @@ export const swapPendingDraw = async (
       "Not in swap phase."
     );
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(player.pendingDraw != null, "No pending draw to keep.");
     assertCondition(!isItemCard(player.pendingDraw), "Pending draw is an item.");
     validateGridIndex(player, targetIndex);
@@ -593,7 +638,7 @@ export const swapPendingDraw = async (
       discard.push(...cleared.clearedCards);
     }
 
-    const updatedPlayer: PlayerDoc = {
+    const updatedPlayer: PlayerStateDoc = {
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
@@ -603,21 +648,39 @@ export const swapPendingDraw = async (
     const resolution = resolveTurn(game, playerId, updatedPlayer);
 
     let roundScores: Record<string, number> | null = null;
-    let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let scoreUpdates: {
+      stateUpdates: Record<string, Partial<PlayerStateDoc>>;
+      summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
+    } | null = null;
     let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
-      const players: Record<string, PlayerDoc> = {};
+      const players: Record<string, PlayerSnapshot> = {};
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
-            players[activePlayerId] = updatedPlayer;
+            const summarySnap = await transaction.get(
+              getPlayerSummaryRef(gameId, activePlayerId)
+            );
+            assertCondition(summarySnap.exists(), "Player not found.");
+            players[activePlayerId] = {
+              ...updatedPlayer,
+              ...(summarySnap.data() as PlayerSummaryDoc),
+            };
             return;
           }
-          const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
-          const playerSnap = await transaction.get(playerDocRef);
-          assertCondition(playerSnap.exists(), "Player not found.");
-          players[activePlayerId] = playerSnap.data() as PlayerDoc;
+          const playerStateSnap = await transaction.get(
+            getPlayerStateRef(gameId, activePlayerId)
+          );
+          const playerSummarySnap = await transaction.get(
+            getPlayerSummaryRef(gameId, activePlayerId)
+          );
+          assertCondition(playerStateSnap.exists(), "Player not found.");
+          assertCondition(playerSummarySnap.exists(), "Player not found.");
+          players[activePlayerId] = {
+            ...(playerStateSnap.data() as PlayerStateDoc),
+            ...(playerSummarySnap.data() as PlayerSummaryDoc),
+          };
         })
       );
 
@@ -628,15 +691,21 @@ export const swapPendingDraw = async (
         rowClear
       );
       roundScores = scoring.roundScores;
-      scoreUpdates = scoring.playerUpdates;
+      scoreUpdates = {
+        stateUpdates: scoring.stateUpdates,
+        summaryUpdates: scoring.summaryUpdates,
+      };
       gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
-    transaction.update(playerRef, {
+    transaction.update(playerStateRef, {
       grid: cleared.grid,
       revealed: cleared.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+    });
+    transaction.update(playerSummaryRef, {
+      revealedCount: getRevealedCount(cleared.revealed),
     });
     transaction.update(gameRef, {
       discard,
@@ -649,9 +718,11 @@ export const swapPendingDraw = async (
     });
 
     if (scoreUpdates) {
-      Object.entries(scoreUpdates).forEach(([targetPlayerId, updates]) => {
-        const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
-        transaction.update(targetRef, updates);
+      Object.entries(scoreUpdates.stateUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerStateRef(gameId, targetPlayerId), updates);
+      });
+      Object.entries(scoreUpdates.summaryUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), updates);
       });
     }
   });
@@ -659,7 +730,7 @@ export const swapPendingDraw = async (
 
 export const discardPendingDraw = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -669,22 +740,22 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
     assertCondition(game.currentPlayerId === playerId, "Not your turn.");
     assertCondition(game.turnPhase === "resolve-draw", "Not in resolve draw phase.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(player.pendingDraw != null, "No pending draw to discard.");
     assertCondition(!isItemCard(player.pendingDraw), "Pending draw is an item.");
 
     const discard = [...game.discard, player.pendingDraw];
 
-    transaction.update(playerRef, { pendingDraw: null, pendingDrawSource: null });
+    transaction.update(playerStateRef, { pendingDraw: null, pendingDrawSource: null });
     transaction.update(gameRef, { discard, turnPhase: "resolve" });
   });
 };
 
 export const discardItemForReveal = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -694,14 +765,14 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     assertCondition(game.currentPlayerId === playerId, "Not your turn.");
     assertCondition(game.turnPhase === "resolve-item", "Not in item resolve phase.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(isItemCard(player.pendingDraw), "No item to discard.");
 
     const discard = [...game.discard, player.pendingDraw];
 
-    transaction.update(playerRef, { pendingDraw: null, pendingDrawSource: null });
+    transaction.update(playerStateRef, { pendingDraw: null, pendingDrawSource: null });
     transaction.update(gameRef, { discard, turnPhase: "resolve", selectedDiscardPlayerId: null });
   });
 };
@@ -712,7 +783,8 @@ export const useItemCard = async (
   usage: ItemUsage
 ) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -722,13 +794,13 @@ export const useItemCard = async (
     assertCondition(game.currentPlayerId === playerId, "Not your turn.");
     assertCondition(game.turnPhase === "resolve-item", "Not in item resolve phase.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     assertItemCodeMatch(player.pendingDraw, usage.code);
 
     const pendingItem = player.pendingDraw as ItemCard;
-    const playersToUpdate = new Map<string, PlayerDoc>([[playerId, player]]);
+    const playersToUpdate = new Map<string, PlayerStateDoc>([[playerId, player]]);
     const affectedPlayerIds = new Set<string>();
     let nextDeck = [...game.deck];
     let nextSkipNextTurnPlayerIds = new Set(game.skipNextTurnPlayerIds ?? []);
@@ -742,10 +814,9 @@ export const useItemCard = async (
       if (existing) {
         return existing;
       }
-      const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
-      const targetSnap = await transaction.get(targetRef);
+      const targetSnap = await transaction.get(getPlayerStateRef(gameId, targetPlayerId));
       assertCondition(targetSnap.exists(), "Player not found.");
-      const targetPlayer = targetSnap.data() as PlayerDoc;
+      const targetPlayer = targetSnap.data() as PlayerStateDoc;
       playersToUpdate.set(targetPlayerId, targetPlayer);
       return targetPlayer;
     };
@@ -848,7 +919,7 @@ export const useItemCard = async (
         throw new Error("Unknown item card.");
     }
 
-    const updatedPlayers: Record<string, PlayerDoc> = {};
+    const updatedPlayers: Record<string, PlayerStateDoc> = {};
     const clearedItemDiscards: Card[] = [];
     playersToUpdate.forEach((targetPlayer, targetPlayerId) => {
       if (affectedPlayerIds.has(targetPlayerId)) {
@@ -874,21 +945,39 @@ export const useItemCard = async (
     );
 
     let roundScores: Record<string, number> | null = null;
-    let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let scoreUpdates: {
+      stateUpdates: Record<string, Partial<PlayerStateDoc>>;
+      summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
+    } | null = null;
     let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
-      const playersSnapshot: Record<string, PlayerDoc> = {};
+      const playersSnapshot: Record<string, PlayerSnapshot> = {};
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (updatedPlayers[activePlayerId]) {
-            playersSnapshot[activePlayerId] = updatedPlayers[activePlayerId];
+            const summarySnap = await transaction.get(
+              getPlayerSummaryRef(gameId, activePlayerId)
+            );
+            assertCondition(summarySnap.exists(), "Player not found.");
+            playersSnapshot[activePlayerId] = {
+              ...updatedPlayers[activePlayerId],
+              ...(summarySnap.data() as PlayerSummaryDoc),
+            };
             return;
           }
-          const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
-          const playerSnap = await transaction.get(playerDocRef);
-          assertCondition(playerSnap.exists(), "Player not found.");
-          playersSnapshot[activePlayerId] = playerSnap.data() as PlayerDoc;
+          const playerStateSnap = await transaction.get(
+            getPlayerStateRef(gameId, activePlayerId)
+          );
+          const playerSummarySnap = await transaction.get(
+            getPlayerSummaryRef(gameId, activePlayerId)
+          );
+          assertCondition(playerStateSnap.exists(), "Player not found.");
+          assertCondition(playerSummarySnap.exists(), "Player not found.");
+          playersSnapshot[activePlayerId] = {
+            ...(playerStateSnap.data() as PlayerStateDoc),
+            ...(playerSummarySnap.data() as PlayerSummaryDoc),
+          };
         })
       );
 
@@ -899,15 +988,21 @@ export const useItemCard = async (
         Boolean(game.spikeMode && game.spikeRowClear)
       );
       roundScores = scoring.roundScores;
-      scoreUpdates = scoring.playerUpdates;
+      scoreUpdates = {
+        stateUpdates: scoring.stateUpdates,
+        summaryUpdates: scoring.summaryUpdates,
+      };
       gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
-    transaction.update(playerRef, {
+    transaction.update(playerStateRef, {
       grid: updatedCurrentPlayer.grid,
       revealed: updatedCurrentPlayer.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+    });
+    transaction.update(playerSummaryRef, {
+      revealedCount: getRevealedCount(updatedCurrentPlayer.revealed),
     });
     const updatedDiscard =
       clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
@@ -929,17 +1024,21 @@ export const useItemCard = async (
       if (targetPlayerId === playerId) {
         return;
       }
-      const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
-      transaction.update(targetRef, {
+      transaction.update(getPlayerStateRef(gameId, targetPlayerId), {
         grid: updatedPlayer.grid,
         revealed: updatedPlayer.revealed,
+      });
+      transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
+        revealedCount: getRevealedCount(updatedPlayer.revealed),
       });
     });
 
     if (scoreUpdates) {
-      Object.entries(scoreUpdates).forEach(([targetPlayerId, updates]) => {
-        const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
-        transaction.update(targetRef, updates);
+      Object.entries(scoreUpdates.stateUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerStateRef(gameId, targetPlayerId), updates);
+      });
+      Object.entries(scoreUpdates.summaryUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), updates);
       });
     }
   });
@@ -951,7 +1050,8 @@ export const revealAfterDiscard = async (
   targetIndex: number
 ) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -961,9 +1061,9 @@ export const revealAfterDiscard = async (
     assertCondition(game.currentPlayerId === playerId, "Not your turn.");
     assertCondition(game.turnPhase === "resolve", "Not in resolve phase.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
-    const player = playerSnap.data() as PlayerDoc;
+    const player = playerSnap.data() as PlayerStateDoc;
     validateGridIndex(player, targetIndex);
     assertCondition(!player.revealed[targetIndex], "Slot already revealed.");
     assertCondition(player.grid[targetIndex] !== null, "Slot is empty.");
@@ -976,7 +1076,7 @@ export const revealAfterDiscard = async (
     const clearedDiscard =
       cleared.clearedCards.length > 0 ? [...game.discard, ...cleared.clearedCards] : null;
 
-    const updatedPlayer: PlayerDoc = {
+    const updatedPlayer: PlayerStateDoc = {
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
@@ -986,21 +1086,39 @@ export const revealAfterDiscard = async (
     const resolution = resolveTurn(game, playerId, updatedPlayer);
 
     let roundScores: Record<string, number> | null = null;
-    let scoreUpdates: Record<string, Partial<PlayerDoc>> | null = null;
+    let scoreUpdates: {
+      stateUpdates: Record<string, Partial<PlayerStateDoc>>;
+      summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
+    } | null = null;
     let gameStatusOverride: string | null = null;
 
     if (resolution.roundComplete) {
-      const players: Record<string, PlayerDoc> = {};
+      const players: Record<string, PlayerSnapshot> = {};
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
-            players[activePlayerId] = updatedPlayer;
+            const summarySnap = await transaction.get(
+              getPlayerSummaryRef(gameId, activePlayerId)
+            );
+            assertCondition(summarySnap.exists(), "Player not found.");
+            players[activePlayerId] = {
+              ...updatedPlayer,
+              ...(summarySnap.data() as PlayerSummaryDoc),
+            };
             return;
           }
-          const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
-          const playerSnap = await transaction.get(playerDocRef);
-          assertCondition(playerSnap.exists(), "Player not found.");
-          players[activePlayerId] = playerSnap.data() as PlayerDoc;
+          const playerStateSnap = await transaction.get(
+            getPlayerStateRef(gameId, activePlayerId)
+          );
+          const playerSummarySnap = await transaction.get(
+            getPlayerSummaryRef(gameId, activePlayerId)
+          );
+          assertCondition(playerStateSnap.exists(), "Player not found.");
+          assertCondition(playerSummarySnap.exists(), "Player not found.");
+          players[activePlayerId] = {
+            ...(playerStateSnap.data() as PlayerStateDoc),
+            ...(playerSummarySnap.data() as PlayerSummaryDoc),
+          };
         })
       );
 
@@ -1011,13 +1129,19 @@ export const revealAfterDiscard = async (
         rowClear
       );
       roundScores = scoring.roundScores;
-      scoreUpdates = scoring.playerUpdates;
+      scoreUpdates = {
+        stateUpdates: scoring.stateUpdates,
+        summaryUpdates: scoring.summaryUpdates,
+      };
       gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
     }
 
-    transaction.update(playerRef, {
+    transaction.update(playerStateRef, {
       grid: cleared.grid,
       revealed: cleared.revealed,
+    });
+    transaction.update(playerSummaryRef, {
+      revealedCount: getRevealedCount(cleared.revealed),
     });
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
@@ -1030,9 +1154,11 @@ export const revealAfterDiscard = async (
     });
 
     if (scoreUpdates) {
-      Object.entries(scoreUpdates).forEach(([targetPlayerId, updates]) => {
-        const targetRef = doc(db, "games", gameId, "players", targetPlayerId);
-        transaction.update(targetRef, updates);
+      Object.entries(scoreUpdates.stateUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerStateRef(gameId, targetPlayerId), updates);
+      });
+      Object.entries(scoreUpdates.summaryUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), updates);
       });
     }
   });
@@ -1051,13 +1177,12 @@ export const startNextRound = async (gameId: string, playerId: string) => {
 
     const playerOrder = game.activePlayerOrder;
     assertCondition(playerOrder.length > 0, "No players are active in this game.");
-    const players: Record<string, PlayerDoc> = {};
+    const players: Record<string, PlayerSummaryDoc> = {};
     await Promise.all(
       playerOrder.map(async (activePlayerId) => {
-        const playerDocRef = doc(db, "games", gameId, "players", activePlayerId);
-        const playerSnap = await transaction.get(playerDocRef);
+        const playerSnap = await transaction.get(getPlayerSummaryRef(gameId, activePlayerId));
         assertCondition(playerSnap.exists(), "Player not found.");
-        players[activePlayerId] = playerSnap.data() as PlayerDoc;
+        players[activePlayerId] = playerSnap.data() as PlayerSummaryDoc;
       })
     );
     const allPlayersReady = playerOrder.every((activePlayerId) =>
@@ -1120,14 +1245,16 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     });
 
     playerOrder.forEach((targetPlayerId) => {
-      const playerRef = doc(db, "games", gameId, "players", targetPlayerId);
-      transaction.update(playerRef, {
+      transaction.update(getPlayerStateRef(gameId, targetPlayerId), {
         grid: playerGrids.get(targetPlayerId) ?? [],
         revealed: Array.from({ length: 12 }, () => false),
         pendingDraw: null,
         pendingDrawSource: null,
+      });
+      transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
         isReady: false,
         roundScore: 0,
+        revealedCount: 0,
       });
     });
   });
@@ -1135,7 +1262,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
 
 export const readyForNextRound = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
-  const playerRef = doc(db, "games", gameId, "players", playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -1143,9 +1270,9 @@ export const readyForNextRound = async (gameId: string, playerId: string) => {
     const game = gameSnap.data() as GameDoc;
     assertCondition(game.status === "round-complete", "Round is not complete yet.");
 
-    const playerSnap = await transaction.get(playerRef);
+    const playerSnap = await transaction.get(playerSummaryRef);
     assertCondition(playerSnap.exists(), "Player not found.");
 
-    transaction.update(playerRef, { isReady: true });
+    transaction.update(playerSummaryRef, { isReady: true });
   });
 };

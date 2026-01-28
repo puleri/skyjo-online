@@ -59,16 +59,22 @@ type GameMeta = {
   lastTurnActionAt?: Timestamp | null;
 };
 
-type GamePlayer = {
+type GamePlayerSummary = {
   id: string;
   displayName: string;
   isReady: boolean;
+  totalScore?: number;
+  revealedCount?: number;
+};
+
+type GamePlayerState = {
   grid?: Array<Card | null>;
   revealed?: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
-  totalScore?: number;
 };
+
+type GamePlayer = GamePlayerSummary & GamePlayerState;
 
 type LeaderboardEntry = {
   id: string;
@@ -100,7 +106,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
   const [lobbyName, setLobbyName] = useState<string | null>(null);
-  const [players, setPlayers] = useState<GamePlayer[]>([]);
+  const [playerSummaries, setPlayerSummaries] = useState<GamePlayerSummary[]>([]);
+  const [localPlayerState, setLocalPlayerState] = useState<GamePlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
@@ -171,6 +178,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     medium: "Medium items",
     high: "High items",
   };
+  const players = useMemo<GamePlayer[]>(() => {
+    if (!uid) {
+      return playerSummaries;
+    }
+    return playerSummaries.map((player) =>
+      player.id === uid ? { ...player, ...(localPlayerState ?? {}) } : player
+    );
+  }, [localPlayerState, playerSummaries, uid]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -631,15 +646,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             id: playerDoc.id,
             displayName: (data.displayName as string | undefined) ?? "Anonymous player",
             isReady: Boolean(data.isReady),
-            grid: Array.isArray(data.grid) ? (data.grid as Array<Card | null>) : undefined,
-            revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
-            pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
-            pendingDrawSource:
-              (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
             totalScore: (data.totalScore as number | undefined) ?? undefined,
+            revealedCount: (data.revealedCount as number | undefined) ?? undefined,
           };
         });
-        setPlayers(nextPlayers);
+        setPlayerSummaries(nextPlayers);
       },
       (err) => {
         setError(err.message);
@@ -648,6 +659,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !uid) {
+      setLocalPlayerState(null);
+      return;
+    }
+
+    const playerStateRef = doc(db, "games", gameId, "playerStates", uid);
+    const unsubscribe = onSnapshot(
+      playerStateRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setLocalPlayerState(null);
+          return;
+        }
+        const data = snapshot.data();
+        setLocalPlayerState({
+          grid: Array.isArray(data.grid) ? (data.grid as Array<Card | null>) : undefined,
+          revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
+          pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
+          pendingDrawSource:
+            (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
+        });
+      },
+      (err) => {
+        setError(err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseReady, gameId, uid]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
