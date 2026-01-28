@@ -444,7 +444,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         <p>No players have joined this lobby yet.</p>
       ) : (
         <div className="lobby-scene-wrapper" style={lobbySceneStyle}>
-          {isSnowEnabled ? <SnowfallLayer zIndex={0} /> : null}
+          {isSnowEnabled ? <SnowfallLayer height={"100%"} zIndex={0} /> : null}
           <div className="lobby-scene" aria-label="Lobby players">
             {players.map((player) => (
               <div key={player.id} className="lobby-player">

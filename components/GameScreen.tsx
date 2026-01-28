@@ -1647,8 +1647,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }
 
   return (
+    <>          {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
+
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
-      {isSnowEnabled ? <SnowfallLayer /> : null}
       <div className="game-screen__tags">
         <span className="game-screen__tag" title={lobbyLabel}>
           {lobbyLabel}
@@ -2348,5 +2349,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           fan project made for learning purposes. If you enjoy this project, please
           consider buying the physical game online or from a game store near you</p>
     </main>
+
+    </>
+
   );
 }

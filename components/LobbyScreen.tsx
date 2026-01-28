@@ -179,7 +179,7 @@ export default function LobbyScreen() {
 
   return (
     <main>
-      {isSnowEnabled ? <SnowfallLayer /> : null}
+      {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
       <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
 
       <div className="container">

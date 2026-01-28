@@ -73,10 +73,19 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+}
+
+main {
+  height: 100%;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
+  height: 100%;
   overflow-x: hidden;
   color: var(--color-text-muted);
 

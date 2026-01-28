@@ -5,6 +5,7 @@ import Snowfall from 'react-snowfall';
 
 type SnowfallLayerProps = {
   zIndex?: number;
+  height?: string | number;
 };
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
@@ -12,7 +13,7 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 const randomInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
-export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
+export default function SnowfallLayer({ zIndex = -1, height = "100%" }: SnowfallLayerProps) {
   // Start somewhere in-range; adjust if you want a fixed start.
   const [count, setCount] = useState<number>(randomInt(100, 300));
 
@@ -59,7 +60,8 @@ export default function SnowfallLayer({ zIndex = -1 }: SnowfallLayerProps) {
         position: 'absolute',
         inset: 0,
         width: '100%',
-        height: '200%',
+        height: height,
+        overflowY: 'hidden',
         pointerEvents: 'none',
         zIndex,
       }}
