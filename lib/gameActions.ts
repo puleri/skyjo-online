@@ -45,6 +45,7 @@ type PlayerStateDoc = {
   revealed: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  totalScore?: number;
 };
 
 type PlayerSummaryDoc = {
@@ -331,7 +332,7 @@ const resolveTurn = (
   };
 };
 
-type PlayerSnapshot = PlayerStateDoc & PlayerSummaryDoc;
+type PlayerSnapshot = PlayerStateDoc;
 
 const computeRoundScores = (
   activeOrder: string[],
@@ -377,6 +378,7 @@ const computeRoundScores = (
     stateUpdates[playerId] = {
       grid: cleared.grid,
       revealed: cleared.revealed,
+      totalScore,
     };
     summaryUpdates[playerId] = {
       isReady: false,
@@ -466,27 +468,17 @@ export const drawFromDiscard = async (
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
-            const summarySnap = await transaction.get(
-              getPlayerSummaryRef(gameId, activePlayerId)
-            );
-            assertCondition(summarySnap.exists(), "Player not found.");
             players[activePlayerId] = {
               ...updatedPlayer,
-              ...(summarySnap.data() as PlayerSummaryDoc),
             };
             return;
           }
           const playerStateSnap = await transaction.get(
             getPlayerStateRef(gameId, activePlayerId)
           );
-          const playerSummarySnap = await transaction.get(
-            getPlayerSummaryRef(gameId, activePlayerId)
-          );
           assertCondition(playerStateSnap.exists(), "Player not found.");
-          assertCondition(playerSummarySnap.exists(), "Player not found.");
           players[activePlayerId] = {
             ...(playerStateSnap.data() as PlayerStateDoc),
-            ...(playerSummarySnap.data() as PlayerSummaryDoc),
           };
         })
       );
@@ -659,27 +651,17 @@ export const swapPendingDraw = async (
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
-            const summarySnap = await transaction.get(
-              getPlayerSummaryRef(gameId, activePlayerId)
-            );
-            assertCondition(summarySnap.exists(), "Player not found.");
             players[activePlayerId] = {
               ...updatedPlayer,
-              ...(summarySnap.data() as PlayerSummaryDoc),
             };
             return;
           }
           const playerStateSnap = await transaction.get(
             getPlayerStateRef(gameId, activePlayerId)
           );
-          const playerSummarySnap = await transaction.get(
-            getPlayerSummaryRef(gameId, activePlayerId)
-          );
           assertCondition(playerStateSnap.exists(), "Player not found.");
-          assertCondition(playerSummarySnap.exists(), "Player not found.");
           players[activePlayerId] = {
             ...(playerStateSnap.data() as PlayerStateDoc),
-            ...(playerSummarySnap.data() as PlayerSummaryDoc),
           };
         })
       );
@@ -956,27 +938,17 @@ export const useItemCard = async (
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (updatedPlayers[activePlayerId]) {
-            const summarySnap = await transaction.get(
-              getPlayerSummaryRef(gameId, activePlayerId)
-            );
-            assertCondition(summarySnap.exists(), "Player not found.");
             playersSnapshot[activePlayerId] = {
               ...updatedPlayers[activePlayerId],
-              ...(summarySnap.data() as PlayerSummaryDoc),
             };
             return;
           }
           const playerStateSnap = await transaction.get(
             getPlayerStateRef(gameId, activePlayerId)
           );
-          const playerSummarySnap = await transaction.get(
-            getPlayerSummaryRef(gameId, activePlayerId)
-          );
           assertCondition(playerStateSnap.exists(), "Player not found.");
-          assertCondition(playerSummarySnap.exists(), "Player not found.");
           playersSnapshot[activePlayerId] = {
             ...(playerStateSnap.data() as PlayerStateDoc),
-            ...(playerSummarySnap.data() as PlayerSummaryDoc),
           };
         })
       );
@@ -1097,27 +1069,17 @@ export const revealAfterDiscard = async (
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
-            const summarySnap = await transaction.get(
-              getPlayerSummaryRef(gameId, activePlayerId)
-            );
-            assertCondition(summarySnap.exists(), "Player not found.");
             players[activePlayerId] = {
               ...updatedPlayer,
-              ...(summarySnap.data() as PlayerSummaryDoc),
             };
             return;
           }
           const playerStateSnap = await transaction.get(
             getPlayerStateRef(gameId, activePlayerId)
           );
-          const playerSummarySnap = await transaction.get(
-            getPlayerSummaryRef(gameId, activePlayerId)
-          );
           assertCondition(playerStateSnap.exists(), "Player not found.");
-          assertCondition(playerSummarySnap.exists(), "Player not found.");
           players[activePlayerId] = {
             ...(playerStateSnap.data() as PlayerStateDoc),
-            ...(playerSummarySnap.data() as PlayerSummaryDoc),
           };
         })
       );
