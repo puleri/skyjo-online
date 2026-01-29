@@ -31,6 +31,7 @@ import {
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
 import type { Card, ItemCard, SpikeItemCount } from "../lib/game/deck";
+import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type GameScreenProps = {
@@ -172,12 +173,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
-  const spikeItemCountLabels: Record<SpikeItemCount, string> = {
-    none: "No items",
-    low: "Low items",
-    medium: "Medium items",
-    high: "High items",
-  };
   const players = useMemo<GamePlayer[]>(() => {
     if (!uid) {
       return playerSummaries;
@@ -805,20 +800,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!game) {
       return "Mode Loading...";
     }
-    return `${game.spikeMode ? "Spike" : "Classic"}`;
+    return `${getModeLabel(game.spikeMode)}`;
   }, [game]);
   const modeLabelTitle = useMemo(() => {
     if (!game) {
       return "Loading mode details.";
     }
-    if (!game.spikeMode) {
-      return "Classic rules";
-    }
-    const itemLabel =
-      spikeItemCountLabels[game.spikeItemCount ?? "low"] ?? spikeItemCountLabels.low;
-    const rowClearLabel = game.spikeRowClear ? "Row clears" : "";
-    return `${itemLabel} • ${rowClearLabel}`;
-  }, [game, spikeItemCountLabels]);
+    return getModeDetails(game.spikeMode, game.spikeItemCount, game.spikeRowClear);
+  }, [game]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   useEffect(() => {
     if (!isModeTooltipOpen) {
