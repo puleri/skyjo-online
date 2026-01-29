@@ -164,6 +164,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
   const pendingDrawRef = useRef<Map<string, Card | null>>(new Map());
   const hasInitializedDrawSoundRef = useRef(false);
+  const hasInitializedDiscardSelectSoundRef = useRef(false);
+  const lastSelectedDiscardPlayerIdRef = useRef<string | null>(null);
   const lastTurnActionRef = useRef<string | null>(null);
   const hasInitializedActionSoundRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -538,6 +540,32 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       hasInitializedDrawSoundRef.current = true;
     }
   }, [firebaseReady, players]);
+
+  useEffect(() => {
+    if (!firebaseReady) {
+      return;
+    }
+
+    const currentSelectedDiscardPlayerId = game?.selectedDiscardPlayerId ?? null;
+    const previousSelectedDiscardPlayerId = lastSelectedDiscardPlayerIdRef.current;
+    const hasTopDiscard = (game?.discard?.length ?? 0) > 0;
+
+    if (!hasInitializedDiscardSelectSoundRef.current) {
+      hasInitializedDiscardSelectSoundRef.current = true;
+      lastSelectedDiscardPlayerIdRef.current = currentSelectedDiscardPlayerId;
+      return;
+    }
+
+    if (
+      currentSelectedDiscardPlayerId &&
+      currentSelectedDiscardPlayerId !== previousSelectedDiscardPlayerId &&
+      hasTopDiscard
+    ) {
+      playSound("/sounds/card-draw/discard-to-select.wav");
+    }
+
+    lastSelectedDiscardPlayerIdRef.current = currentSelectedDiscardPlayerId;
+  }, [firebaseReady, game?.discard, game?.selectedDiscardPlayerId]);
 
   useEffect(() => {
     if (!firebaseReady || !game) {
