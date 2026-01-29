@@ -275,9 +275,11 @@ export default function LobbyList() {
     return <p>No lobbies yet. Create one above.</p>;
   }
 
-  const formatPlayerNames = (names: string[]) => {
+  const formatPlayerNames = (names: string[], playerCount: number) => {
     if (!names.length) {
-      return "No players yet";
+      return playerCount > 0
+        ? `${playerCount} player${playerCount === 1 ? "" : "s"} in lobby`
+        : "No players yet";
     }
 
     const joinedNames = names.join(", ");
@@ -312,7 +314,7 @@ export default function LobbyList() {
                 <strong className="name-lobby-list">{lobby.name}</strong>
                 <div>
                   <small className="player-lobby-list">
-                    {formatPlayerNames(lobby.playerNames)}
+                    {formatPlayerNames(lobby.playerNames, lobby.players)}
                   </small>
                 </div>
               </div>
