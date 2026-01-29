@@ -3,6 +3,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -20,12 +21,26 @@ import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import type { SpikeItemCount } from "../lib/game/deck";
+import {
+  getSpikeItemCountLabel,
+  rowClearLabel,
+} from "../lib/game/modeLabels";
 
 type Lobby = {
   id: string;
   name: string;
   status: string;
   players: number;
+};
+
+type LobbyPreview = {
+  id: string;
+  name: string;
+  spikeMode: boolean;
+  spikeItemCount?: SpikeItemCount;
+  spikeRowClear?: boolean;
+  players: string[];
 };
 
 const LOBBIES_PER_PAGE = 5;
@@ -40,6 +55,11 @@ export default function LobbyList() {
     Array<QueryDocumentSnapshot<DocumentData> | null>
   >([]);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [selectedLobbyId, setSelectedLobbyId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewCache, setPreviewCache] = useState<Record<string, LobbyPreview>>({});
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
@@ -137,12 +157,79 @@ export default function LobbyList() {
     }
   }, [authError]);
 
+  useEffect(() => {
+    if (!isPreviewOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsPreviewOpen(false);
+        setSelectedLobbyId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isPreviewOpen]);
+
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+    setSelectedLobbyId(null);
+  };
+
+  const fetchLobbyPreview = async (lobby: Lobby) => {
+    if (previewCache[lobby.id]) {
+      return;
+    }
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const lobbyRef = doc(db, "lobbies", lobby.id);
+      const playersRef = collection(db, "lobbies", lobby.id, "players");
+      const [lobbySnapshot, playersSnapshot] = await Promise.all([
+        getDoc(lobbyRef),
+        getDocs(playersRef),
+      ]);
+      if (!lobbySnapshot.exists()) {
+        throw new Error("Lobby details are no longer available.");
+      }
+      const lobbyData = lobbySnapshot.data();
+      const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
+      const preview: LobbyPreview = {
+        id: lobby.id,
+        name: lobbyData.name ?? lobby.name ?? "Untitled lobby",
+        spikeMode: Boolean(lobbyData.spikeMode),
+        spikeItemCount,
+        spikeRowClear: Boolean(lobbyData.spikeRowClear),
+        players: playersSnapshot.docs.map(
+          (player) => player.data().displayName ?? "Anonymous player"
+        ),
+      };
+      setPreviewCache((current) => ({ ...current, [lobby.id]: preview }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setPreviewError(message);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const openPreview = (lobby: Lobby) => {
+    setSelectedLobbyId(lobby.id);
+    setIsPreviewOpen(true);
+    void fetchLobbyPreview(lobby);
+  };
+
   const handleJoin = async (lobbyId: string) => {
     if (!uid) {
       setError("Unable to join a lobby without a signed-in user.");
       return;
     }
 
+    closePreview();
     setJoiningLobbyId(lobbyId);
     setError(null);
     try {
@@ -271,6 +358,16 @@ export default function LobbyList() {
   }
 
   const visibleLobbies = lobbies;
+  const activePreview = selectedLobbyId ? previewCache[selectedLobbyId] : null;
+  const spikeItemLabel = activePreview
+    ? getSpikeItemCountLabel(activePreview.spikeItemCount).replace(" items", "")
+    : "";
+  const rowClearStatus = activePreview?.spikeRowClear
+    ? `${rowClearLabel} enabled`
+    : `${rowClearLabel} disabled`;
+  const modeDetails = activePreview?.spikeMode
+    ? `Spike mode • Item frequency: ${spikeItemLabel} • ${rowClearStatus}`
+    : "Classic mode";
 
   return (
     <div>
@@ -286,7 +383,19 @@ export default function LobbyList() {
 
           return (
             <li key={lobby.id}>
-              <div>
+              <div
+                role="button"
+                tabIndex={0}
+                onMouseEnter={() => openPreview(lobby)}
+                onFocus={() => openPreview(lobby)}
+                onClick={() => openPreview(lobby)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openPreview(lobby);
+                  }
+                }}
+              >
                 <strong className="name-lobby-list">{lobby.name}</strong>
                 <div>
                   <small className="player-lobby-list">
@@ -298,7 +407,10 @@ export default function LobbyList() {
                 <button
                   type="button"
                   className={buttonClassName}
-                  onClick={() => handleJoin(lobby.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleJoin(lobby.id);
+                  }}
                   disabled={isLoading || !uid || joiningLobbyId === lobby.id}
                 >
                   {buttonLabel}
@@ -327,6 +439,37 @@ export default function LobbyList() {
           >
             Next
           </button>
+        </div>
+      ) : null}
+      {isPreviewOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closePreview();
+            }
+          }}
+        >
+          <div className="modal">
+            <h3>{activePreview?.name ?? "Lobby preview"}</h3>
+            {previewError ? <p className="notice">{previewError}</p> : null}
+            {isPreviewLoading && !activePreview ? <p>Loading preview…</p> : null}
+            {activePreview ? (
+              <>
+                <p>{modeDetails}</p>
+                <h4>Players</h4>
+                {activePreview.players.length ? (
+                  <ul>
+                    {activePreview.players.map((player) => (
+                      <li key={player}>{player}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No players yet.</p>
+                )}
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
