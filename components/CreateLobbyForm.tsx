@@ -210,7 +210,7 @@ export default function CreateLobbyForm() {
             </div>
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
-                Close
+                Save
               </button>
             </div>
           </div>

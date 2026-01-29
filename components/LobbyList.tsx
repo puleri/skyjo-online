@@ -78,16 +78,16 @@ export default function LobbyList() {
     setHasNextPage(false);
     const lobbyQuery = cursor
       ? query(
-          collection(db, "lobbies"),
-          orderBy("createdAt", "desc"),
-          startAfter(cursor),
-          limit(LOBBIES_PER_PAGE)
-        )
+        collection(db, "lobbies"),
+        orderBy("createdAt", "desc"),
+        startAfter(cursor),
+        limit(LOBBIES_PER_PAGE)
+      )
       : query(
-          collection(db, "lobbies"),
-          orderBy("createdAt", "desc"),
-          limit(LOBBIES_PER_PAGE)
-        );
+        collection(db, "lobbies"),
+        orderBy("createdAt", "desc"),
+        limit(LOBBIES_PER_PAGE)
+      );
     let isCancelled = false;
     const unsubscribe = onSnapshot(
       lobbyQuery,
@@ -362,11 +362,11 @@ export default function LobbyList() {
     ? getSpikeItemCountLabel(activePreview.spikeItemCount).replace(" items", "")
     : "";
   const rowClearStatus = activePreview?.spikeRowClear
-    ? `${rowClearLabel} enabled`
-    : `${rowClearLabel} disabled`;
+    ? `${rowClearLabel}`
+    : ``;
   const modeDetails = activePreview?.spikeMode
-    ? `Spike mode • Item frequency: ${spikeItemLabel} • ${rowClearStatus}`
-    : "Classic mode";
+    ? `Spike • ${spikeItemLabel} • ${rowClearStatus}`
+    : "Classic";
 
   return (
     <div>
@@ -376,26 +376,30 @@ export default function LobbyList() {
             joiningLobbyId === lobby.id
               ? "Joining..."
               : lobby.status === "open"
-                  ? "Join"
-                  : "Spectate";
+                ? "Join"
+                : "Spectate";
           const buttonClassName = lobby.status === "open" ? "join-button" : "spectate-button";
 
           return (
             <li key={lobby.id}>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openPreview(lobby)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    openPreview(lobby);
-                  }
-                }}
-              >
-                <strong className="name-lobby-list">{lobby.name}</strong>
+              <div className="lobby-header-preview-wrapper">
+                  <button
+                  className="lobby-preview-button"
+                  tabIndex={0}
+                  onClick={() => openPreview(lobby)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openPreview(lobby);
+                    }
+                  }}
+                > <img className="eye-icon" src="/info-icon.png" alt="" aria-hidden="true" />
+                </button>
+              <strong className="name-lobby-list">{lobby.name}</strong>
+
               </div>
-              <div>
+
+              <div className="relative">
                 <button
                   type="button"
                   className={buttonClassName}
@@ -442,18 +446,20 @@ export default function LobbyList() {
             }
           }}
         >
-          <div className="modal">
-            <h3>{activePreview?.name ?? "Lobby preview"}</h3>
+          <div className="preview-lobby-modal">
+            <h3 className="leaderboard-title lobby-preview-title">Lobby Preview</h3>
+            <h3 className="lobby-preview-subtitle">{activePreview?.name ?? "Lobby preview"}
+              <span className="mode-preview">{modeDetails ?? "Mode details unavailable"}</span>
+            </h3>
             {previewError ? <p className="notice">{previewError}</p> : null}
             {isPreviewLoading && !activePreview ? <p>Loading preview…</p> : null}
             {activePreview ? (
               <>
-                <p>{modeDetails}</p>
-                <h4>Players</h4>
+  
                 {activePreview.players.length ? (
                   <ul>
                     {activePreview.players.map((player) => (
-                      <li key={player}>{player}</li>
+                      <li className="players-preview" key={player}>{player}</li>
                     ))}
                   </ul>
                 ) : (
@@ -461,6 +467,12 @@ export default function LobbyList() {
                 )}
               </>
             ) : null}
+            <button
+            onClick={() => closePreview()}
+            className="form-button-full-width mt-20"
+            >
+              Close
+            </button>
           </div>
         </div>
       ) : null}
