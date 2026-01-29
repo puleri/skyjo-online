@@ -397,6 +397,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             revealed: Array.from({ length: 12 }, () => false),
             pendingDraw: null,
             pendingDrawSource: null,
+            totalScore: 0,
           });
         });
 
