@@ -31,6 +31,7 @@ import {
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
 import type { Card, ItemCard, SpikeItemCount } from "../lib/game/deck";
+import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 type GameScreenProps = {
@@ -59,16 +60,24 @@ type GameMeta = {
   lastTurnActionAt?: Timestamp | null;
 };
 
-type GamePlayer = {
+type GamePlayerSummary = {
   id: string;
   displayName: string;
   isReady: boolean;
+  totalScore?: number;
+  revealedCount?: number;
+  publicGrid?: Array<Card | null>;
+  revealed?: boolean[];
+};
+
+type GamePlayerState = {
   grid?: Array<Card | null>;
   revealed?: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
-  totalScore?: number;
 };
+
+type GamePlayer = GamePlayerSummary & GamePlayerState;
 
 type LeaderboardEntry = {
   id: string;
@@ -100,7 +109,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
   const [lobbyName, setLobbyName] = useState<string | null>(null);
-  const [players, setPlayers] = useState<GamePlayer[]>([]);
+  const [playerSummaries, setPlayerSummaries] = useState<GamePlayerSummary[]>([]);
+  const [localPlayerState, setLocalPlayerState] = useState<GamePlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
@@ -165,12 +175,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
-  const spikeItemCountLabels: Record<SpikeItemCount, string> = {
-    none: "No items",
-    low: "Low items",
-    medium: "Medium items",
-    high: "High items",
-  };
+  const players = useMemo<GamePlayer[]>(() => {
+    return playerSummaries.map((player) => {
+      const summaryState = {
+        grid: player.publicGrid,
+        revealed: player.revealed,
+      };
+      if (uid && player.id === uid) {
+        return { ...player, ...summaryState, ...(localPlayerState ?? {}) };
+      }
+      return { ...player, ...summaryState };
+    });
+  }, [localPlayerState, playerSummaries, uid]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -550,7 +566,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [firebaseReady, game]);
 
   useEffect(() => {
-    if (!firebaseReady) {
+    if (!firebaseReady || !isLeaderboardOpen) {
       return;
     }
 
@@ -581,7 +597,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady]);
+  }, [firebaseReady, isLeaderboardOpen]);
 
   useEffect(() => {
     const storedPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
@@ -631,15 +647,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             id: playerDoc.id,
             displayName: (data.displayName as string | undefined) ?? "Anonymous player",
             isReady: Boolean(data.isReady),
-            grid: Array.isArray(data.grid) ? (data.grid as Array<Card | null>) : undefined,
-            revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
-            pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
-            pendingDrawSource:
-              (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
             totalScore: (data.totalScore as number | undefined) ?? undefined,
+            revealedCount: (data.revealedCount as number | undefined) ?? undefined,
+            publicGrid: Array.isArray(data.publicGrid)
+              ? (data.publicGrid as Array<Card | null>)
+              : undefined,
+            revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
           };
         });
-        setPlayers(nextPlayers);
+        setPlayerSummaries(nextPlayers);
       },
       (err) => {
         setError(err.message);
@@ -648,6 +664,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     return () => unsubscribe();
   }, [firebaseReady, gameId]);
+
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !uid) {
+      setLocalPlayerState(null);
+      return;
+    }
+
+    const playerStateRef = doc(db, "games", gameId, "playerStates", uid);
+    const unsubscribe = onSnapshot(
+      playerStateRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setLocalPlayerState(null);
+          return;
+        }
+        const data = snapshot.data();
+        setLocalPlayerState({
+          grid: Array.isArray(data.grid) ? (data.grid as Array<Card | null>) : undefined,
+          revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
+          pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
+          pendingDrawSource:
+            (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
+        });
+      },
+      (err) => {
+        setError(err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseReady, gameId, uid]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -763,20 +810,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!game) {
       return "Mode Loading...";
     }
-    return `${game.spikeMode ? "Spike" : "Classic"}`;
+    return `${getModeLabel(game.spikeMode)}`;
   }, [game]);
   const modeLabelTitle = useMemo(() => {
     if (!game) {
       return "Loading mode details.";
     }
-    if (!game.spikeMode) {
-      return "Classic rules";
-    }
-    const itemLabel =
-      spikeItemCountLabels[game.spikeItemCount ?? "low"] ?? spikeItemCountLabels.low;
-    const rowClearLabel = game.spikeRowClear ? "Row clears" : "";
-    return `${itemLabel} • ${rowClearLabel}`;
-  }, [game, spikeItemCountLabels]);
+    return getModeDetails(game.spikeMode, game.spikeItemCount, game.spikeRowClear);
+  }, [game]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   useEffect(() => {
     if (!isModeTooltipOpen) {

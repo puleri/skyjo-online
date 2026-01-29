@@ -52,6 +52,9 @@ export default function CreateLobbyForm() {
         createdAt: serverTimestamp(),
         status: "open",
         players: 1,
+        playerCount: 1,
+        playerIds: [uid],
+        playerNames: [resolvedName],
         hostId: uid,
         hostDisplayName: resolvedName,
         spikeMode,
@@ -207,7 +210,7 @@ export default function CreateLobbyForm() {
             </div>
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
-                Close
+                Save
               </button>
             </div>
           </div>

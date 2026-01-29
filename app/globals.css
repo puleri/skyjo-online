@@ -430,6 +430,46 @@ section {
   box-shadow: 0 16px 40px rgba(31, 41, 51, 0.25);
 }
 
+.lobby-preview-title {
+  text-align: center;
+  padding: 0 0 5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lobby-preview-subtitle {
+  letter-spacing: 0.25em;
+  font-size: 14px;
+  margin-top: 14px;
+  text-transform: uppercase;
+}
+
+.preview-lobby-modal {
+    background: var(--color-bg);
+  border-radius: 10px;
+  padding: 20px 30px;
+  width: min(330px, 100%);
+  box-shadow: 0 16px 40px rgba(31, 41, 51, 0.15);
+}
+
+.mode-preview {
+  width: max-content;
+  color: var(--color-text);
+  min-width: max-content;
+  padding: 4px 10px;
+  border-radius: 122px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.65rem;
+  font-weight: 400;
+  text-align: center;
+  pointer-events: none;
+}
+
+.players-preview {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+}
+
 .modal__option {
   margin-top: 16px;
 }
@@ -1554,6 +1594,27 @@ small {
   position: relative;
 }
 
+.lobby-preview-button {
+  cursor: pointer;
+  display: flex;
+  left: 50%;
+  padding: 0;;
+  align-items: center;
+  justify-content: center;
+  height: 35px;
+  width: 35px;
+  border-radius: 30px;
+  background-color: var(--color-bg);
+  box-shadow: none;
+  margin-bottom: 0px;
+  border: none;
+}
+
+.lobby-preview-button:hover {
+  background-color: #f0edeb;
+  transition: all 0.3s ease-in-out;
+} 
+
 .lobby-mode-tag {
   position: absolute;
   right: 32px;
@@ -1836,11 +1897,20 @@ small {
   scale: .99
 }
 
+.lobby-header-preview-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
 .name-lobby-list {
+  text-align: left;
+
   color: var(--color-dark);
   font-weight: 600;
-  ;
-  letter-spacing: 2px;
+  font-size: 1rem;
+  letter-spacing: .2rem;
 }
 
 .player-lobby-list {
@@ -2395,6 +2465,10 @@ border: 1px solid #ffedef;
 }
 
 /* utilities */
+
+.mt-20 {
+  margin-top: 20px; 
+}
 .mb-20 {
   margin-bottom: 20px;
 }
@@ -2405,6 +2479,9 @@ border: 1px solid #ffedef;
   margin-right: 10px;
 }
 
+.relative {
+  position: relative;
+}
 .invert {
   filter: invert(1) brightness(3)
 }

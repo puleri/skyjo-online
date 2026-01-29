@@ -3,12 +3,17 @@
 import {
   collection,
   doc,
+  getDoc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  startAfter,
   type DocumentData,
+  type QueryDocumentSnapshot,
   type UpdateData,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -16,6 +21,11 @@ import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import type { SpikeItemCount } from "../lib/game/deck";
+import {
+  getSpikeItemCountLabel,
+  rowClearLabel,
+} from "../lib/game/modeLabels";
 
 type Lobby = {
   id: string;
@@ -24,17 +34,32 @@ type Lobby = {
   players: number;
 };
 
-const MAX_PLAYER_NAMES_LENGTH = 60;
+type LobbyPreview = {
+  id: string;
+  name: string;
+  spikeMode: boolean;
+  spikeItemCount?: SpikeItemCount;
+  spikeRowClear?: boolean;
+  players: string[];
+};
+
 const LOBBIES_PER_PAGE = 5;
 
 export default function LobbyList() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
-  const [lobbyPlayers, setLobbyPlayers] = useState<Record<string, string[]>>({});
-  const [lobbyPlayerIds, setLobbyPlayerIds] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
+  const [pageCursors, setPageCursors] = useState<
+    Array<QueryDocumentSnapshot<DocumentData> | null>
+  >([]);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [selectedLobbyId, setSelectedLobbyId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewCache, setPreviewCache] = useState<Record<string, LobbyPreview>>({});
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const { uid, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
@@ -44,71 +69,87 @@ export default function LobbyList() {
       return;
     }
 
-    const lobbyQuery = query(collection(db, "lobbies"), orderBy("createdAt", "desc"));
+    const cursor = pageIndex > 0 ? pageCursors[pageIndex - 1] : null;
+    if (pageIndex > 0 && !cursor) {
+      return;
+    }
+
+    setIsLoading(true);
+    setHasNextPage(false);
+    const lobbyQuery = cursor
+      ? query(
+        collection(db, "lobbies"),
+        orderBy("createdAt", "desc"),
+        startAfter(cursor),
+        limit(LOBBIES_PER_PAGE)
+      )
+      : query(
+        collection(db, "lobbies"),
+        orderBy("createdAt", "desc"),
+        limit(LOBBIES_PER_PAGE)
+      );
+    let isCancelled = false;
     const unsubscribe = onSnapshot(
       lobbyQuery,
-      (snapshot) => {
+      async (snapshot) => {
         const nextLobbies = snapshot.docs.map((doc) => ({
           id: doc.id,
           name: doc.data().name ?? "Untitled lobby",
           status: doc.data().status ?? "open",
-          players: doc.data().players ?? 0,
+          players: doc.data().playerCount ?? doc.data().players ?? 0,
         }));
+        if (isCancelled) {
+          return;
+        }
         setLobbies(nextLobbies);
         setIsLoading(false);
+        const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
+        setPageCursors((current) => {
+          const existing = current[pageIndex];
+          if (existing?.id === lastDoc?.id) {
+            return current;
+          }
+          const next = [...current];
+          next[pageIndex] = lastDoc;
+          return next;
+        });
+        if (!lastDoc) {
+          setHasNextPage(false);
+          return;
+        }
+        try {
+          const nextPageSnapshot = await getDocs(
+            query(
+              collection(db, "lobbies"),
+              orderBy("createdAt", "desc"),
+              startAfter(lastDoc),
+              limit(1)
+            )
+          );
+          if (!isCancelled) {
+            setHasNextPage(!nextPageSnapshot.empty);
+          }
+        } catch (err) {
+          if (!isCancelled) {
+            const message = err instanceof Error ? err.message : "Unknown error.";
+            setError(message);
+            setHasNextPage(false);
+          }
+        }
       },
       (err) => {
-        setError(err.message);
-        setIsLoading(false);
+        if (!isCancelled) {
+          setError(err.message);
+          setIsLoading(false);
+        }
       }
     );
 
-    return () => unsubscribe();
-  }, [firebaseReady]);
-
-  useEffect(() => {
-    if (!firebaseReady) {
-      return;
-    }
-
-    if (!lobbies.length) {
-      setLobbyPlayers({});
-      setLobbyPlayerIds({});
-      return;
-    }
-
-    const unsubscribers = lobbies.map((lobby) => {
-      const playerQuery = query(
-        collection(db, "lobbies", lobby.id, "players"),
-        orderBy("joinedAt", "asc")
-      );
-      return onSnapshot(
-        playerQuery,
-        (snapshot) => {
-          const playerDocs = snapshot.docs;
-          const playerNames = playerDocs.map(
-            (playerDoc) => playerDoc.data().displayName ?? "Anonymous player"
-          );
-          const playerIds = playerDocs.map((playerDoc) => playerDoc.id);
-          setLobbyPlayers((prev) => ({
-            ...prev,
-            [lobby.id]: playerNames,
-          }));
-          setLobbyPlayerIds((prev) => ({
-            ...prev,
-            [lobby.id]: playerIds,
-          }));
-        },
-        (err) => {
-          setError(err.message);
-        }
-      );
-    });
-
     return () => {
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      isCancelled = true;
+      unsubscribe();
     };
-  }, [firebaseReady, lobbies]);
+  }, [firebaseReady, pageIndex]);
 
   useEffect(() => {
     if (authError) {
@@ -117,14 +158,70 @@ export default function LobbyList() {
   }, [authError]);
 
   useEffect(() => {
-    if (!lobbies.length) {
-      setPageIndex(0);
+    if (!isPreviewOpen) {
       return;
     }
 
-    const maxPageIndex = Math.max(Math.ceil(lobbies.length / LOBBIES_PER_PAGE) - 1, 0);
-    setPageIndex((current) => Math.min(current, maxPageIndex));
-  }, [lobbies.length]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsPreviewOpen(false);
+        setSelectedLobbyId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isPreviewOpen]);
+
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+    setSelectedLobbyId(null);
+  };
+
+  const fetchLobbyPreview = async (lobby: Lobby) => {
+    if (previewCache[lobby.id]) {
+      return;
+    }
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const lobbyRef = doc(db, "lobbies", lobby.id);
+      const playersRef = collection(db, "lobbies", lobby.id, "players");
+      const [lobbySnapshot, playersSnapshot] = await Promise.all([
+        getDoc(lobbyRef),
+        getDocs(playersRef),
+      ]);
+      if (!lobbySnapshot.exists()) {
+        throw new Error("Lobby details are no longer available.");
+      }
+      const lobbyData = lobbySnapshot.data();
+      const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
+      const preview: LobbyPreview = {
+        id: lobby.id,
+        name: lobbyData.name ?? lobby.name ?? "Untitled lobby",
+        spikeMode: Boolean(lobbyData.spikeMode),
+        spikeItemCount,
+        spikeRowClear: Boolean(lobbyData.spikeRowClear),
+        players: playersSnapshot.docs.map(
+          (player) => player.data().displayName ?? "Anonymous player"
+        ),
+      };
+      setPreviewCache((current) => ({ ...current, [lobby.id]: preview }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setPreviewError(message);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const openPreview = (lobby: Lobby) => {
+    setSelectedLobbyId(lobby.id);
+    setIsPreviewOpen(true);
+    void fetchLobbyPreview(lobby);
+  };
 
   const handleJoin = async (lobbyId: string) => {
     if (!uid) {
@@ -132,6 +229,7 @@ export default function LobbyList() {
       return;
     }
 
+    closePreview();
     setJoiningLobbyId(lobbyId);
     setError(null);
     try {
@@ -147,6 +245,7 @@ export default function LobbyList() {
 
         const lobbyData = lobbySnapshot.data();
         const displayName = resolvedName || "Anonymous player";
+        const existingPlayerSnapshot = await transaction.get(playerRef);
         const isHost = (lobbyData.hostId as string | undefined) === uid;
         const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
           ? lobbyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
@@ -158,32 +257,67 @@ export default function LobbyList() {
           availableGlyphs && availableGlyphs.length > 0
             ? availableGlyphs
             : GLYPHS.filter((glyph) => !assignedGlyphs.includes(glyph));
+        const isExistingPlayer = existingPlayerSnapshot.exists();
 
-        if (!glyphPool.length) {
+        if (!glyphPool.length && !isExistingPlayer) {
           throw new Error("No glyphs are available for this lobby.");
         }
-
-        const glyph = glyphPool[Math.floor(Math.random() * glyphPool.length)];
-        const nextAssignedGlyphs = Array.from(new Set([...assignedGlyphs, glyph]));
+        const glyph = isExistingPlayer
+          ? null
+          : glyphPool[Math.floor(Math.random() * glyphPool.length)];
+        const nextAssignedGlyphs = isExistingPlayer
+          ? assignedGlyphs
+          : Array.from(new Set([...assignedGlyphs, glyph]));
+        const currentPlayerIds = Array.isArray(lobbyData.playerIds)
+          ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
+          : [];
+        const currentPlayerNames = Array.isArray(lobbyData.playerNames)
+          ? lobbyData.playerNames.filter((name): name is string => typeof name === "string")
+          : [];
+        const playerNameMap = new Map<string, string>();
+        currentPlayerIds.forEach((playerId, index) => {
+          const existingName = currentPlayerNames[index];
+          playerNameMap.set(
+            playerId,
+            typeof existingName === "string" ? existingName : "Anonymous player"
+          );
+        });
+        if (!playerNameMap.has(uid)) {
+          currentPlayerIds.push(uid);
+        }
+        playerNameMap.set(uid, displayName);
+        const nextPlayerIds = currentPlayerIds.filter(
+          (playerId, index) => currentPlayerIds.indexOf(playerId) === index
+        );
+        const nextPlayerNames = nextPlayerIds.map(
+          (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
+        );
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
+          playerCount: nextPlayerIds.length,
+          playerIds: nextPlayerIds,
+          playerNames: nextPlayerNames,
         };
         if (isHost) {
           lobbyUpdates.hostDisplayName = displayName;
         }
 
-        if (availableGlyphs && availableGlyphs.length > 0) {
+        if (!isExistingPlayer && availableGlyphs && availableGlyphs.length > 0) {
           lobbyUpdates.availableGlyphs = availableGlyphs.filter(
             (availableGlyph) => availableGlyph !== glyph
           );
         }
 
-        transaction.set(playerRef, {
-          displayName,
-          joinedAt: serverTimestamp(),
-          isReady: false,
-          glyph,
-        });
+        if (isExistingPlayer) {
+          transaction.update(playerRef, { displayName });
+        } else {
+          transaction.set(playerRef, {
+            displayName,
+            joinedAt: serverTimestamp(),
+            isReady: false,
+            glyph,
+          });
+        }
         transaction.update(lobbyRef, lobbyUpdates);
       });
       router.push(`/lobby/${lobbyId}`);
@@ -222,55 +356,57 @@ export default function LobbyList() {
     return <p>No lobbies yet. Create one above.</p>;
   }
 
-  const formatPlayerNames = (names: string[]) => {
-    if (!names.length) {
-      return "No players yet";
-    }
-
-    const joinedNames = names.join(", ");
-    if (joinedNames.length <= MAX_PLAYER_NAMES_LENGTH) {
-      return joinedNames;
-    }
-
-    return `${joinedNames.slice(0, MAX_PLAYER_NAMES_LENGTH)}…`;
-  };
-
-  const totalPages = Math.ceil(lobbies.length / LOBBIES_PER_PAGE);
-  const startIndex = pageIndex * LOBBIES_PER_PAGE;
-  const visibleLobbies = lobbies.slice(startIndex, startIndex + LOBBIES_PER_PAGE);
+  const visibleLobbies = lobbies;
+  const activePreview = selectedLobbyId ? previewCache[selectedLobbyId] : null;
+  const spikeItemLabel = activePreview
+    ? getSpikeItemCountLabel(activePreview.spikeItemCount).replace(" items", "")
+    : "";
+  const rowClearStatus = activePreview?.spikeRowClear
+    ? `${rowClearLabel}`
+    : ``;
+  const modeDetails = activePreview?.spikeMode
+    ? `Spike • ${spikeItemLabel} • ${rowClearStatus}`
+    : "Classic";
 
   return (
     <div>
       <ul>
         {visibleLobbies.map((lobby) => {
-          const isPlayerInLobby = uid ? lobbyPlayerIds[lobby.id]?.includes(uid) : false;
           const buttonLabel =
             joiningLobbyId === lobby.id
               ? "Joining..."
-              : isPlayerInLobby
-                ? "Rejoin"
-                : lobby.status === "open"
-                  ? "Join"
-                  : "Spectate";
-          const buttonClassName =
-            isPlayerInLobby || lobby.status === "open" ? "join-button" : "spectate-button";
+              : lobby.status === "open"
+                ? "Join"
+                : "Spectate";
+          const buttonClassName = lobby.status === "open" ? "join-button" : "spectate-button";
 
           return (
             <li key={lobby.id}>
-              <div>
-                <strong className="name-lobby-list">{lobby.name}</strong>
-                <div>
-                  <small className="player-lobby-list">
-                    {formatPlayerNames(lobbyPlayers[lobby.id] ?? [])}
-                  </small>
-                </div>
+              <div className="lobby-header-preview-wrapper">
+                  <button
+                  className="lobby-preview-button"
+                  tabIndex={0}
+                  onClick={() => openPreview(lobby)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openPreview(lobby);
+                    }
+                  }}
+                > <img className="eye-icon" src="/info-icon.png" alt="" aria-hidden="true" />
+                </button>
+              <strong className="name-lobby-list">{lobby.name}</strong>
+
               </div>
-              <div>
-                {/* <small className="mr-10">{lobby.players} players</small> */}
+
+              <div className="relative">
                 <button
                   type="button"
                   className={buttonClassName}
-                  onClick={() => handleJoin(lobby.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleJoin(lobby.id);
+                  }}
                   disabled={isLoading || !uid || joiningLobbyId === lobby.id}
                 >
                   {buttonLabel}
@@ -280,7 +416,7 @@ export default function LobbyList() {
           );
         })}
       </ul>
-      {!isLoading && totalPages > 1 ? (
+      {!isLoading && (pageIndex > 0 || hasNextPage) ? (
         <div className="lobby-pagination">
           <button
             type="button"
@@ -290,17 +426,54 @@ export default function LobbyList() {
           >
             Previous
           </button>
-          <span className="pagination-status">
-            Page {pageIndex + 1} of {totalPages}
-          </span>
+          <span className="pagination-status">Page {pageIndex + 1}</span>
           <button
             type="button"
             className="pagination-button"
-            onClick={() => setPageIndex((current) => Math.min(current + 1, totalPages - 1))}
-            disabled={isLoading || pageIndex + 1 >= totalPages}
+            onClick={() => setPageIndex((current) => current + 1)}
+            disabled={isLoading || !hasNextPage}
           >
             Next
           </button>
+        </div>
+      ) : null}
+      {isPreviewOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closePreview();
+            }
+          }}
+        >
+          <div className="preview-lobby-modal">
+            <h3 className="leaderboard-title lobby-preview-title">Lobby Preview</h3>
+            <h3 className="lobby-preview-subtitle">{activePreview?.name ?? "Lobby preview"}
+              <span className="mode-preview">{modeDetails ?? "Mode details unavailable"}</span>
+            </h3>
+            {previewError ? <p className="notice">{previewError}</p> : null}
+            {isPreviewLoading && !activePreview ? <p>Loading preview…</p> : null}
+            {activePreview ? (
+              <>
+  
+                {activePreview.players.length ? (
+                  <ul>
+                    {activePreview.players.map((player) => (
+                      <li className="players-preview" key={player}>{player}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No players yet.</p>
+                )}
+              </>
+            ) : null}
+            <button
+            onClick={() => closePreview()}
+            className="form-button-full-width mt-20"
+            >
+              Close
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
