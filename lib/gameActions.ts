@@ -55,6 +55,8 @@ type PlayerSummaryDoc = {
   roundScore?: number;
   totalScore?: number;
   revealedCount?: number;
+  revealed?: boolean[];
+  publicGrid?: Array<Card | null>;
 };
 
 const columns = 4;
@@ -64,6 +66,13 @@ const getPlayerSummaryRef = (gameId: string, playerId: string) =>
   doc(db, "games", gameId, "players", playerId);
 const getRevealedCount = (revealed: boolean[]) =>
   revealed.reduce((total, value) => total + (value ? 1 : 0), 0);
+const getPublicGrid = (grid: Array<Card | null>, revealed: boolean[]) =>
+  grid.map((card, index) => (revealed[index] ? card : null));
+const getPublicSummary = (player: Pick<PlayerStateDoc, "grid" | "revealed">) => ({
+  revealed: player.revealed,
+  publicGrid: getPublicGrid(player.grid, player.revealed),
+  revealedCount: getRevealedCount(player.revealed),
+});
 
 const assertCondition = (condition: boolean, message: string) => {
   if (!condition) {
@@ -385,7 +394,7 @@ const computeRoundScores = (
       isReady: false,
       roundScore: roundScores[playerId],
       totalScore,
-      revealedCount: getRevealedCount(cleared.revealed),
+      ...getPublicSummary(cleared),
     };
   });
 
@@ -504,9 +513,7 @@ export const drawFromDiscard = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
-    transaction.update(playerSummaryRef, {
-      revealedCount: getRevealedCount(cleared.revealed),
-    });
+    transaction.update(playerSummaryRef, getPublicSummary(updatedPlayer));
     transaction.update(gameRef, {
       discard,
       selectedDiscardPlayerId: null,
@@ -687,9 +694,7 @@ export const swapPendingDraw = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
-    transaction.update(playerSummaryRef, {
-      revealedCount: getRevealedCount(cleared.revealed),
-    });
+    transaction.update(playerSummaryRef, getPublicSummary(updatedPlayer));
     transaction.update(gameRef, {
       discard,
       lastTurnPlayerId: playerId,
@@ -974,9 +979,7 @@ export const useItemCard = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
-    transaction.update(playerSummaryRef, {
-      revealedCount: getRevealedCount(updatedCurrentPlayer.revealed),
-    });
+    transaction.update(playerSummaryRef, getPublicSummary(updatedCurrentPlayer));
     const updatedDiscard =
       clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
 
@@ -1001,9 +1004,10 @@ export const useItemCard = async (
         grid: updatedPlayer.grid,
         revealed: updatedPlayer.revealed,
       });
-      transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
-        revealedCount: getRevealedCount(updatedPlayer.revealed),
-      });
+      transaction.update(
+        getPlayerSummaryRef(gameId, targetPlayerId),
+        getPublicSummary(updatedPlayer)
+      );
     });
 
     if (scoreUpdates) {
@@ -1103,9 +1107,7 @@ export const revealAfterDiscard = async (
       grid: cleared.grid,
       revealed: cleared.revealed,
     });
-    transaction.update(playerSummaryRef, {
-      revealedCount: getRevealedCount(cleared.revealed),
-    });
+    transaction.update(playerSummaryRef, getPublicSummary(updatedPlayer));
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
       lastTurnAction,
@@ -1201,15 +1203,18 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     });
 
     playerOrder.forEach((targetPlayerId) => {
+      const initialRevealed = Array.from({ length: 12 }, () => false);
       transaction.update(getPlayerStateRef(gameId, targetPlayerId), {
         grid: playerGrids.get(targetPlayerId) ?? [],
-        revealed: Array.from({ length: 12 }, () => false),
+        revealed: initialRevealed,
         pendingDraw: null,
         pendingDrawSource: null,
       });
       transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
         isReady: false,
         roundScore: 0,
+        revealed: initialRevealed,
+        publicGrid: Array.from({ length: 12 }, () => null),
         revealedCount: 0,
       });
     });

@@ -384,17 +384,20 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
         playerSnapshot.docs.forEach((playerDoc, index) => {
           const data = playerDoc.data();
+          const initialRevealed = Array.from({ length: 12 }, () => false);
           transaction.set(doc(db, "games", gameRef.id, "players", playerDoc.id), {
             displayName: data.displayName ?? "Anonymous player",
             seatIndex: index,
             isReady: false,
             roundScore: 0,
             totalScore: 0,
+            revealed: initialRevealed,
+            publicGrid: Array.from({ length: 12 }, () => null),
             revealedCount: 0,
           });
           transaction.set(doc(db, "games", gameRef.id, "playerStates", playerDoc.id), {
             grid: playerGrids.get(playerDoc.id) ?? [],
-            revealed: Array.from({ length: 12 }, () => false),
+            revealed: initialRevealed,
             pendingDraw: null,
             pendingDrawSource: null,
             totalScore: 0,

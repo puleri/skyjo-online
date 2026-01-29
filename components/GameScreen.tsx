@@ -66,6 +66,8 @@ type GamePlayerSummary = {
   isReady: boolean;
   totalScore?: number;
   revealedCount?: number;
+  publicGrid?: Array<Card | null>;
+  revealed?: boolean[];
 };
 
 type GamePlayerState = {
@@ -174,12 +176,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
   const players = useMemo<GamePlayer[]>(() => {
-    if (!uid) {
-      return playerSummaries;
-    }
-    return playerSummaries.map((player) =>
-      player.id === uid ? { ...player, ...(localPlayerState ?? {}) } : player
-    );
+    return playerSummaries.map((player) => {
+      const summaryState = {
+        grid: player.publicGrid,
+        revealed: player.revealed,
+      };
+      if (uid && player.id === uid) {
+        return { ...player, ...summaryState, ...(localPlayerState ?? {}) };
+      }
+      return { ...player, ...summaryState };
+    });
   }, [localPlayerState, playerSummaries, uid]);
 
   useEffect(() => {
@@ -643,6 +649,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             isReady: Boolean(data.isReady),
             totalScore: (data.totalScore as number | undefined) ?? undefined,
             revealedCount: (data.revealedCount as number | undefined) ?? undefined,
+            publicGrid: Array.isArray(data.publicGrid)
+              ? (data.publicGrid as Array<Card | null>)
+              : undefined,
+            revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
           };
         });
         setPlayerSummaries(nextPlayers);
