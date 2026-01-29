@@ -122,11 +122,7 @@ export default function PlayerGrid({
               : " card--back card--back-text"
           }`;
           const isActive = typeof activeActionIndex === "number" && activeActionIndex === index;
-          const isItemSelectable =
-            isItemSelectionActive &&
-            hasRealGrid &&
-            value !== null &&
-            value !== undefined;
+          const isItemSelectable = isItemSelectionActive && value !== null && value !== undefined;
           const isRevealSelectable =
             isRevealSelectionActive &&
             hasRealGrid &&

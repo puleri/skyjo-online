@@ -387,11 +387,16 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           transaction.set(doc(db, "games", gameRef.id, "players", playerDoc.id), {
             displayName: data.displayName ?? "Anonymous player",
             seatIndex: index,
-            grid: playerGrids.get(playerDoc.id) ?? [],
-            revealed: Array.from({ length: 12 }, () => false),
             isReady: false,
             roundScore: 0,
             totalScore: 0,
+            revealedCount: 0,
+          });
+          transaction.set(doc(db, "games", gameRef.id, "playerStates", playerDoc.id), {
+            grid: playerGrids.get(playerDoc.id) ?? [],
+            revealed: Array.from({ length: 12 }, () => false),
+            pendingDraw: null,
+            pendingDrawSource: null,
           });
         });
 
