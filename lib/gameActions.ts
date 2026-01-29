@@ -38,6 +38,7 @@ type GameDoc = {
   lastTurnAction?: string | null;
   lastTurnActionAt?: unknown;
   skipNextTurnPlayerIds?: string[] | null;
+  readyPlayerIds?: string[] | null;
 };
 
 type PlayerStateDoc = {
@@ -1139,17 +1140,9 @@ export const startNextRound = async (gameId: string, playerId: string) => {
 
     const playerOrder = game.activePlayerOrder;
     assertCondition(playerOrder.length > 0, "No players are active in this game.");
-    const players: Record<string, PlayerSummaryDoc> = {};
-    await Promise.all(
-      playerOrder.map(async (activePlayerId) => {
-        const playerSnap = await transaction.get(getPlayerSummaryRef(gameId, activePlayerId));
-        assertCondition(playerSnap.exists(), "Player not found.");
-        players[activePlayerId] = playerSnap.data() as PlayerSummaryDoc;
-      })
-    );
-    const allPlayersReady = playerOrder.every((activePlayerId) =>
-      Boolean(players[activePlayerId].isReady)
-    );
+    const readyPlayerIds = game.readyPlayerIds ?? [];
+    const readyPlayerSet = new Set(readyPlayerIds);
+    const allPlayersReady = playerOrder.every((activePlayerId) => readyPlayerSet.has(activePlayerId));
     assertCondition(allPlayersReady, "All players must be ready to start the next round.");
 
     const spikeMode = Boolean(game.spikeMode);
@@ -1204,6 +1197,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       lastTurnAction: null,
       skipNextTurnPlayerIds: [],
       roundScores: deleteField(),
+      readyPlayerIds: [],
     });
 
     playerOrder.forEach((targetPlayerId) => {
@@ -1235,6 +1229,10 @@ export const readyForNextRound = async (gameId: string, playerId: string) => {
     const playerSnap = await transaction.get(playerSummaryRef);
     assertCondition(playerSnap.exists(), "Player not found.");
 
+    const readyPlayerIds = new Set(game.readyPlayerIds ?? []);
+    readyPlayerIds.add(playerId);
+
+    transaction.update(gameRef, { readyPlayerIds: Array.from(readyPlayerIds) });
     transaction.update(playerSummaryRef, { isReady: true });
   });
 };
