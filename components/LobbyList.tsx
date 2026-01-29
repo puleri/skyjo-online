@@ -297,7 +297,6 @@ export default function LobbyList() {
           playerCount: nextPlayerIds.length,
           playerIds: nextPlayerIds,
           playerNames: nextPlayerNames,
-          players: nextPlayerIds.length,
         };
         if (isHost) {
           lobbyUpdates.hostDisplayName = displayName;
@@ -386,8 +385,6 @@ export default function LobbyList() {
               <div
                 role="button"
                 tabIndex={0}
-                onMouseEnter={() => openPreview(lobby)}
-                onFocus={() => openPreview(lobby)}
                 onClick={() => openPreview(lobby)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -397,11 +394,6 @@ export default function LobbyList() {
                 }}
               >
                 <strong className="name-lobby-list">{lobby.name}</strong>
-                <div>
-                  <small className="player-lobby-list">
-                    {lobby.players} players
-                  </small>
-                </div>
               </div>
               <div>
                 <button
