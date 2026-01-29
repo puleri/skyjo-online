@@ -37,6 +37,8 @@ type GameDoc = {
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
   lastTurnActionAt?: unknown;
+  lastClearType?: "row" | "column" | "row-column" | null;
+  lastClearTypeAt?: unknown;
   skipNextTurnPlayerIds?: string[] | null;
   readyPlayerIds?: string[] | null;
 };
@@ -117,18 +119,22 @@ const clearMatchesAtIndex = (
   rowClear: boolean
 ) => {
   const matchedIndices = new Set<number>();
+  let clearedColumn = false;
+  let clearedRow = false;
   const columnIndices = getColumnIndices(index);
   if (isLineMatch(grid, revealed, columnIndices)) {
     columnIndices.forEach((columnIndex) => matchedIndices.add(columnIndex));
+    clearedColumn = true;
   }
   if (rowClear) {
     const rowIndices = getRowIndices(index);
     if (isLineMatch(grid, revealed, rowIndices)) {
       rowIndices.forEach((rowIndex) => matchedIndices.add(rowIndex));
+      clearedRow = true;
     }
   }
   if (matchedIndices.size === 0) {
-    return { grid, revealed, clearedCards: [] as Card[] };
+    return { grid, revealed, clearedCards: [] as Card[], clearedRow, clearedColumn };
   }
   const nextGrid = [...grid];
   const nextRevealed = [...revealed];
@@ -141,7 +147,7 @@ const clearMatchesAtIndex = (
     nextGrid[matchedIndex] = null;
     nextRevealed[matchedIndex] = true;
   });
-  return { grid: nextGrid, revealed: nextRevealed, clearedCards };
+  return { grid: nextGrid, revealed: nextRevealed, clearedCards, clearedRow, clearedColumn };
 };
 
 const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowClear: boolean) => {
@@ -149,10 +155,13 @@ const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowCle
   const nextRevealed = [...revealed];
   const matchedIndices = new Set<number>();
   const clearedCards: Card[] = [];
+  let clearedColumn = false;
+  let clearedRow = false;
   for (let column = 0; column < columns; column += 1) {
     const columnIndices = getColumnIndices(column);
     if (isLineMatch(grid, revealed, columnIndices)) {
       columnIndices.forEach((columnIndex) => matchedIndices.add(columnIndex));
+      clearedColumn = true;
     }
   }
   if (rowClear) {
@@ -161,6 +170,7 @@ const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowCle
       const rowIndices = Array.from({ length: columns }, (_, offset) => row * columns + offset);
       if (isLineMatch(grid, revealed, rowIndices)) {
         rowIndices.forEach((rowIndex) => matchedIndices.add(rowIndex));
+        clearedRow = true;
       }
     }
   }
@@ -172,7 +182,7 @@ const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowCle
     nextGrid[matchedIndex] = null;
     nextRevealed[matchedIndex] = true;
   });
-  return { grid: nextGrid, revealed: nextRevealed, clearedCards };
+  return { grid: nextGrid, revealed: nextRevealed, clearedCards, clearedRow, clearedColumn };
 };
 
 const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
@@ -216,6 +226,8 @@ const clearPlayerMatches = (player: PlayerStateDoc, rowClear: boolean) => {
   return {
     player: { ...player, grid: cleared.grid, revealed: cleared.revealed },
     clearedCards: cleared.clearedCards,
+    clearedRow: cleared.clearedRow,
+    clearedColumn: cleared.clearedColumn,
   };
 };
 
@@ -272,6 +284,19 @@ type TurnResolution = {
   roundComplete: boolean;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
+};
+
+const getClearType = (clearedRow: boolean, clearedColumn: boolean) => {
+  if (clearedRow && clearedColumn) {
+    return "row-column" as const;
+  }
+  if (clearedRow) {
+    return "row" as const;
+  }
+  if (clearedColumn) {
+    return "column" as const;
+  }
+  return null;
 };
 
 const resolveTurn = (
@@ -462,6 +487,7 @@ export const drawFromDiscard = async (
       grid: cleared.grid,
       revealed: cleared.revealed,
     };
+    const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
     const lastTurnAction = "took discard pile card and swapped card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
@@ -520,6 +546,8 @@ export const drawFromDiscard = async (
       lastTurnPlayerId: playerId,
       lastTurnAction,
       lastTurnActionAt: serverTimestamp(),
+      lastClearType,
+      lastClearTypeAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
@@ -643,6 +671,7 @@ export const swapPendingDraw = async (
       grid: cleared.grid,
       revealed: cleared.revealed,
     };
+    const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
     const lastTurnAction = "drew from deck and swapped card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
@@ -700,6 +729,8 @@ export const swapPendingDraw = async (
       lastTurnPlayerId: playerId,
       lastTurnAction,
       lastTurnActionAt: serverTimestamp(),
+      lastClearType,
+      lastClearTypeAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
@@ -909,6 +940,8 @@ export const useItemCard = async (
 
     const updatedPlayers: Record<string, PlayerStateDoc> = {};
     const clearedItemDiscards: Card[] = [];
+    let clearedRow = false;
+    let clearedColumn = false;
     playersToUpdate.forEach((targetPlayer, targetPlayerId) => {
       if (affectedPlayerIds.has(targetPlayerId)) {
         const cleared = clearPlayerMatches(
@@ -919,12 +952,15 @@ export const useItemCard = async (
         if (cleared.clearedCards.length > 0) {
           clearedItemDiscards.push(...cleared.clearedCards);
         }
+        clearedRow = clearedRow || cleared.clearedRow;
+        clearedColumn = clearedColumn || cleared.clearedColumn;
       } else {
         updatedPlayers[targetPlayerId] = targetPlayer;
       }
     });
 
     const updatedCurrentPlayer = updatedPlayers[playerId] ?? player;
+    const lastClearType = getClearType(clearedRow, clearedColumn);
     const lastTurnAction = describeItemAction(usage);
     const resolution = resolveTurn(
       { ...game, skipNextTurnPlayerIds: Array.from(nextSkipNextTurnPlayerIds) },
@@ -990,6 +1026,8 @@ export const useItemCard = async (
       lastTurnPlayerId: playerId,
       lastTurnAction,
       lastTurnActionAt: serverTimestamp(),
+      lastClearType,
+      lastClearTypeAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(updatedDiscard ? { discard: updatedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
@@ -1058,6 +1096,7 @@ export const revealAfterDiscard = async (
       grid: cleared.grid,
       revealed: cleared.revealed,
     };
+    const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
     const lastTurnAction = "discarded drawn card and revealed card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
@@ -1112,6 +1151,8 @@ export const revealAfterDiscard = async (
       lastTurnPlayerId: playerId,
       lastTurnAction,
       lastTurnActionAt: serverTimestamp(),
+      lastClearType,
+      lastClearTypeAt: serverTimestamp(),
       ...resolution.gameUpdates,
       ...(clearedDiscard ? { discard: clearedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
@@ -1197,6 +1238,8 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       finalTurnRemainingIds: null,
       lastTurnPlayerId: null,
       lastTurnAction: null,
+      lastClearType: null,
+      lastClearTypeAt: null,
       skipNextTurnPlayerIds: [],
       roundScores: deleteField(),
       readyPlayerIds: [],

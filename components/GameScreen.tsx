@@ -58,6 +58,8 @@ type GameMeta = {
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
   lastTurnActionAt?: Timestamp | null;
+  lastClearType?: "row" | "column" | "row-column" | null;
+  lastClearTypeAt?: Timestamp | null;
 };
 
 type GamePlayerSummary = {
@@ -167,7 +169,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedDiscardSelectSoundRef = useRef(false);
   const lastSelectedDiscardPlayerIdRef = useRef<string | null>(null);
   const lastTurnActionRef = useRef<string | null>(null);
+  const lastClearSoundKeyRef = useRef<string | null>(null);
   const hasInitializedActionSoundRef = useRef(false);
+  const hasInitializedClearSoundRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
   const betweenRoundsBufferRef = useRef<AudioBuffer | null>(null);
@@ -477,6 +481,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
           lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
           lastTurnActionAt: (data.lastTurnActionAt as Timestamp | null | undefined) ?? null,
+          lastClearType:
+            (data.lastClearType as "row" | "column" | "row-column" | null | undefined) ?? null,
+          lastClearTypeAt: (data.lastClearTypeAt as Timestamp | null | undefined) ?? null,
         });
       },
       (err) => {
@@ -591,6 +598,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     lastTurnActionRef.current = actionKey;
+  }, [firebaseReady, game]);
+
+  useEffect(() => {
+    if (!firebaseReady || !game) {
+      return;
+    }
+
+    const clearType = game.lastClearType ?? null;
+    const clearKey = String(
+      game.lastClearTypeAt?.toMillis?.() ??
+        `${game.lastTurnPlayerId ?? "none"}:${clearType ?? "none"}`
+    );
+
+    if (!hasInitializedClearSoundRef.current) {
+      hasInitializedClearSoundRef.current = true;
+      lastClearSoundKeyRef.current = clearKey;
+      return;
+    }
+
+    if (clearType && clearKey !== lastClearSoundKeyRef.current) {
+      if (clearType === "row") {
+        playSound("/sounds/notifications/clear-row.wav");
+      } else if (clearType === "column") {
+        playSound("/sounds/notifications/clear-column.wav");
+      } else {
+        playSound("/sounds/notifications/clear-row.wav");
+        playSound("/sounds/notifications/clear-column.wav");
+      }
+    }
+
+    lastClearSoundKeyRef.current = clearKey;
   }, [firebaseReady, game]);
 
   useEffect(() => {
