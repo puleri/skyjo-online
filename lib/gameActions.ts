@@ -955,13 +955,14 @@ export const useItemCard = async (
       const playersSnapshot: Record<string, PlayerSnapshot> = {};
       await Promise.all(
         game.activePlayerOrder.map(async (activePlayerId) => {
-          if (updatedPlayers[activePlayerId]) {
+          const loadedPlayer = updatedPlayers[activePlayerId] ?? playersToUpdate.get(activePlayerId);
+          if (loadedPlayer) {
             const summarySnap = await transaction.get(
               getPlayerSummaryRef(gameId, activePlayerId)
             );
             assertCondition(summarySnap.exists(), "Player not found.");
             playersSnapshot[activePlayerId] = {
-              ...updatedPlayers[activePlayerId],
+              ...loadedPlayer,
               ...(summarySnap.data() as PlayerSummaryDoc),
             };
             return;
