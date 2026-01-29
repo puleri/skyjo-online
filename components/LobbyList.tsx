@@ -26,11 +26,8 @@ type Lobby = {
   name: string;
   status: string;
   players: number;
-  playerIds: string[];
-  playerNames: string[];
 };
 
-const MAX_PLAYER_NAMES_LENGTH = 60;
 const LOBBIES_PER_PAGE = 5;
 
 export default function LobbyList() {
@@ -80,8 +77,6 @@ export default function LobbyList() {
           name: doc.data().name ?? "Untitled lobby",
           status: doc.data().status ?? "open",
           players: doc.data().playerCount ?? doc.data().players ?? 0,
-          playerIds: Array.isArray(doc.data().playerIds) ? doc.data().playerIds : [],
-          playerNames: Array.isArray(doc.data().playerNames) ? doc.data().playerNames : [],
         }));
         if (isCancelled) {
           return;
@@ -275,36 +270,19 @@ export default function LobbyList() {
     return <p>No lobbies yet. Create one above.</p>;
   }
 
-  const formatPlayerNames = (names: string[]) => {
-    if (!names.length) {
-      return "No players yet";
-    }
-
-    const joinedNames = names.join(", ");
-    if (joinedNames.length <= MAX_PLAYER_NAMES_LENGTH) {
-      return joinedNames;
-    }
-
-    return `${joinedNames.slice(0, MAX_PLAYER_NAMES_LENGTH)}…`;
-  };
-
   const visibleLobbies = lobbies;
 
   return (
     <div>
       <ul>
         {visibleLobbies.map((lobby) => {
-          const isPlayerInLobby = uid ? lobby.playerIds.includes(uid) : false;
           const buttonLabel =
             joiningLobbyId === lobby.id
               ? "Joining..."
-              : isPlayerInLobby
-                ? "Rejoin"
-                : lobby.status === "open"
+              : lobby.status === "open"
                   ? "Join"
                   : "Spectate";
-          const buttonClassName =
-            isPlayerInLobby || lobby.status === "open" ? "join-button" : "spectate-button";
+          const buttonClassName = lobby.status === "open" ? "join-button" : "spectate-button";
 
           return (
             <li key={lobby.id}>
@@ -312,12 +290,11 @@ export default function LobbyList() {
                 <strong className="name-lobby-list">{lobby.name}</strong>
                 <div>
                   <small className="player-lobby-list">
-                    {formatPlayerNames(lobby.playerNames)}
+                    {lobby.players} players
                   </small>
                 </div>
               </div>
               <div>
-                {/* <small className="mr-10">{lobby.players} players</small> */}
                 <button
                   type="button"
                   className={buttonClassName}
