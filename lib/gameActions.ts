@@ -49,6 +49,7 @@ type PlayerStateDoc = {
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
   totalScore?: number;
+  mistTurnsRemaining?: number | null;
 };
 
 type PlayerSummaryDoc = {
@@ -61,6 +62,7 @@ type PlayerSummaryDoc = {
   publicGrid?: Array<Card | null>;
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  mistTurnsRemaining?: number | null;
 };
 
 const columns = 4;
@@ -77,6 +79,27 @@ const getPublicSummary = (player: Pick<PlayerStateDoc, "grid" | "revealed">) => 
   publicGrid: getPublicGrid(player.grid, player.revealed),
   revealedCount: getRevealedCount(player.revealed),
 });
+const getMaskedSummary = (gridLength: number) => ({
+  revealed: Array.from({ length: gridLength }, () => false),
+  publicGrid: Array.from({ length: gridLength }, () => null),
+  revealedCount: 0,
+});
+const getPublicSummaryUpdates = (
+  previousMist: PlayerStateDoc["mistTurnsRemaining"],
+  player: Pick<PlayerStateDoc, "grid" | "revealed" | "mistTurnsRemaining">
+) => {
+  const wasMisted = (previousMist ?? 0) > 0;
+  const isMisted = (player.mistTurnsRemaining ?? 0) > 0;
+
+  if (isMisted) {
+    if (!wasMisted) {
+      return getMaskedSummary(player.grid.length);
+    }
+    return null;
+  }
+
+  return getPublicSummary(player);
+};
 
 const getPendingSummaryUpdates = (
   pendingDraw: PlayerStateDoc["pendingDraw"],
@@ -85,6 +108,22 @@ const getPendingSummaryUpdates = (
   pendingDraw: pendingDraw ?? null,
   pendingDrawSource: pendingDrawSource ?? null,
 });
+
+const getMistSummaryUpdates = (mistTurnsRemaining: PlayerStateDoc["mistTurnsRemaining"]) => ({
+  mistTurnsRemaining: mistTurnsRemaining ?? null,
+});
+
+const decrementMistAfterTurn = (player: PlayerStateDoc) => {
+  const currentMist = player.mistTurnsRemaining ?? 0;
+  if (currentMist <= 0) {
+    return player;
+  }
+  const nextMist = currentMist - 1;
+  return {
+    ...player,
+    mistTurnsRemaining: nextMist > 0 ? nextMist : null,
+  };
+};
 
 const assertCondition = (condition: boolean, message: string) => {
   if (!condition) {
@@ -222,15 +261,6 @@ const drawRandomNumberCard = (deck: Card[]) => {
   return drawn;
 };
 
-const shuffleGridPositions = (grid: Array<Card | null>, revealed: boolean[]) => {
-  const combined = grid.map((card, index) => ({ card, revealed: revealed[index] }));
-  const shuffled = shuffleDeck(combined);
-  return {
-    grid: shuffled.map((entry) => entry.card),
-    revealed: shuffled.map((entry) => entry.revealed),
-  };
-};
-
 const clearPlayerMatches = (player: PlayerStateDoc, rowClear: boolean) => {
   const cleared = clearMatchedLines([...player.grid], [...player.revealed], rowClear);
   return {
@@ -267,23 +297,23 @@ type ItemTarget = {
 
 type ItemUsage =
   | { code: "A"; target: ItemTarget }
-  | { code: "B" }
+  | { code: "B"; targetPlayerId: string }
   | { code: "C"; target: ItemTarget; value: number }
-  | { code: "D"; target: ItemTarget }
-  | { code: "E"; first: ItemTarget; second: ItemTarget };
+  | { code: "E"; first: ItemTarget; second: ItemTarget }
+  | { code: "F"; target: ItemTarget };
 
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
     case "A":
       return "used item A to reroll a card.";
     case "B":
-      return "used item B to shuffle their grid.";
+      return "used item B to skip a player's next turn.";
     case "C":
       return `used item C to set a card to ${usage.value}.`;
-    case "D":
-      return "used item D to freeze a player.";
     case "E":
       return "used item E to swap two cards.";
+    case "F":
+      return "used item F to summon mist.";
     default:
       return "used an item.";
   }
@@ -294,6 +324,7 @@ type TurnResolution = {
   roundComplete: boolean;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
+  updatedPlayer: PlayerStateDoc;
 };
 
 const getClearType = (clearedRow: boolean, clearedColumn: boolean) => {
@@ -315,6 +346,7 @@ const resolveTurn = (
   updatedPlayer: PlayerStateDoc
 ): TurnResolution => {
   const activeOrder = game.activePlayerOrder;
+  const resolvedPlayer = decrementMistAfterTurn(updatedPlayer);
   let endingPlayerId = game.endingPlayerId ?? null;
   let finalTurnRemainingIds = game.finalTurnRemainingIds ?? null;
   const skipNextTurnPlayerIds = new Set(game.skipNextTurnPlayerIds ?? []);
@@ -343,6 +375,7 @@ const resolveTurn = (
       roundComplete,
       endingPlayerId,
       finalTurnRemainingIds: [],
+      updatedPlayer: resolvedPlayer,
     };
   }
 
@@ -374,6 +407,7 @@ const resolveTurn = (
     roundComplete,
     endingPlayerId,
     finalTurnRemainingIds,
+    updatedPlayer: resolvedPlayer,
   };
 };
 
@@ -420,6 +454,15 @@ const computeRoundScores = (
     const previousTotal = players[playerId].totalScore ?? 0;
     const totalScore = previousTotal + roundScores[playerId];
     totalScores.push(totalScore);
+    const clearedPlayer = {
+      ...players[playerId],
+      grid: cleared.grid,
+      revealed: cleared.revealed,
+    };
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      players[playerId].mistTurnsRemaining,
+      clearedPlayer
+    );
     stateUpdates[playerId] = {
       grid: cleared.grid,
       revealed: cleared.revealed,
@@ -429,7 +472,7 @@ const computeRoundScores = (
       isReady: false,
       roundScore: roundScores[playerId],
       totalScore,
-      ...getPublicSummary(cleared),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
     };
   });
@@ -503,6 +546,7 @@ export const drawFromDiscard = async (
 
     const lastTurnAction = "took discard pile card and swapped card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
+    const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: {
@@ -517,7 +561,7 @@ export const drawFromDiscard = async (
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
             players[activePlayerId] = {
-              ...updatedPlayer,
+              ...resolvedPlayer,
             };
             return;
           }
@@ -546,14 +590,20 @@ export const drawFromDiscard = async (
     }
 
     transaction.update(playerStateRef, {
-      grid: cleared.grid,
-      revealed: cleared.revealed,
+      grid: resolvedPlayer.grid,
+      revealed: resolvedPlayer.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+      mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(updatedPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
+      ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
     transaction.update(gameRef, {
       discard,
@@ -692,6 +742,7 @@ export const swapPendingDraw = async (
 
     const lastTurnAction = "drew from deck and swapped card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
+    const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: {
@@ -706,7 +757,7 @@ export const swapPendingDraw = async (
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
             players[activePlayerId] = {
-              ...updatedPlayer,
+              ...resolvedPlayer,
             };
             return;
           }
@@ -735,14 +786,20 @@ export const swapPendingDraw = async (
     }
 
     transaction.update(playerStateRef, {
-      grid: cleared.grid,
-      revealed: cleared.revealed,
+      grid: resolvedPlayer.grid,
+      revealed: resolvedPlayer.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+      mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(updatedPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
+      ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
     transaction.update(gameRef, {
       discard,
@@ -843,6 +900,7 @@ export const useItemCard = async (
     assertItemCodeMatch(player.pendingDraw, usage.code);
 
     const pendingItem = player.pendingDraw as ItemCard;
+    const basePlayers = new Map<string, PlayerStateDoc>([[playerId, player]]);
     const playersToUpdate = new Map<string, PlayerStateDoc>([[playerId, player]]);
     const affectedPlayerIds = new Set<string>();
     let nextDeck = [...game.deck];
@@ -860,6 +918,7 @@ export const useItemCard = async (
       const targetSnap = await transaction.get(getPlayerStateRef(gameId, targetPlayerId));
       assertCondition(targetSnap.exists(), "Player not found.");
       const targetPlayer = targetSnap.data() as PlayerStateDoc;
+      basePlayers.set(targetPlayerId, targetPlayer);
       playersToUpdate.set(targetPlayerId, targetPlayer);
       return targetPlayer;
     };
@@ -884,9 +943,11 @@ export const useItemCard = async (
         break;
       }
       case "B": {
-        const shuffled = shuffleGridPositions(player.grid, player.revealed);
-        playersToUpdate.set(playerId, { ...player, ...shuffled });
-        affectedPlayerIds.add(playerId);
+        assertCondition(
+          game.activePlayerOrder.includes(usage.targetPlayerId),
+          "Target player is not in this game."
+        );
+        nextSkipNextTurnPlayerIds.add(usage.targetPlayerId);
         break;
       }
       case "C": {
@@ -904,11 +965,13 @@ export const useItemCard = async (
         affectedPlayerIds.add(usage.target.playerId);
         break;
       }
-      case "D":
-        const frozenPlayer = await loadPlayer(usage.target.playerId);
-        validateGridIndex(frozenPlayer, usage.target.index);
-        nextSkipNextTurnPlayerIds.add(usage.target.playerId);
+      case "F": {
+        playersToUpdate.set(playerId, {
+          ...player,
+          mistTurnsRemaining: 6,
+        });
         break;
+      }
       case "E": {
         const firstPlayer = await loadPlayer(usage.first.playerId);
         const secondPlayer = await loadPlayer(usage.second.playerId);
@@ -991,6 +1054,7 @@ export const useItemCard = async (
       playerId,
       updatedCurrentPlayer
     );
+    const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: {
@@ -1005,7 +1069,7 @@ export const useItemCard = async (
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (updatedPlayers[activePlayerId]) {
             playersSnapshot[activePlayerId] = {
-              ...updatedPlayers[activePlayerId],
+              ...(activePlayerId === playerId ? resolvedPlayer : updatedPlayers[activePlayerId]),
             };
             return;
           }
@@ -1034,14 +1098,20 @@ export const useItemCard = async (
     }
 
     transaction.update(playerStateRef, {
-      grid: updatedCurrentPlayer.grid,
-      revealed: updatedCurrentPlayer.revealed,
+      grid: resolvedPlayer.grid,
+      revealed: resolvedPlayer.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+      mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(updatedCurrentPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
+      ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
     const updatedDiscard =
       clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
@@ -1069,10 +1139,17 @@ export const useItemCard = async (
         grid: updatedPlayer.grid,
         revealed: updatedPlayer.revealed,
       });
-      transaction.update(
-        getPlayerSummaryRef(gameId, targetPlayerId),
-        getPublicSummary(updatedPlayer)
+      const previousPlayer = basePlayers.get(targetPlayerId) ?? updatedPlayer;
+      const targetPublicSummaryUpdates = getPublicSummaryUpdates(
+        previousPlayer.mistTurnsRemaining,
+        updatedPlayer
       );
+      if (targetPublicSummaryUpdates) {
+        transaction.update(
+          getPlayerSummaryRef(gameId, targetPlayerId),
+          targetPublicSummaryUpdates
+        );
+      }
     });
 
     if (scoreUpdates) {
@@ -1127,6 +1204,7 @@ export const revealAfterDiscard = async (
 
     const lastTurnAction = "discarded drawn card and revealed card.";
     const resolution = resolveTurn(game, playerId, updatedPlayer);
+    const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
     let scoreUpdates: {
@@ -1141,7 +1219,7 @@ export const revealAfterDiscard = async (
         game.activePlayerOrder.map(async (activePlayerId) => {
           if (activePlayerId === playerId) {
             players[activePlayerId] = {
-              ...updatedPlayer,
+              ...resolvedPlayer,
             };
             return;
           }
@@ -1170,10 +1248,18 @@ export const revealAfterDiscard = async (
     }
 
     transaction.update(playerStateRef, {
-      grid: cleared.grid,
-      revealed: cleared.revealed,
+      grid: resolvedPlayer.grid,
+      revealed: resolvedPlayer.revealed,
+      mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
-    transaction.update(playerSummaryRef, getPublicSummary(updatedPlayer));
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
+    transaction.update(playerSummaryRef, {
+      ...(publicSummaryUpdates ?? {}),
+      ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
+    });
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
       lastTurnAction,
@@ -1279,6 +1365,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         revealed: initialRevealed,
         pendingDraw: null,
         pendingDrawSource: null,
+        mistTurnsRemaining: null,
       });
       transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
         isReady: false,
@@ -1288,6 +1375,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         revealedCount: 0,
         pendingDraw: null,
         pendingDrawSource: null,
+        mistTurnsRemaining: null,
       });
     });
   });

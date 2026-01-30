@@ -647,8 +647,62 @@ section {
   position: relative;
 }
 
-.player-grid header {
+.player-grid__header {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.player-grid__name {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+button.player-grid__name {
+  cursor: pointer;
+  padding: 4px 8px;
+  box-shadow: none;
+  border-radius: 6px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+button.player-grid__name:hover {
+  background-color: var(--color-on-dark);
+  scale: 1.05;
+    box-shadow: 0px 2px 20px rgba(0, 0, 0, 0.05);
+
+}
+
+
+.player-grid__name--selected {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.player-grid__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.player-grid__badge--misted {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
 }
 
 .player-grid--active {
@@ -741,7 +795,9 @@ section {
   .bounce-depth,
   .bounce-depth--loop,
   .player-grid--active,
-  .player-grid--active::before {
+  .player-grid--active::before,
+  .player-grid--misted .player-grid__cards::before,
+  .player-grid--misted .player-grid__cards::after {
     animation: none;
   }
 }
@@ -754,10 +810,52 @@ section {
   display: grid;
   grid-template-columns: repeat(4, minmax(36px, 1fr));
   gap: 8px;
+  position: relative;
 }
 
 .player-grid__card {
   position: relative;
+}
+
+.player-grid--misted .player-grid__cards::before,
+.player-grid--misted .player-grid__cards::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  pointer-events: none;
+  opacity: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 2;
+  width: 110%;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 45%),
+    radial-gradient(circle at 80% 35%, rgba(220, 235, 255, 0.6), transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(200, 220, 255, 0.5), transparent 55%);
+  mix-blend-mode: screen;
+  animation: mist-drift 12s ease-in-out infinite;
+}
+
+.player-grid--misted .player-grid__cards::after {
+  opacity: 0.4;
+  filter: blur(10px);
+  animation: mist-drift 18s ease-in-out infinite reverse;
+}
+
+.player-grid--misted .player-grid__card {
+  z-index: 1;
+}
+
+@keyframes mist-drift {
+  0% {
+    transform: translate3d(-2px, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4px, -3px, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(-2px, 2px, 0) scale(1);
+  }
 }
 
 .player-grid__card .card {
@@ -914,7 +1012,7 @@ section {
   background: linear-gradient(135deg, #7a1f3d, #c94d8c);
 }
 
-.card--item-D {
+.card--item-F {
   background: linear-gradient(135deg, #8b5a0a, #d5a32d);
 }
 

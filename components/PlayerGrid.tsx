@@ -10,7 +10,10 @@ type PlayerGridProps = {
   isLocal?: boolean;
   grid?: Array<Card | null>;
   revealed?: boolean[];
+  mistTurnsRemaining?: number | null;
   onCardSelect?: (index: number) => void;
+  onPlayerSelect?: (playerId: string) => void;
+  isPlayerSelected?: boolean;
   activeActionIndex?: number | null;
   onReplace?: (index: number) => void;
   onReveal?: (index: number) => void;
@@ -80,7 +83,10 @@ export default function PlayerGrid({
   isLocal = false,
   grid,
   revealed,
+  mistTurnsRemaining,
   onCardSelect,
+  onPlayerSelect,
+  isPlayerSelected = false,
   activeActionIndex,
   onReplace,
   onReveal,
@@ -98,6 +104,7 @@ export default function PlayerGrid({
   const isItemSelectionActive =
     Boolean(itemSelection?.active) && typeof itemSelection?.onSelect === "function";
   const hasRealGrid = Boolean(grid && grid.length === 12);
+  const isMisted = (mistTurnsRemaining ?? 0) > 0;
   const showActionMenu =
     typeof activeActionIndex === "number" &&
     typeof onReplace === "function" &&
@@ -108,10 +115,25 @@ export default function PlayerGrid({
     <section
       className={`player-grid player-grid--${size}${isLocal ? " player-grid--local" : ""}${
         isActive ? " player-grid--active" : ""
-      }`}
+      }${isMisted ? " player-grid--misted" : ""}`}
     >
-      <header>
-        <strong>{label}</strong>
+      <header className="player-grid__header">
+        {onPlayerSelect ? (
+          <button
+            type="button"
+            className={`player-grid__name${isPlayerSelected ? " player-grid__name--selected" : ""}`}
+            onClick={() => onPlayerSelect(playerId)}
+          >
+            <strong>{label}</strong>
+          </button>
+        ) : (
+          <strong className="player-grid__name">{label}</strong>
+        )}
+        {isMisted ? (
+          <span className="player-grid__badge player-grid__badge--misted">
+            Misty{mistTurnsRemaining && mistTurnsRemaining > 1 ? ` (${mistTurnsRemaining})` : ""}
+          </span>
+        ) : null}
       </header>
       <div className="player-grid__cards">
         {cards.map((value, index) => {
