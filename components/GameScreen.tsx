@@ -1091,7 +1091,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     B: "Skip a player's next turn.",
     C: "WILD CARD! Set any card to a ANY value.",
     E: "Swap any two cards (confirm if across players).",
-    F: "Freeze a player so they skip their next turn.",
+    F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
