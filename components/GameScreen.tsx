@@ -1077,7 +1077,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     itemCode === "B"
       ? itemTargets.length === 0
         ? "Select a player."
-        : "Target selected."
+        : `Selected ${getItemTargetLabel(itemTargets[0])}.`
       : itemTargets.length === 0
         ? itemTargetsNeeded === 1
           ? "Select a target card."
@@ -1088,7 +1088,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const canDiscardItem = isResolvingItem && Boolean(itemCode);
   const itemDescriptions: Record<string, string> = {
     A: "Pick any card on ANY board. Randomize it.",
-    B: "Skip a player's next turn.",
+    B: "Select a player whose next turn will be skipped.",
     C: "WILD CARD! Set any card to a ANY value.",
     E: "Swap any two cards (confirm if across players).",
     F: "Freeze a player so they skip their next turn.",
