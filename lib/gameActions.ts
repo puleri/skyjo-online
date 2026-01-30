@@ -261,15 +261,6 @@ const drawRandomNumberCard = (deck: Card[]) => {
   return drawn;
 };
 
-const shuffleGridPositions = (grid: Array<Card | null>, revealed: boolean[]) => {
-  const combined = grid.map((card, index) => ({ card, revealed: revealed[index] }));
-  const shuffled = shuffleDeck(combined);
-  return {
-    grid: shuffled.map((entry) => entry.card),
-    revealed: shuffled.map((entry) => entry.revealed),
-  };
-};
-
 const clearPlayerMatches = (player: PlayerStateDoc, rowClear: boolean) => {
   const cleared = clearMatchedLines([...player.grid], [...player.revealed], rowClear);
   return {
@@ -306,7 +297,7 @@ type ItemTarget = {
 
 type ItemUsage =
   | { code: "A"; target: ItemTarget }
-  | { code: "B" }
+  | { code: "B"; targetPlayerId: string }
   | { code: "C"; target: ItemTarget; value: number }
   | { code: "E"; first: ItemTarget; second: ItemTarget }
   | { code: "F"; target: ItemTarget };
@@ -316,7 +307,7 @@ const describeItemAction = (usage: ItemUsage) => {
     case "A":
       return "used item A to reroll a card.";
     case "B":
-      return "used item B to shuffle their grid.";
+      return "used item B to skip a player's next turn.";
     case "C":
       return `used item C to set a card to ${usage.value}.`;
     case "E":
@@ -952,9 +943,11 @@ export const useItemCard = async (
         break;
       }
       case "B": {
-        const shuffled = shuffleGridPositions(player.grid, player.revealed);
-        playersToUpdate.set(playerId, { ...player, ...shuffled });
-        affectedPlayerIds.add(playerId);
+        assertCondition(
+          game.activePlayerOrder.includes(usage.targetPlayerId),
+          "Target player is not in this game."
+        );
+        nextSkipNextTurnPlayerIds.add(usage.targetPlayerId);
         break;
       }
       case "C": {
