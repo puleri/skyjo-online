@@ -824,9 +824,10 @@ button.player-grid__name:hover {
   inset: -6px;
   border-radius: 18px;
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   z-index: 2;
-  filter: blur(6px);
+  width: 110%;
   background-image:
     radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 45%),
     radial-gradient(circle at 80% 35%, rgba(220, 235, 255, 0.6), transparent 50%),
