@@ -10,6 +10,7 @@ type PlayerGridProps = {
   isLocal?: boolean;
   grid?: Array<Card | null>;
   revealed?: boolean[];
+  mistTurnsRemaining?: number | null;
   onCardSelect?: (index: number) => void;
   activeActionIndex?: number | null;
   onReplace?: (index: number) => void;
@@ -80,6 +81,7 @@ export default function PlayerGrid({
   isLocal = false,
   grid,
   revealed,
+  mistTurnsRemaining,
   onCardSelect,
   activeActionIndex,
   onReplace,
@@ -98,6 +100,7 @@ export default function PlayerGrid({
   const isItemSelectionActive =
     Boolean(itemSelection?.active) && typeof itemSelection?.onSelect === "function";
   const hasRealGrid = Boolean(grid && grid.length === 12);
+  const isMisted = (mistTurnsRemaining ?? 0) > 0;
   const showActionMenu =
     typeof activeActionIndex === "number" &&
     typeof onReplace === "function" &&
@@ -112,6 +115,11 @@ export default function PlayerGrid({
     >
       <header>
         <strong>{label}</strong>
+        {isMisted ? (
+          <span className="player-grid__badge player-grid__badge--misted">
+            Misted{mistTurnsRemaining && mistTurnsRemaining > 1 ? ` (${mistTurnsRemaining})` : ""}
+          </span>
+        ) : null}
       </header>
       <div className="player-grid__cards">
         {cards.map((value, index) => {

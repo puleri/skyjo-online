@@ -68,6 +68,7 @@ type GamePlayerSummary = {
   isReady: boolean;
   totalScore?: number;
   revealedCount?: number;
+  mistTurnsRemaining?: number | null;
   publicGrid?: Array<Card | null>;
   revealed?: boolean[];
   pendingDraw?: Card | null;
@@ -191,8 +192,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         pendingDraw: player.pendingDraw,
         pendingDrawSource: player.pendingDrawSource,
       };
-      if (uid && player.id === uid) {
+      const isLocalPlayer = uid && player.id === uid;
+      const isMisted = (player.mistTurnsRemaining ?? 0) > 0;
+      const maskedGrid = Array.from({ length: 12 }, () => null);
+      const maskedRevealed = Array.from({ length: 12 }, () => false);
+      if (isLocalPlayer) {
         return { ...player, ...summaryState, ...(localPlayerState ?? {}) };
+      }
+      if (isMisted) {
+        return { ...player, ...summaryState, grid: maskedGrid, revealed: maskedRevealed };
       }
       return { ...player, ...summaryState };
     });
@@ -719,6 +727,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             isReady: Boolean(data.isReady),
             totalScore: (data.totalScore as number | undefined) ?? undefined,
             revealedCount: (data.revealedCount as number | undefined) ?? undefined,
+            mistTurnsRemaining: (data.mistTurnsRemaining as number | null | undefined) ?? null,
             publicGrid: Array.isArray(data.publicGrid)
               ? (data.publicGrid as Array<Card | null>)
               : undefined,
@@ -2415,6 +2424,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     isLocal={isLocalPlayer}
                     grid={player.grid}
                     revealed={player.revealed}
+                    mistTurnsRemaining={player.mistTurnsRemaining}
                     onCardSelect={
                       isLocalPlayer && canSelectGridCard ? handleSelectGridCard : undefined
                     }
