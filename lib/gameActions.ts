@@ -79,6 +79,27 @@ const getPublicSummary = (player: Pick<PlayerStateDoc, "grid" | "revealed">) => 
   publicGrid: getPublicGrid(player.grid, player.revealed),
   revealedCount: getRevealedCount(player.revealed),
 });
+const getMaskedSummary = (gridLength: number) => ({
+  revealed: Array.from({ length: gridLength }, () => false),
+  publicGrid: Array.from({ length: gridLength }, () => null),
+  revealedCount: 0,
+});
+const getPublicSummaryUpdates = (
+  previousMist: PlayerStateDoc["mistTurnsRemaining"],
+  player: Pick<PlayerStateDoc, "grid" | "revealed" | "mistTurnsRemaining">
+) => {
+  const wasMisted = (previousMist ?? 0) > 0;
+  const isMisted = (player.mistTurnsRemaining ?? 0) > 0;
+
+  if (isMisted) {
+    if (!wasMisted) {
+      return getMaskedSummary(player.grid.length);
+    }
+    return null;
+  }
+
+  return getPublicSummary(player);
+};
 
 const getPendingSummaryUpdates = (
   pendingDraw: PlayerStateDoc["pendingDraw"],
@@ -442,6 +463,15 @@ const computeRoundScores = (
     const previousTotal = players[playerId].totalScore ?? 0;
     const totalScore = previousTotal + roundScores[playerId];
     totalScores.push(totalScore);
+    const clearedPlayer = {
+      ...players[playerId],
+      grid: cleared.grid,
+      revealed: cleared.revealed,
+    };
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      players[playerId].mistTurnsRemaining,
+      clearedPlayer
+    );
     stateUpdates[playerId] = {
       grid: cleared.grid,
       revealed: cleared.revealed,
@@ -451,7 +481,7 @@ const computeRoundScores = (
       isReady: false,
       roundScore: roundScores[playerId],
       totalScore,
-      ...getPublicSummary(cleared),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
     };
   });
@@ -575,8 +605,12 @@ export const drawFromDiscard = async (
       pendingDrawSource: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(resolvedPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
@@ -767,8 +801,12 @@ export const swapPendingDraw = async (
       pendingDrawSource: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(resolvedPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
@@ -871,6 +909,7 @@ export const useItemCard = async (
     assertItemCodeMatch(player.pendingDraw, usage.code);
 
     const pendingItem = player.pendingDraw as ItemCard;
+    const basePlayers = new Map<string, PlayerStateDoc>([[playerId, player]]);
     const playersToUpdate = new Map<string, PlayerStateDoc>([[playerId, player]]);
     const affectedPlayerIds = new Set<string>();
     let nextDeck = [...game.deck];
@@ -888,6 +927,7 @@ export const useItemCard = async (
       const targetSnap = await transaction.get(getPlayerStateRef(gameId, targetPlayerId));
       assertCondition(targetSnap.exists(), "Player not found.");
       const targetPlayer = targetSnap.data() as PlayerStateDoc;
+      basePlayers.set(targetPlayerId, targetPlayer);
       playersToUpdate.set(targetPlayerId, targetPlayer);
       return targetPlayer;
     };
@@ -1071,8 +1111,12 @@ export const useItemCard = async (
       pendingDrawSource: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(resolvedPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
@@ -1102,10 +1146,17 @@ export const useItemCard = async (
         grid: updatedPlayer.grid,
         revealed: updatedPlayer.revealed,
       });
-      transaction.update(
-        getPlayerSummaryRef(gameId, targetPlayerId),
-        getPublicSummary(updatedPlayer)
+      const previousPlayer = basePlayers.get(targetPlayerId) ?? updatedPlayer;
+      const targetPublicSummaryUpdates = getPublicSummaryUpdates(
+        previousPlayer.mistTurnsRemaining,
+        updatedPlayer
       );
+      if (targetPublicSummaryUpdates) {
+        transaction.update(
+          getPlayerSummaryRef(gameId, targetPlayerId),
+          targetPublicSummaryUpdates
+        );
+      }
     });
 
     if (scoreUpdates) {
@@ -1208,8 +1259,12 @@ export const revealAfterDiscard = async (
       revealed: resolvedPlayer.revealed,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
     });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
     transaction.update(playerSummaryRef, {
-      ...getPublicSummary(resolvedPlayer),
+      ...(publicSummaryUpdates ?? {}),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
     });
     transaction.update(gameRef, {
