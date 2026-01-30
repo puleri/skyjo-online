@@ -115,7 +115,7 @@ export default function PlayerGrid({
     <section
       className={`player-grid player-grid--${size}${isLocal ? " player-grid--local" : ""}${
         isActive ? " player-grid--active" : ""
-      }`}
+      }${isMisted ? " player-grid--misted" : ""}`}
     >
       <header className="player-grid__header">
         {onPlayerSelect ? (
