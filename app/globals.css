@@ -647,13 +647,32 @@ section {
   position: relative;
 }
 
-.player-grid header {
+.player-grid__header {
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.player-grid__name {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+button.player-grid__name {
+  cursor: pointer;
+}
+
+.player-grid__name--selected {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .player-grid__badge {
