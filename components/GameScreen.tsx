@@ -1039,8 +1039,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
-  const itemTargetsNeeded =
-    itemCode === "B" ? 0 : itemCode === "E" ? 2 : itemCode ? 1 : 0;
+  const itemTargetsNeeded = itemCode === "E" ? 2 : itemCode ? 1 : 0;
   const itemRequiresValue = itemCode === "C";
   const itemTargetsReady = itemTargets.length === itemTargetsNeeded;
   const itemValueReady = !itemRequiresValue || itemValue !== null;
@@ -1054,7 +1053,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const canDiscardItem = isResolvingItem && Boolean(itemCode);
   const itemDescriptions: Record<string, string> = {
     A: "Pick any card on ANY board. Randomize it.",
-    B: "Shuffle your grid.",
+    B: "Skip a player's next turn.",
     C: "WILD CARD! Set any card to a ANY value.",
     E: "Swap any two cards (confirm if across players).",
     F: "Freeze a player so they skip their next turn.",
@@ -1635,7 +1634,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       if (itemCode === "A") {
         await useItemCard(gameId, uid, { code: "A", target: itemTargets[0] });
       } else if (itemCode === "B") {
-        await useItemCard(gameId, uid, { code: "B" });
+        await useItemCard(gameId, uid, {
+          code: "B",
+          targetPlayerId: itemTargets[0].playerId,
+        });
       } else if (itemCode === "C") {
         await useItemCard(gameId, uid, {
           code: "C",
