@@ -269,8 +269,8 @@ type ItemUsage =
   | { code: "A"; target: ItemTarget }
   | { code: "B" }
   | { code: "C"; target: ItemTarget; value: number }
-  | { code: "D"; target: ItemTarget }
-  | { code: "E"; first: ItemTarget; second: ItemTarget };
+  | { code: "E"; first: ItemTarget; second: ItemTarget }
+  | { code: "F"; target: ItemTarget };
 
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
@@ -280,10 +280,10 @@ const describeItemAction = (usage: ItemUsage) => {
       return "used item B to shuffle their grid.";
     case "C":
       return `used item C to set a card to ${usage.value}.`;
-    case "D":
-      return "used item D to freeze a player.";
     case "E":
       return "used item E to swap two cards.";
+    case "F":
+      return "used item F to freeze a player.";
     default:
       return "used an item.";
   }
@@ -904,7 +904,7 @@ export const useItemCard = async (
         affectedPlayerIds.add(usage.target.playerId);
         break;
       }
-      case "D":
+      case "F":
         const frozenPlayer = await loadPlayer(usage.target.playerId);
         validateGridIndex(frozenPlayer, usage.target.index);
         nextSkipNextTurnPlayerIds.add(usage.target.playerId);
