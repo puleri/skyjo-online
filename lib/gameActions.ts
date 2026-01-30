@@ -975,7 +975,7 @@ export const useItemCard = async (
       case "F": {
         playersToUpdate.set(playerId, {
           ...player,
-          mistTurnsRemaining: 5,
+          mistTurnsRemaining: 6,
         });
         break;
       }
