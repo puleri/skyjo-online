@@ -1047,8 +1047,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     A: "Pick any card on ANY board. Randomize it.",
     B: "Shuffle your grid.",
     C: "WILD CARD! Set any card to a ANY value.",
-    D: "Freeze a player so they skip their next turn.",
     E: "Swap any two cards (confirm if across players).",
+    F: "Freeze a player so they skip their next turn.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
@@ -1633,9 +1633,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           target: itemTargets[0],
           value: itemValue ?? 0,
         });
-      } else if (itemCode === "D") {
+      } else if (itemCode === "F") {
         await useItemCard(gameId, uid, {
-          code: "D",
+          code: "F",
           target: itemTargets[0],
         });
       } else if (itemCode === "E") {
