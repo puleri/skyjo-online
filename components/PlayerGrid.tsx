@@ -131,7 +131,7 @@ export default function PlayerGrid({
         )}
         {isMisted ? (
           <span className="player-grid__badge player-grid__badge--misted">
-            Misted{mistTurnsRemaining && mistTurnsRemaining > 1 ? ` (${mistTurnsRemaining})` : ""}
+            Misty{mistTurnsRemaining && mistTurnsRemaining > 1 ? ` (${mistTurnsRemaining})` : ""}
           </span>
         ) : null}
       </header>

@@ -667,7 +667,19 @@ section {
 
 button.player-grid__name {
   cursor: pointer;
+  padding: 4px 8px;
+  box-shadow: none;
+  border-radius: 6px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.12);
 }
+
+button.player-grid__name:hover {
+  background-color: var(--color-on-dark);
+  scale: 1.05;
+    box-shadow: 0px 2px 20px rgba(0, 0, 0, 0.05);
+
+}
+
 
 .player-grid__name--selected {
   color: var(--color-accent);
