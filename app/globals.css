@@ -649,6 +649,29 @@ section {
 
 .player-grid header {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.player-grid__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.player-grid__badge--misted {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
 }
 
 .player-grid--active {
