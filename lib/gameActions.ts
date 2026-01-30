@@ -59,6 +59,8 @@ type PlayerSummaryDoc = {
   revealedCount?: number;
   revealed?: boolean[];
   publicGrid?: Array<Card | null>;
+  pendingDraw?: Card | null;
+  pendingDrawSource?: "deck" | "discard" | null;
 };
 
 const columns = 4;
@@ -74,6 +76,14 @@ const getPublicSummary = (player: Pick<PlayerStateDoc, "grid" | "revealed">) => 
   revealed: player.revealed,
   publicGrid: getPublicGrid(player.grid, player.revealed),
   revealedCount: getRevealedCount(player.revealed),
+});
+
+const getPendingSummaryUpdates = (
+  pendingDraw: PlayerStateDoc["pendingDraw"],
+  pendingDrawSource: PlayerStateDoc["pendingDrawSource"]
+) => ({
+  pendingDraw: pendingDraw ?? null,
+  pendingDrawSource: pendingDrawSource ?? null,
 });
 
 const assertCondition = (condition: boolean, message: string) => {
@@ -420,6 +430,7 @@ const computeRoundScores = (
       roundScore: roundScores[playerId],
       totalScore,
       ...getPublicSummary(cleared),
+      ...getPendingSummaryUpdates(null, null),
     };
   });
 
@@ -459,6 +470,7 @@ export const drawFromDiscard = async (
 
     if (isItemCard(drawn)) {
       transaction.update(playerStateRef, { pendingDraw: drawn, pendingDrawSource: "discard" });
+      transaction.update(playerSummaryRef, getPendingSummaryUpdates(drawn, "discard"));
       transaction.update(gameRef, {
         discard,
         selectedDiscardPlayerId: null,
@@ -539,7 +551,10 @@ export const drawFromDiscard = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
-    transaction.update(playerSummaryRef, getPublicSummary(updatedPlayer));
+    transaction.update(playerSummaryRef, {
+      ...getPublicSummary(updatedPlayer),
+      ...getPendingSummaryUpdates(null, null),
+    });
     transaction.update(gameRef, {
       discard,
       selectedDiscardPlayerId: null,
@@ -567,6 +582,7 @@ export const drawFromDiscard = async (
 export const drawFromDeck = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
   const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -588,6 +604,7 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     const drawn = drawnCard as Card;
 
     transaction.update(playerStateRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
+    transaction.update(playerSummaryRef, getPendingSummaryUpdates(drawn, "deck"));
     transaction.update(gameRef, {
       deck,
       turnPhase: isItemCard(drawn) ? "resolve-item" : "resolve-draw",
@@ -723,7 +740,10 @@ export const swapPendingDraw = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
-    transaction.update(playerSummaryRef, getPublicSummary(updatedPlayer));
+    transaction.update(playerSummaryRef, {
+      ...getPublicSummary(updatedPlayer),
+      ...getPendingSummaryUpdates(null, null),
+    });
     transaction.update(gameRef, {
       discard,
       lastTurnPlayerId: playerId,
@@ -750,6 +770,7 @@ export const swapPendingDraw = async (
 export const discardPendingDraw = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
   const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -768,6 +789,7 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
     const discard = [...game.discard, player.pendingDraw];
 
     transaction.update(playerStateRef, { pendingDraw: null, pendingDrawSource: null });
+    transaction.update(playerSummaryRef, getPendingSummaryUpdates(null, null));
     transaction.update(gameRef, { discard, turnPhase: "resolve" });
   });
 };
@@ -775,6 +797,7 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
 export const discardItemForReveal = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
   const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -792,6 +815,7 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     const discard = [...game.discard, player.pendingDraw];
 
     transaction.update(playerStateRef, { pendingDraw: null, pendingDrawSource: null });
+    transaction.update(playerSummaryRef, getPendingSummaryUpdates(null, null));
     transaction.update(gameRef, { discard, turnPhase: "resolve", selectedDiscardPlayerId: null });
   });
 };
@@ -1015,7 +1039,10 @@ export const useItemCard = async (
       pendingDraw: null,
       pendingDrawSource: null,
     });
-    transaction.update(playerSummaryRef, getPublicSummary(updatedCurrentPlayer));
+    transaction.update(playerSummaryRef, {
+      ...getPublicSummary(updatedCurrentPlayer),
+      ...getPendingSummaryUpdates(null, null),
+    });
     const updatedDiscard =
       clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
 
@@ -1259,6 +1286,8 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         revealed: initialRevealed,
         publicGrid: Array.from({ length: 12 }, () => null),
         revealedCount: 0,
+        pendingDraw: null,
+        pendingDrawSource: null,
       });
     });
   });

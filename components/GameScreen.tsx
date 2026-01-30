@@ -70,6 +70,8 @@ type GamePlayerSummary = {
   revealedCount?: number;
   publicGrid?: Array<Card | null>;
   revealed?: boolean[];
+  pendingDraw?: Card | null;
+  pendingDrawSource?: "deck" | "discard" | null;
 };
 
 type GamePlayerState = {
@@ -186,6 +188,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const summaryState = {
         grid: player.publicGrid,
         revealed: player.revealed,
+        pendingDraw: player.pendingDraw,
+        pendingDrawSource: player.pendingDrawSource,
       };
       if (uid && player.id === uid) {
         return { ...player, ...summaryState, ...(localPlayerState ?? {}) };
@@ -719,6 +723,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               ? (data.publicGrid as Array<Card | null>)
               : undefined,
             revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
+            pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
+            pendingDrawSource:
+              (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
           };
         });
         setPlayerSummaries(nextPlayers);
