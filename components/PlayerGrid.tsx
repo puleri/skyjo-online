@@ -12,6 +12,8 @@ type PlayerGridProps = {
   revealed?: boolean[];
   mistTurnsRemaining?: number | null;
   onCardSelect?: (index: number) => void;
+  onPlayerSelect?: (playerId: string) => void;
+  isPlayerSelected?: boolean;
   activeActionIndex?: number | null;
   onReplace?: (index: number) => void;
   onReveal?: (index: number) => void;
@@ -83,6 +85,8 @@ export default function PlayerGrid({
   revealed,
   mistTurnsRemaining,
   onCardSelect,
+  onPlayerSelect,
+  isPlayerSelected = false,
   activeActionIndex,
   onReplace,
   onReveal,
@@ -113,8 +117,18 @@ export default function PlayerGrid({
         isActive ? " player-grid--active" : ""
       }`}
     >
-      <header>
-        <strong>{label}</strong>
+      <header className="player-grid__header">
+        {onPlayerSelect ? (
+          <button
+            type="button"
+            className={`player-grid__name${isPlayerSelected ? " player-grid__name--selected" : ""}`}
+            onClick={() => onPlayerSelect(playerId)}
+          >
+            <strong>{label}</strong>
+          </button>
+        ) : (
+          <strong className="player-grid__name">{label}</strong>
+        )}
         {isMisted ? (
           <span className="player-grid__badge player-grid__badge--misted">
             Misted{mistTurnsRemaining && mistTurnsRemaining > 1 ? ` (${mistTurnsRemaining})` : ""}

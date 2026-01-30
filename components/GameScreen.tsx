@@ -97,6 +97,12 @@ type ItemTarget = {
   index: number;
 };
 
+type PlayerTarget = {
+  playerId: string;
+};
+
+type ItemSelectionTarget = ItemTarget | PlayerTarget;
+
 const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
 
@@ -163,7 +169,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
   const hasGameCompletedRef = useRef(false);
   const podiumLabels = ["1st", "2nd", "3rd"];
-  const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
+  const [itemTargets, setItemTargets] = useState<ItemSelectionTarget[]>([]);
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
@@ -308,6 +314,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
     return getCardValueClass(value);
   };
+
+  const isCardTarget = (target: ItemSelectionTarget): target is ItemTarget =>
+    "index" in target;
+
+  const isPlayerTarget = (target: ItemSelectionTarget): target is PlayerTarget =>
+    !("index" in target);
 
   const loadAudioBuffer = async (soundPath: string) => {
     const audioContext = audioContextRef.current;
@@ -823,6 +835,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const getPlayerLabel = (playerId: string) =>
     orderedPlayers.find((player) => player.id === playerId)?.displayName ?? "Player";
 
+  const getItemTargetLabel = (target: ItemSelectionTarget) => {
+    const playerName = getPlayerLabel(target.playerId);
+    return isCardTarget(target) ? `${playerName} · Card ${target.index + 1}` : playerName;
+  };
+
   const displayPlayers = useMemo(() => {
     if (!uid) {
       return orderedPlayers;
@@ -1039,17 +1056,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
-  const itemTargetsNeeded = itemCode === "E" ? 2 : itemCode ? 1 : 0;
+  const itemTargetsNeeded =
+    itemCode === "E" ? 2 : itemCode === "B" ? 1 : itemCode ? 1 : 0;
   const itemRequiresValue = itemCode === "C";
-  const itemTargetsReady = itemTargets.length === itemTargetsNeeded;
+  const itemTargetsReady =
+    itemTargets.length === itemTargetsNeeded &&
+    (itemCode !== "B" || itemTargets.every((target) => isPlayerTarget(target)));
+  const itemCardTargets = itemTargets.filter(isCardTarget);
   const itemValueReady = !itemRequiresValue || itemValue !== null;
   const canUseItem = Boolean(itemCode && itemTargetsReady && itemValueReady);
   const isCrossPlayerSwap =
     itemCode === "E" &&
-    itemTargets.length === 2 &&
-    itemTargets[0].playerId !== itemTargets[1].playerId;
+    itemCardTargets.length === 2 &&
+    itemCardTargets[0].playerId !== itemCardTargets[1].playerId;
   const showDrawActions = showDrawnCard && !isPendingItem;
-  const itemSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
+  const itemCardSelectionActive =
+    isResolvingItem && itemTargetsNeeded > 0 && itemCode !== "B";
+  const itemPlayerSelectionActive = isResolvingItem && itemCode === "B";
+  const itemTargetInstruction =
+    itemCode === "B"
+      ? itemTargets.length === 0
+        ? "Select a player."
+        : "Target selected."
+      : itemTargets.length === 0
+        ? itemTargetsNeeded === 1
+          ? "Select a target card."
+          : "Select two target cards."
+        : itemTargets.length < itemTargetsNeeded
+          ? "Select a second target."
+          : "Targets selected.";
   const canDiscardItem = isResolvingItem && Boolean(itemCode);
   const itemDescriptions: Record<string, string> = {
     A: "Pick any card on ANY board. Randomize it.",
@@ -1573,33 +1608,47 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const handleItemTargetSelect = (target: ItemTarget) => {
-    if (!itemCode || !isResolvingItem || itemTargetsNeeded === 0) {
+    if (!itemCode || !isResolvingItem || itemTargetsNeeded === 0 || itemCode === "B") {
       return;
     }
     const isSameTarget = (left: ItemTarget, right: ItemTarget) =>
       left.playerId === right.playerId && left.index === right.index;
     setItemTargets((prev) => {
+      const previousTargets = prev.filter(isCardTarget);
       let nextTargets: ItemTarget[] = [];
       if (itemTargetsNeeded === 1) {
-        const existing = prev[0];
+        const existing = previousTargets[0];
         nextTargets = existing && isSameTarget(existing, target) ? [] : [target];
       } else {
-        if (prev.some((existing) => isSameTarget(existing, target))) {
-          nextTargets = prev.filter((existing) => !isSameTarget(existing, target));
-        } else if (prev.length < 2) {
-          nextTargets = [...prev, target];
+        if (previousTargets.some((existing) => isSameTarget(existing, target))) {
+          nextTargets = previousTargets.filter((existing) => !isSameTarget(existing, target));
+        } else if (previousTargets.length < 2) {
+          nextTargets = [...previousTargets, target];
         } else {
           nextTargets = [target];
         }
       }
       if (itemCode === "C") {
-        const previousTarget = prev[0];
+        const previousTarget = previousTargets[0];
         const nextTarget = nextTargets[0];
         if (!previousTarget || !nextTarget || !isSameTarget(previousTarget, nextTarget)) {
           setItemValue(null);
         }
       }
       return nextTargets;
+    });
+  };
+
+  const handleItemPlayerSelect = (playerId: string) => {
+    if (!itemCode || !isResolvingItem || itemTargetsNeeded === 0 || itemCode !== "B") {
+      return;
+    }
+    setItemTargets((prev) => {
+      const existing = prev.find(isPlayerTarget);
+      if (existing && existing.playerId === playerId) {
+        return [];
+      }
+      return [{ playerId }];
     });
   };
 
@@ -1631,29 +1680,35 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     setError(null);
     try {
+      const cardTargets = itemTargets.filter(isCardTarget);
       if (itemCode === "A") {
-        await useItemCard(gameId, uid, { code: "A", target: itemTargets[0] });
+        await useItemCard(gameId, uid, { code: "A", target: cardTargets[0] });
       } else if (itemCode === "B") {
+        const playerTarget = itemTargets.find(isPlayerTarget);
+        if (!playerTarget) {
+          setError("Select a player to skip their turn.");
+          return;
+        }
         await useItemCard(gameId, uid, {
           code: "B",
-          targetPlayerId: itemTargets[0].playerId,
+          targetPlayerId: playerTarget.playerId,
         });
       } else if (itemCode === "C") {
         await useItemCard(gameId, uid, {
           code: "C",
-          target: itemTargets[0],
+          target: cardTargets[0],
           value: itemValue ?? 0,
         });
       } else if (itemCode === "F") {
         await useItemCard(gameId, uid, {
           code: "F",
-          target: itemTargets[0],
+          target: cardTargets[0],
         });
       } else if (itemCode === "E") {
         await useItemCard(gameId, uid, {
           code: "E",
-          first: itemTargets[0],
-          second: itemTargets[1],
+          first: cardTargets[0],
+          second: cardTargets[1],
         });
       }
       handleResetItemSelection();
@@ -1917,12 +1972,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <h2 id="swap-confirm-title">Confirm swap</h2>
             <p>You're swapping two cards across players.</p>
             <div className="item-panel__target-list">
-              {itemTargets.map((target, index) => (
+              {itemTargets.filter(isCardTarget).map((target, index) => (
                 <div key={`${target.playerId}-${target.index}`} className="item-panel__target-pill">
                   <span className="item-panel__target-order">{index + 1}</span>
-                  <span>
-                    {getPlayerLabel(target.playerId)} · Card {target.index + 1}
-                  </span>
+                  <span>{getItemTargetLabel(target)}</span>
                 </div>
               ))}
             </div>
@@ -2314,25 +2367,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             </div>
             {itemTargetsNeeded > 0 ? (
               <div className="item-panel__targets">
-                <p className="item-panel__instruction">
-                  {itemTargets.length === 0
-                    ? itemTargetsNeeded === 1
-                      ? "Select a target card."
-                      : "Select two target cards."
-                    : itemTargets.length < itemTargetsNeeded
-                      ? "Select a second target."
-                      : "Targets selected."}
-                </p>
+                <p className="item-panel__instruction">{itemTargetInstruction}</p>
                 <div className="item-panel__target-list">
                   {itemTargets.map((target, index) => (
                     <div
-                      key={`${target.playerId}-${target.index}`}
+                      key={`${target.playerId}-${isCardTarget(target) ? target.index : "player"}`}
                       className="item-panel__target-pill"
                     >
                       <span className="item-panel__target-order">{index + 1}</span>
-                      <span>
-                        {getPlayerLabel(target.playerId)} · Card {target.index + 1}
-                      </span>
+                      <span>{getItemTargetLabel(target)}</span>
                     </div>
                   ))}
                 </div>
@@ -2435,11 +2478,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     onReveal={isLocalPlayer && showDrawActions ? handleReveal : undefined}
                     onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
                     revealSelectionActive={isLocalPlayer && isItemRevealPending}
+                    onPlayerSelect={
+                      isCurrentTurn && itemPlayerSelectionActive ? handleItemPlayerSelect : undefined
+                    }
+                    isPlayerSelected={
+                      itemPlayerSelectionActive &&
+                      itemTargets.some(
+                        (target) => isPlayerTarget(target) && target.playerId === player.id
+                      )
+                    }
                     itemSelection={
-                      isCurrentTurn && itemSelectionActive
+                      isCurrentTurn && itemCardSelectionActive
                         ? {
                             active: true,
-                            targets: itemTargets,
+                            targets: itemCardTargets,
                             onSelect: handleItemTargetSelect,
                           }
                         : undefined
