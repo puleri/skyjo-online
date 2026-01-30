@@ -1426,31 +1426,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     const resolvedName = window.localStorage.getItem("skyjo:username")?.trim();
-    const touchSpectator = () =>
-      setDoc(
-        spectatorRef,
-        {
-          displayName: resolvedName || "Anonymous spectator",
-          joinedAt: serverTimestamp(),
-          lastSeen: serverTimestamp(),
-        },
-        { merge: true }
-      ).catch((err: Error) => setError(err.message));
-
-    touchSpectator();
-    const heartbeat = window.setInterval(() => {
-      setDoc(
-        spectatorRef,
-        {
-          displayName: resolvedName || "Anonymous spectator",
-          lastSeen: serverTimestamp(),
-        },
-        { merge: true }
-      ).catch((err: Error) => setError(err.message));
-    }, 60000);
+    setDoc(
+      spectatorRef,
+      {
+        displayName: resolvedName || "Anonymous spectator",
+        joinedAt: serverTimestamp(),
+        lastSeen: serverTimestamp(),
+      },
+      { merge: true }
+    ).catch((err: Error) => setError(err.message));
 
     return () => {
-      window.clearInterval(heartbeat);
       deleteDoc(spectatorRef).catch(() => undefined);
     };
   }, [firebaseReady, gameId, isLocalPlayer, uid]);
