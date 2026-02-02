@@ -1085,7 +1085,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         : itemTargets.length < itemTargetsNeeded
           ? "Select a second target."
           : "Targets selected.";
-  const canDiscardItem = isResolvingItem && Boolean(itemCode);
+  const canDiscardItem =
+    isResolvingItem && Boolean(itemCode) && currentPlayer?.pendingDrawSource === "deck";
   const itemDescriptions: Record<string, string> = {
     A: "Randomize a card on your own board.",
     B: "Select a player whose next turn will be skipped.",
