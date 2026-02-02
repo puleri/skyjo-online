@@ -1057,7 +1057,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
   const itemTargetsNeeded =
-    itemCode === "E" ? 2 : itemCode === "B" ? 1 : itemCode ? 1 : 0;
+    itemCode === "E"
+      ? 2
+      : itemCode === "B"
+        ? 1
+        : itemCode === "F"
+          ? 0
+          : itemCode
+            ? 1
+            : 0;
   const itemRequiresValue = itemCode === "C";
   const itemTargetsReady =
     itemTargets.length === itemTargetsNeeded &&
@@ -1687,10 +1695,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           value: itemValue ?? 0,
         });
       } else if (itemCode === "F") {
-        await useItemCard(gameId, uid, {
-          code: "F",
-          target: cardTargets[0],
-        });
+        await useItemCard(gameId, uid, { code: "F" });
       } else if (itemCode === "E") {
         await useItemCard(gameId, uid, {
           code: "E",
