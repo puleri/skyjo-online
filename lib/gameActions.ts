@@ -249,6 +249,15 @@ const assertNumberCard: (card: Card | null, message: string) => asserts card is 
   assertCondition(typeof card === "number", message);
 };
 
+const assertItemCard: (
+  card: Card | null | undefined,
+  message: string
+) => asserts card is ItemCard = (card, message) => {
+  if (!card || !isItemCard(card)) {
+    throw new Error(message);
+  }
+};
+
 const drawRandomNumberCard = (deck: Card[]) => {
   const numberIndices = deck
     .map((card, index) => (typeof card === "number" ? index : -1))
@@ -945,7 +954,7 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
     const pendingDraw = player.pendingDraw;
-    assertCondition(isItemCard(pendingDraw), "No item to discard.");
+    assertItemCard(pendingDraw, "No item to discard.");
     assertCondition(
       player.pendingDrawSource === "deck",
       "Cannot discard a discard pile item to reveal."
