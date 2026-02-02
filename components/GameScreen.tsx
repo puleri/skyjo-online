@@ -1057,7 +1057,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
   const itemTargetsNeeded =
-    itemCode === "E" ? 2 : itemCode === "B" ? 1 : itemCode ? 1 : 0;
+    itemCode === "E"
+      ? 2
+      : itemCode === "B"
+        ? 1
+        : itemCode === "F"
+          ? 0
+          : itemCode
+            ? 1
+            : 0;
   const itemRequiresValue = itemCode === "C";
   const itemTargetsReady =
     itemTargets.length === itemTargetsNeeded &&
@@ -1085,12 +1093,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         : itemTargets.length < itemTargetsNeeded
           ? "Select a second target."
           : "Targets selected.";
-  const canDiscardItem = isResolvingItem && Boolean(itemCode);
+  const canDiscardItem =
+    isResolvingItem && Boolean(itemCode) && currentPlayer?.pendingDrawSource === "deck";
   const itemDescriptions: Record<string, string> = {
-    A: "Pick any card on ANY board. Randomize it.",
+    A: "Randomize a card on your own board.",
     B: "Select a player whose next turn will be skipped.",
-    C: "WILD CARD! Set any card to a ANY value.",
-    E: "Swap any two cards (confirm if across players).",
+    C: "Set a card on your own board to any value.",
+    E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
   };
   const isItemDrawnByOtherPlayer =
@@ -1686,10 +1695,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           value: itemValue ?? 0,
         });
       } else if (itemCode === "F") {
-        await useItemCard(gameId, uid, {
-          code: "F",
-          target: cardTargets[0],
-        });
+        await useItemCard(gameId, uid, { code: "F" });
       } else if (itemCode === "E") {
         await useItemCard(gameId, uid, {
           code: "E",
@@ -2474,7 +2480,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       )
                     }
                     itemSelection={
-                      isCurrentTurn && itemCardSelectionActive
+                      isLocalPlayer && isCurrentTurn && itemCardSelectionActive
                         ? {
                             active: true,
                             targets: itemCardTargets,
