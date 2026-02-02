@@ -665,6 +665,8 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
 
 export const selectDiscard = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
 
   await runTransaction(db, async (transaction) => {
     const gameSnap = await transaction.get(gameRef);
@@ -674,6 +676,27 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
     assertCondition(game.currentPlayerId === playerId, "Not your turn.");
     assertCondition(game.turnPhase === "choose-draw", "Not in draw phase.");
     assertCondition(game.discard.length > 0, "Discard pile is empty.");
+
+    const topDiscard = game.discard[game.discard.length - 1];
+    assertCondition(topDiscard !== undefined, "Discard pile is empty.");
+
+    if (isItemCard(topDiscard)) {
+      const playerSnap = await transaction.get(playerStateRef);
+      assertCondition(playerSnap.exists(), "Player not found.");
+      const player = playerSnap.data() as PlayerStateDoc;
+      assertCondition(player.pendingDraw == null, "You already have a pending draw.");
+
+      const discard = game.discard.slice(0, -1);
+
+      transaction.update(playerStateRef, { pendingDraw: topDiscard, pendingDrawSource: "discard" });
+      transaction.update(playerSummaryRef, getPendingSummaryUpdates(topDiscard, "discard"));
+      transaction.update(gameRef, {
+        discard,
+        selectedDiscardPlayerId: null,
+        turnPhase: "resolve-item",
+      });
+      return;
+    }
 
     transaction.update(gameRef, { selectedDiscardPlayerId: playerId });
   });
