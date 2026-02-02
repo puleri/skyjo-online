@@ -512,8 +512,26 @@ export const drawFromDiscard = async (
     const drawn = drawnCard as Card;
 
     if (isItemCard(drawn)) {
-      transaction.update(playerStateRef, { pendingDraw: drawn, pendingDrawSource: "discard" });
-      transaction.update(playerSummaryRef, getPendingSummaryUpdates(drawn, "discard"));
+      const isMistItem = drawn.code === "F";
+      const updatedPlayer = isMistItem
+        ? {
+            ...player,
+            mistTurnsRemaining: 6,
+          }
+        : player;
+      const publicSummaryUpdates = isMistItem
+        ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
+        : null;
+      transaction.update(playerStateRef, {
+        pendingDraw: drawn,
+        pendingDrawSource: "discard",
+        ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+      });
+      transaction.update(playerSummaryRef, {
+        ...(publicSummaryUpdates ?? {}),
+        ...getPendingSummaryUpdates(drawn, "discard"),
+        ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
+      });
       transaction.update(gameRef, {
         discard,
         selectedDiscardPlayerId: null,
@@ -653,8 +671,26 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     assertCondition(drawnCard !== undefined, "Deck is empty.");
     const drawn = drawnCard as Card;
 
-    transaction.update(playerStateRef, { pendingDraw: drawn, pendingDrawSource: "deck" });
-    transaction.update(playerSummaryRef, getPendingSummaryUpdates(drawn, "deck"));
+    const isMistItem = isItemCard(drawn) && drawn.code === "F";
+    const updatedPlayer = isMistItem
+      ? {
+          ...player,
+          mistTurnsRemaining: 6,
+        }
+      : player;
+    const publicSummaryUpdates = isMistItem
+      ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
+      : null;
+    transaction.update(playerStateRef, {
+      pendingDraw: drawn,
+      pendingDrawSource: "deck",
+      ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+    });
+    transaction.update(playerSummaryRef, {
+      ...(publicSummaryUpdates ?? {}),
+      ...getPendingSummaryUpdates(drawn, "deck"),
+      ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
+    });
     transaction.update(gameRef, {
       deck,
       turnPhase: isItemCard(drawn) ? "resolve-item" : "resolve-draw",
@@ -688,8 +724,26 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
 
       const discard = game.discard.slice(0, -1);
 
-      transaction.update(playerStateRef, { pendingDraw: topDiscard, pendingDrawSource: "discard" });
-      transaction.update(playerSummaryRef, getPendingSummaryUpdates(topDiscard, "discard"));
+      const isMistItem = topDiscard.code === "F";
+      const updatedPlayer = isMistItem
+        ? {
+            ...player,
+            mistTurnsRemaining: 6,
+          }
+        : player;
+      const publicSummaryUpdates = isMistItem
+        ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
+        : null;
+      transaction.update(playerStateRef, {
+        pendingDraw: topDiscard,
+        pendingDrawSource: "discard",
+        ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+      });
+      transaction.update(playerSummaryRef, {
+        ...(publicSummaryUpdates ?? {}),
+        ...getPendingSummaryUpdates(topDiscard, "discard"),
+        ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
+      });
       transaction.update(gameRef, {
         discard,
         selectedDiscardPlayerId: null,
