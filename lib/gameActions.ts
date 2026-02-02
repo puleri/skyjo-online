@@ -944,14 +944,15 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
-    assertCondition(isItemCard(player.pendingDraw), "No item to discard.");
+    const pendingDraw = player.pendingDraw;
+    assertCondition(isItemCard(pendingDraw), "No item to discard.");
     assertCondition(
       player.pendingDrawSource === "deck",
       "Cannot discard a discard pile item to reveal."
     );
 
-    const discard = [...game.discard, player.pendingDraw];
-    const isMistItem = player.pendingDraw.code === "F";
+    const discard = [...game.discard, pendingDraw];
+    const isMistItem = pendingDraw.code === "F";
     const updatedPlayer = isMistItem
       ? {
           ...player,
