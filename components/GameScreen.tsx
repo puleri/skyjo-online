@@ -1087,10 +1087,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           : "Targets selected.";
   const canDiscardItem = isResolvingItem && Boolean(itemCode);
   const itemDescriptions: Record<string, string> = {
-    A: "Pick any card on ANY board. Randomize it.",
+    A: "Randomize a card on your own board.",
     B: "Select a player whose next turn will be skipped.",
-    C: "WILD CARD! Set any card to a ANY value.",
-    E: "Swap any two cards (confirm if across players).",
+    C: "Set a card on your own board to any value.",
+    E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
   };
   const isItemDrawnByOtherPlayer =
