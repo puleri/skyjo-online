@@ -300,7 +300,7 @@ type ItemUsage =
   | { code: "B"; targetPlayerId: string }
   | { code: "C"; target: ItemTarget; value: number }
   | { code: "E"; first: ItemTarget; second: ItemTarget }
-  | { code: "F"; target: ItemTarget };
+  | { code: "F" };
 
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
