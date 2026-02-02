@@ -951,9 +951,27 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     );
 
     const discard = [...game.discard, player.pendingDraw];
+    const isMistItem = player.pendingDraw.code === "F";
+    const updatedPlayer = isMistItem
+      ? {
+          ...player,
+          mistTurnsRemaining: null,
+        }
+      : player;
+    const publicSummaryUpdates = isMistItem
+      ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
+      : null;
 
-    transaction.update(playerStateRef, { pendingDraw: null, pendingDrawSource: null });
-    transaction.update(playerSummaryRef, getPendingSummaryUpdates(null, null));
+    transaction.update(playerStateRef, {
+      pendingDraw: null,
+      pendingDrawSource: null,
+      ...(isMistItem ? { mistTurnsRemaining: null } : {}),
+    });
+    transaction.update(playerSummaryRef, {
+      ...(publicSummaryUpdates ?? {}),
+      ...getPendingSummaryUpdates(null, null),
+      ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
+    });
     transaction.update(gameRef, { discard, turnPhase: "resolve", selectedDiscardPlayerId: null });
   });
 };
