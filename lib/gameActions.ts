@@ -925,6 +925,10 @@ export const useItemCard = async (
 
     switch (usage.code) {
       case "A": {
+        assertCondition(
+          usage.target.playerId === playerId,
+          "Item A must target your own grid."
+        );
         const targetPlayer = await loadPlayer(usage.target.playerId);
         validateCardSlot(targetPlayer, usage.target.index);
         const targetCard = targetPlayer.grid[usage.target.index];
@@ -951,6 +955,10 @@ export const useItemCard = async (
         break;
       }
       case "C": {
+        assertCondition(
+          usage.target.playerId === playerId,
+          "Item C must target your own grid."
+        );
         const targetPlayer = await loadPlayer(usage.target.playerId);
         validateCardSlot(targetPlayer, usage.target.index);
         assertCondition(Number.isInteger(usage.value), "Item value must be an integer.");
@@ -973,6 +981,14 @@ export const useItemCard = async (
         break;
       }
       case "E": {
+        assertCondition(
+          usage.first.playerId === playerId,
+          "Item E must swap cards on your own grid."
+        );
+        assertCondition(
+          usage.second.playerId === playerId,
+          "Item E must swap cards on your own grid."
+        );
         const firstPlayer = await loadPlayer(usage.first.playerId);
         const secondPlayer = await loadPlayer(usage.second.playerId);
         validateCardSlot(firstPlayer, usage.first.index);
