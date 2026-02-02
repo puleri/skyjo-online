@@ -2474,7 +2474,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       )
                     }
                     itemSelection={
-                      isCurrentTurn && itemCardSelectionActive
+                      isLocalPlayer && isCurrentTurn && itemCardSelectionActive
                         ? {
                             active: true,
                             targets: itemCardTargets,
