@@ -551,6 +551,10 @@ export const drawFromDiscard = async (
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(player.pendingDraw == null, "You already have a pending draw.");
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot draw from discard while sprinting."
+    );
     validateGridIndex(player, targetIndex);
 
     const discard = [...game.discard];
@@ -762,15 +766,19 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
     assertCondition(game.turnPhase === "choose-draw", "Not in draw phase.");
     assertCondition(game.discard.length > 0, "Discard pile is empty.");
 
+    const playerSnap = await transaction.get(playerStateRef);
+    assertCondition(playerSnap.exists(), "Player not found.");
+    const player = playerSnap.data() as PlayerStateDoc;
+    assertCondition(player.pendingDraw == null, "You already have a pending draw.");
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot draw from discard while sprinting."
+    );
+
     const topDiscard = game.discard[game.discard.length - 1];
     assertCondition(topDiscard !== undefined, "Discard pile is empty.");
 
     if (isItemCard(topDiscard)) {
-      const playerSnap = await transaction.get(playerStateRef);
-      assertCondition(playerSnap.exists(), "Player not found.");
-      const player = playerSnap.data() as PlayerStateDoc;
-      assertCondition(player.pendingDraw == null, "You already have a pending draw.");
-
       const discard = game.discard.slice(0, -1);
 
       const isMistItem = topDiscard.code === "F";
@@ -1134,7 +1142,7 @@ export const useItemCard = async (
       case "G": {
         playersToUpdate.set(playerId, {
           ...player,
-          sprintTurnsRemaining: 3,
+          sprintTurnsRemaining: 4,
         });
         break;
       }
