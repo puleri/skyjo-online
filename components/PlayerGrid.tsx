@@ -108,7 +108,6 @@ export default function PlayerGrid({
   const showActionMenu =
     typeof activeActionIndex === "number" &&
     typeof onReplace === "function" &&
-    typeof onReveal === "function" &&
     typeof onCancel === "function";
 
   return (
@@ -215,17 +214,19 @@ export default function PlayerGrid({
                     </span>
                     Trade
                   </button>
-                  <button
-                    type="button"
-                    className="player-grid__action"
-                    onClick={() => onReveal(index)}
-                    disabled={isRevealed}
-                  >
-                    <span className="player-grid__action-icon invert" aria-hidden="true">
-                      <img className="action-menu-icon" src="/keep-icon.svg" alt="" />
-                    </span>
-                    Reveal
-                  </button>
+                  {typeof onReveal === "function" ? (
+                    <button
+                      type="button"
+                      className="player-grid__action"
+                      onClick={() => onReveal(index)}
+                      disabled={isRevealed}
+                    >
+                      <span className="player-grid__action-icon invert" aria-hidden="true">
+                        <img className="action-menu-icon" src="/keep-icon.svg" alt="" />
+                      </span>
+                      Reveal
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="player-grid__action player-grid__action--ghost player-grid__action--cancel"

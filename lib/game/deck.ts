@@ -1,4 +1,4 @@
-export type ItemCode = "A" | "B" | "C" | "E" | "F";
+export type ItemCode = "A" | "C" | "E" | "F" | "G";
 export type ItemCard = { kind: "item"; code: ItemCode };
 export type Card = number | ItemCard;
 export type SpikeItemCount = "none" | "low" | "medium" | "high";
@@ -35,7 +35,7 @@ const getItemCardCopies = (count: SpikeItemCount) => {
 };
 
 export const createItemCards = (count: SpikeItemCount = "low"): ItemCard[] => {
-  const codes: ItemCode[] = ["A", "B", "C", "E", "F"];
+  const codes: ItemCode[] = ["A", "C", "E", "F", "G"];
   const copies = getItemCardCopies(count);
   return codes.flatMap((code) =>
     Array.from({ length: copies }, () => ({ kind: "item", code }))
