@@ -1045,6 +1045,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isGameActive &&
     game?.turnPhase === "choose-draw" &&
     !hasCardValue(currentPlayer?.pendingDraw) &&
+    !isSprinting &&
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
@@ -1095,7 +1096,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     C: "Set a card on your own board to any value.",
     E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
-    G: "Sprint through 3 consecutive turns. You cannot reveal or discard during this time.",
+    G: "Sprint through 4 consecutive turns (including this one). You cannot reveal or discard during the next 3 turns, and you cannot draw from the discard pile during them.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
