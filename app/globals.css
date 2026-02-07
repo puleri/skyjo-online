@@ -874,7 +874,7 @@ button.player-grid__name:hover {
   background-position: center;
   opacity: 0.75;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
 }
 
 .player-grid__card .card__value {
@@ -911,6 +911,30 @@ button.player-grid__name:hover {
   justify-content: center;
   color: var(--color-dark);
   box-shadow: 0 3px 4px rgba(31, 41, 51, 0.32);
+  position: relative;
+  overflow: hidden;
+}
+
+.card__value {
+  position: relative;
+  z-index: 2;
+}
+
+.card--value-negative::before,
+.card--value-zero::before,
+.card--value-low::before,
+.card--value-mid::before,
+.card--value-high::before,
+.card--value-max::before,
+.card--item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/cards/card-corners.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .card--value-negative {
