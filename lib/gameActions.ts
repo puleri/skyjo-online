@@ -50,6 +50,7 @@ type PlayerStateDoc = {
   pendingDrawSource?: "deck" | "discard" | null;
   totalScore?: number;
   mistTurnsRemaining?: number | null;
+  sprintTurnsRemaining?: number | null;
 };
 
 type PlayerSummaryDoc = {
@@ -63,6 +64,7 @@ type PlayerSummaryDoc = {
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
   mistTurnsRemaining?: number | null;
+  sprintTurnsRemaining?: number | null;
 };
 
 const columns = 4;
@@ -113,6 +115,12 @@ const getMistSummaryUpdates = (mistTurnsRemaining: PlayerStateDoc["mistTurnsRema
   mistTurnsRemaining: mistTurnsRemaining ?? null,
 });
 
+const getSprintSummaryUpdates = (
+  sprintTurnsRemaining: PlayerStateDoc["sprintTurnsRemaining"]
+) => ({
+  sprintTurnsRemaining: sprintTurnsRemaining ?? null,
+});
+
 const decrementMistAfterTurn = (player: PlayerStateDoc) => {
   const currentMist = player.mistTurnsRemaining ?? 0;
   if (currentMist <= 0) {
@@ -122,6 +130,18 @@ const decrementMistAfterTurn = (player: PlayerStateDoc) => {
   return {
     ...player,
     mistTurnsRemaining: nextMist > 0 ? nextMist : null,
+  };
+};
+
+const decrementSprintAfterTurn = (player: PlayerStateDoc) => {
+  const currentSprint = player.sprintTurnsRemaining ?? 0;
+  if (currentSprint <= 0) {
+    return player;
+  }
+  const nextSprint = currentSprint - 1;
+  return {
+    ...player,
+    sprintTurnsRemaining: nextSprint > 0 ? nextSprint : null,
   };
 };
 
@@ -306,23 +326,23 @@ type ItemTarget = {
 
 type ItemUsage =
   | { code: "A"; target: ItemTarget }
-  | { code: "B"; targetPlayerId: string }
   | { code: "C"; target: ItemTarget; value: number }
   | { code: "E"; first: ItemTarget; second: ItemTarget }
-  | { code: "F" };
+  | { code: "F" }
+  | { code: "G" };
 
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
     case "A":
       return "used item A to reroll a card.";
-    case "B":
-      return "used item B to skip a player's next turn.";
     case "C":
       return `used item C to set a card to ${usage.value}.`;
     case "E":
       return "used item E to swap two cards.";
     case "F":
       return "used item F to summon mist.";
+    case "G":
+      return "used item G to sprint through extra turns.";
     default:
       return "used an item.";
   }
@@ -355,7 +375,8 @@ const resolveTurn = (
   updatedPlayer: PlayerStateDoc
 ): TurnResolution => {
   const activeOrder = game.activePlayerOrder;
-  const resolvedPlayer = decrementMistAfterTurn(updatedPlayer);
+  const mistAdjustedPlayer = decrementMistAfterTurn(updatedPlayer);
+  const resolvedPlayer = decrementSprintAfterTurn(mistAdjustedPlayer);
   let endingPlayerId = game.endingPlayerId ?? null;
   let finalTurnRemainingIds = game.finalTurnRemainingIds ?? null;
   const skipNextTurnPlayerIds = new Set(game.skipNextTurnPlayerIds ?? []);
@@ -388,13 +409,6 @@ const resolveTurn = (
     };
   }
 
-  let nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
-  let safetyCounter = 0;
-  while (skipNextTurnPlayerIds.has(nextPlayerId) && safetyCounter < activeOrder.length) {
-    skipNextTurnPlayerIds.delete(nextPlayerId);
-    nextPlayerId = getNextPlayerId(activeOrder, nextPlayerId);
-    safetyCounter += 1;
-  }
   let refreshedDeck: Card[] | null = null;
   if (game.deck.length === 0) {
     const discardPile = game.discard;
@@ -404,6 +418,30 @@ const resolveTurn = (
     }
   }
 
+  if ((resolvedPlayer.sprintTurnsRemaining ?? 0) > 0) {
+    return {
+      gameUpdates: {
+        currentPlayerId: updatedPlayerId,
+        endingPlayerId,
+        finalTurnRemainingIds,
+        turnPhase: "choose-draw",
+        skipNextTurnPlayerIds: Array.from(skipNextTurnPlayerIds),
+        ...(refreshedDeck ? { deck: refreshedDeck } : {}),
+      },
+      roundComplete,
+      endingPlayerId,
+      finalTurnRemainingIds,
+      updatedPlayer: resolvedPlayer,
+    };
+  }
+
+  let nextPlayerId = getNextPlayerId(activeOrder, updatedPlayerId);
+  let safetyCounter = 0;
+  while (skipNextTurnPlayerIds.has(nextPlayerId) && safetyCounter < activeOrder.length) {
+    skipNextTurnPlayerIds.delete(nextPlayerId);
+    nextPlayerId = getNextPlayerId(activeOrder, nextPlayerId);
+    safetyCounter += 1;
+  }
   return {
     gameUpdates: {
       currentPlayerId: nextPlayerId,
@@ -513,6 +551,10 @@ export const drawFromDiscard = async (
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
     assertCondition(player.pendingDraw == null, "You already have a pending draw.");
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot draw from discard while sprinting."
+    );
     validateGridIndex(player, targetIndex);
 
     const discard = [...game.discard];
@@ -622,6 +664,7 @@ export const drawFromDiscard = async (
       pendingDraw: null,
       pendingDrawSource: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
+      sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -631,6 +674,7 @@ export const drawFromDiscard = async (
       ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
+      ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
     });
     transaction.update(gameRef, {
       discard,
@@ -722,15 +766,19 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
     assertCondition(game.turnPhase === "choose-draw", "Not in draw phase.");
     assertCondition(game.discard.length > 0, "Discard pile is empty.");
 
+    const playerSnap = await transaction.get(playerStateRef);
+    assertCondition(playerSnap.exists(), "Player not found.");
+    const player = playerSnap.data() as PlayerStateDoc;
+    assertCondition(player.pendingDraw == null, "You already have a pending draw.");
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot draw from discard while sprinting."
+    );
+
     const topDiscard = game.discard[game.discard.length - 1];
     assertCondition(topDiscard !== undefined, "Discard pile is empty.");
 
     if (isItemCard(topDiscard)) {
-      const playerSnap = await transaction.get(playerStateRef);
-      assertCondition(playerSnap.exists(), "Player not found.");
-      const player = playerSnap.data() as PlayerStateDoc;
-      assertCondition(player.pendingDraw == null, "You already have a pending draw.");
-
       const discard = game.discard.slice(0, -1);
 
       const isMistItem = topDiscard.code === "F";
@@ -877,6 +925,7 @@ export const swapPendingDraw = async (
       pendingDraw: null,
       pendingDrawSource: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
+      sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -886,6 +935,7 @@ export const swapPendingDraw = async (
       ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
+      ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
     });
     transaction.update(gameRef, {
       discard,
@@ -926,6 +976,10 @@ export const discardPendingDraw = async (gameId: string, playerId: string) => {
     const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot discard or reveal while sprinting."
+    );
     assertCondition(player.pendingDraw != null, "No pending draw to discard.");
     assertCondition(!isItemCard(player.pendingDraw), "Pending draw is an item.");
 
@@ -953,6 +1007,10 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot discard or reveal while sprinting."
+    );
     const pendingDraw = player.pendingDraw;
     assertItemCard(pendingDraw, "No item to discard.");
     assertCondition(
@@ -1055,14 +1113,6 @@ export const useItemCard = async (
         affectedPlayerIds.add(usage.target.playerId);
         break;
       }
-      case "B": {
-        assertCondition(
-          game.activePlayerOrder.includes(usage.targetPlayerId),
-          "Target player is not in this game."
-        );
-        nextSkipNextTurnPlayerIds.add(usage.targetPlayerId);
-        break;
-      }
       case "C": {
         assertCondition(
           usage.target.playerId === playerId,
@@ -1086,6 +1136,13 @@ export const useItemCard = async (
         playersToUpdate.set(playerId, {
           ...player,
           mistTurnsRemaining: 6,
+        });
+        break;
+      }
+      case "G": {
+        playersToUpdate.set(playerId, {
+          ...player,
+          sprintTurnsRemaining: 4,
         });
         break;
       }
@@ -1228,6 +1285,7 @@ export const useItemCard = async (
       pendingDraw: null,
       pendingDrawSource: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
+      sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1237,6 +1295,7 @@ export const useItemCard = async (
       ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
+      ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
     });
     const updatedDiscard =
       clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
@@ -1308,6 +1367,10 @@ export const revealAfterDiscard = async (
     const playerSnap = await transaction.get(playerStateRef);
     assertCondition(playerSnap.exists(), "Player not found.");
     const player = playerSnap.data() as PlayerStateDoc;
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot discard or reveal while sprinting."
+    );
     validateGridIndex(player, targetIndex);
     assertCondition(!player.revealed[targetIndex], "Slot already revealed.");
     assertCondition(player.grid[targetIndex] !== null, "Slot is empty.");
@@ -1376,6 +1439,7 @@ export const revealAfterDiscard = async (
       grid: resolvedPlayer.grid,
       revealed: resolvedPlayer.revealed,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
+      sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1384,6 +1448,7 @@ export const revealAfterDiscard = async (
     transaction.update(playerSummaryRef, {
       ...(publicSummaryUpdates ?? {}),
       ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
+      ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
     });
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
@@ -1491,6 +1556,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         pendingDraw: null,
         pendingDrawSource: null,
         mistTurnsRemaining: null,
+        sprintTurnsRemaining: null,
       });
       transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
         isReady: false,
@@ -1501,6 +1567,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         pendingDraw: null,
         pendingDrawSource: null,
         mistTurnsRemaining: null,
+        sprintTurnsRemaining: null,
       });
     });
   });

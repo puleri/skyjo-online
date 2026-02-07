@@ -69,6 +69,7 @@ type GamePlayerSummary = {
   totalScore?: number;
   revealedCount?: number;
   mistTurnsRemaining?: number | null;
+  sprintTurnsRemaining?: number | null;
   publicGrid?: Array<Card | null>;
   revealed?: boolean[];
   pendingDraw?: Card | null;
@@ -80,6 +81,7 @@ type GamePlayerState = {
   revealed?: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  sprintTurnsRemaining?: number | null;
 };
 
 type GamePlayer = GamePlayerSummary & GamePlayerState;
@@ -97,11 +99,7 @@ type ItemTarget = {
   index: number;
 };
 
-type PlayerTarget = {
-  playerId: string;
-};
-
-type ItemSelectionTarget = ItemTarget | PlayerTarget;
+type ItemSelectionTarget = ItemTarget;
 
 const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
@@ -169,7 +167,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
   const hasGameCompletedRef = useRef(false);
   const podiumLabels = ["1st", "2nd", "3rd"];
-  const [itemTargets, setItemTargets] = useState<ItemSelectionTarget[]>([]);
+  const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
@@ -317,9 +315,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   const isCardTarget = (target: ItemSelectionTarget): target is ItemTarget =>
     "index" in target;
-
-  const isPlayerTarget = (target: ItemSelectionTarget): target is PlayerTarget =>
-    !("index" in target);
 
   const loadAudioBuffer = async (soundPath: string) => {
     const audioContext = audioContextRef.current;
@@ -740,6 +735,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             totalScore: (data.totalScore as number | undefined) ?? undefined,
             revealedCount: (data.revealedCount as number | undefined) ?? undefined,
             mistTurnsRemaining: (data.mistTurnsRemaining as number | null | undefined) ?? null,
+            sprintTurnsRemaining:
+              (data.sprintTurnsRemaining as number | null | undefined) ?? null,
             publicGrid: Array.isArray(data.publicGrid)
               ? (data.publicGrid as Array<Card | null>)
               : undefined,
@@ -780,6 +777,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
           pendingDrawSource:
             (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
+          sprintTurnsRemaining:
+            (data.sprintTurnsRemaining as number | null | undefined) ?? null,
         });
       },
       (err) => {
@@ -837,7 +836,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   const getItemTargetLabel = (target: ItemSelectionTarget) => {
     const playerName = getPlayerLabel(target.playerId);
-    return isCardTarget(target) ? `${playerName} · Card ${target.index + 1}` : playerName;
+    return `${playerName} · Card ${target.index + 1}`;
   };
 
   const displayPlayers = useMemo(() => {
@@ -898,6 +897,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     value !== null && value !== undefined;
   const hasDiscard = hasCardValue(topDiscard);
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
+  const isSprinting = Boolean(
+    isCurrentTurn && (currentPlayer?.sprintTurnsRemaining ?? 0) > 0
+  );
   const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
   const isRoundComplete = game?.status === "round-complete";
   const isGameComplete = game?.status === "game-complete";
@@ -1043,6 +1045,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isGameActive &&
     game?.turnPhase === "choose-draw" &&
     !hasCardValue(currentPlayer?.pendingDraw) &&
+    !isSprinting &&
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
@@ -1059,17 +1062,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemTargetsNeeded =
     itemCode === "E"
       ? 2
-      : itemCode === "B"
-        ? 1
-        : itemCode === "F"
-          ? 0
-          : itemCode
-            ? 1
-            : 0;
+      : itemCode === "F" || itemCode === "G"
+        ? 0
+        : itemCode
+          ? 1
+          : 0;
   const itemRequiresValue = itemCode === "C";
-  const itemTargetsReady =
-    itemTargets.length === itemTargetsNeeded &&
-    (itemCode !== "B" || itemTargets.every((target) => isPlayerTarget(target)));
+  const itemTargetsReady = itemTargets.length === itemTargetsNeeded;
   const itemCardTargets = itemTargets.filter(isCardTarget);
   const itemValueReady = !itemRequiresValue || itemValue !== null;
   const canUseItem = Boolean(itemCode && itemTargetsReady && itemValueReady);
@@ -1078,29 +1077,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     itemCardTargets.length === 2 &&
     itemCardTargets[0].playerId !== itemCardTargets[1].playerId;
   const showDrawActions = showDrawnCard && !isPendingItem;
-  const itemCardSelectionActive =
-    isResolvingItem && itemTargetsNeeded > 0 && itemCode !== "B";
-  const itemPlayerSelectionActive = isResolvingItem && itemCode === "B";
+  const itemCardSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
   const itemTargetInstruction =
-    itemCode === "B"
-      ? itemTargets.length === 0
-        ? "Select a player."
-        : `Selected ${getItemTargetLabel(itemTargets[0])}.`
-      : itemTargets.length === 0
-        ? itemTargetsNeeded === 1
-          ? "Select a target card."
-          : "Select two target cards."
-        : itemTargets.length < itemTargetsNeeded
-          ? "Select a second target."
-          : "Targets selected.";
+    itemTargets.length === 0
+      ? itemTargetsNeeded === 1
+        ? "Select a target card."
+        : "Select two target cards."
+      : itemTargets.length < itemTargetsNeeded
+        ? "Select a second target."
+        : "Targets selected.";
   const canDiscardItem =
-    isResolvingItem && Boolean(itemCode) && currentPlayer?.pendingDrawSource === "deck";
+    isResolvingItem &&
+    Boolean(itemCode) &&
+    currentPlayer?.pendingDrawSource === "deck" &&
+    !isSprinting;
   const itemDescriptions: Record<string, string> = {
     A: "Randomize a card on your own board.",
-    B: "Select a player whose next turn will be skipped.",
     C: "Set a card on your own board to any value.",
     E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
+    G: "Sprint through 3 consecutive turns. You cannot reveal or discard during the next 3 turns, and you cannot draw from the discard pile.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
@@ -1562,6 +1558,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setError("Missing game ID.");
       return;
     }
+    if (isSprinting) {
+      setError("You cannot reveal or discard while sprinting.");
+      return;
+    }
 
     setError(null);
     try {
@@ -1581,6 +1581,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
     if (!gameId) {
       setError("Missing game ID.");
+      return;
+    }
+    if (isSprinting) {
+      setError("You cannot reveal or discard while sprinting.");
       return;
     }
     if (!isItemRevealPending) {
@@ -1603,7 +1607,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const handleItemTargetSelect = (target: ItemTarget) => {
-    if (!itemCode || !isResolvingItem || itemTargetsNeeded === 0 || itemCode === "B") {
+    if (!itemCode || !isResolvingItem || itemTargetsNeeded === 0) {
       return;
     }
     const isSameTarget = (left: ItemTarget, right: ItemTarget) =>
@@ -1631,19 +1635,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         }
       }
       return nextTargets;
-    });
-  };
-
-  const handleItemPlayerSelect = (playerId: string) => {
-    if (!itemCode || !isResolvingItem || itemTargetsNeeded === 0 || itemCode !== "B") {
-      return;
-    }
-    setItemTargets((prev) => {
-      const existing = prev.find(isPlayerTarget);
-      if (existing && existing.playerId === playerId) {
-        return [];
-      }
-      return [{ playerId }];
     });
   };
 
@@ -1678,16 +1669,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const cardTargets = itemTargets.filter(isCardTarget);
       if (itemCode === "A") {
         await useItemCard(gameId, uid, { code: "A", target: cardTargets[0] });
-      } else if (itemCode === "B") {
-        const playerTarget = itemTargets.find(isPlayerTarget);
-        if (!playerTarget) {
-          setError("Select a player to skip their turn.");
-          return;
-        }
-        await useItemCard(gameId, uid, {
-          code: "B",
-          targetPlayerId: playerTarget.playerId,
-        });
       } else if (itemCode === "C") {
         await useItemCard(gameId, uid, {
           code: "C",
@@ -1696,6 +1677,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         });
       } else if (itemCode === "F") {
         await useItemCard(gameId, uid, { code: "F" });
+      } else if (itemCode === "G") {
+        await useItemCard(gameId, uid, { code: "G" });
       } else if (itemCode === "E") {
         await useItemCard(gameId, uid, {
           code: "E",
@@ -1720,6 +1703,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
     if (!isResolvingItem) {
+      return;
+    }
+    if (isSprinting) {
+      setError("You cannot reveal or discard while sprinting.");
       return;
     }
 
@@ -2467,18 +2454,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     }
                     activeActionIndex={isLocalPlayer ? activeActionIndex : null}
                     onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
-                    onReveal={isLocalPlayer && showDrawActions ? handleReveal : undefined}
+                    onReveal={
+                      isLocalPlayer && showDrawActions && !isSprinting ? handleReveal : undefined
+                    }
                     onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
-                    revealSelectionActive={isLocalPlayer && isItemRevealPending}
-                    onPlayerSelect={
-                      isCurrentTurn && itemPlayerSelectionActive ? handleItemPlayerSelect : undefined
-                    }
-                    isPlayerSelected={
-                      itemPlayerSelectionActive &&
-                      itemTargets.some(
-                        (target) => isPlayerTarget(target) && target.playerId === player.id
-                      )
-                    }
+                    revealSelectionActive={isLocalPlayer && isItemRevealPending && !isSprinting}
+                    onPlayerSelect={undefined}
+                    isPlayerSelected={false}
                     itemSelection={
                       isLocalPlayer && isCurrentTurn && itemCardSelectionActive
                         ? {
