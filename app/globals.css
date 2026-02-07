@@ -870,7 +870,6 @@ button.player-grid__name:hover {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("/texture.png");
   background-size: 400%;
   background-position: center;
   opacity: 0.75;
@@ -915,10 +914,8 @@ button.player-grid__name:hover {
 }
 
 .card--value-negative {
-  background: #0053b3;
-  color: var(--color-on-dark);
-  text-shadow: 0 0 5px #0053b3;
-
+  background: #C1CDE1;
+  color: #454545;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -928,10 +925,8 @@ button.player-grid__name:hover {
 }
 
 .card--value-zero {
-  background: #00e1ff;
-  color: var(--color-card-edge);
-  text-shadow: 0 0 5px #00e1ff;
-
+  background: #D1EFF3;
+  color: #454545;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -941,8 +936,8 @@ button.player-grid__name:hover {
 }
 
 .card--value-low {
-  background: #18cd00;
-  color: var(--color-card-edge);
+  background: #FFF6DC;
+  color: #454545;
   text-shadow: 0 0 5px #277a48;
 
   box-sizing: border-box;
@@ -954,9 +949,8 @@ button.player-grid__name:hover {
 }
 
 .card--value-mid {
-  background: rgb(253, 219, 0);
-  color: var(--color-card-edge);
-  text-shadow: 0 0 5px #e0a80e;
+  background: #FBEDBE;
+  color: #454545;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -965,9 +959,8 @@ button.player-grid__name:hover {
 }
 
 .card--value-high {
-  background: #ff7300;
-  color: var(--color-card-edge);
-  text-shadow: 0 0 5px #ff7300;
+  background: #FED5BE;
+  color: #454545;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -976,10 +969,8 @@ button.player-grid__name:hover {
 }
 
 .card--value-max {
-  background: #da0000;
-  text-shadow: 0 0 5px #da0000;
-
-  color: var(--color-card-edge);
+  background: #F5BFBB;
+  color: #454545;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -1034,6 +1025,11 @@ button.card {
   width: 100%;
   height: 100%;
   cursor: pointer;
+}
+
+button.card:hover:not(:disabled) {
+  background-color: inherit;
+  box-shadow: 0 4px 12px rgba(31, 41, 51, 0.24);
 }
 
 button.card:disabled {
@@ -1152,7 +1148,6 @@ button.card:disabled {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("/texture.png");
   background-size: 300%;
   background-position: center;
   opacity: 0.75;
@@ -1176,7 +1171,6 @@ button.card:disabled {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("/texture.png");
   background-size: cover;
   background-position: center;
   opacity: 0.35;
