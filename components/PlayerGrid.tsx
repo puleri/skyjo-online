@@ -1,6 +1,6 @@
 "use client";
 
-import type { Card, ItemCard } from "../lib/game/deck";
+import type { Card, ItemCard, ItemCode } from "../lib/game/deck";
 
 type PlayerGridProps = {
   playerId: string;
@@ -65,6 +65,14 @@ const getCardItemClass = (value: Card | null | undefined) => {
   return ` card--item card--item-${value.code}`;
 };
 
+const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
+  A: { name: "Randomize", image: "/cards/random.png", eyebrow: "Randomize" },
+  C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
+  E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
+  F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
+  G: { name: "Push", image: "/cards/push.png", eyebrow: "Push" },
+};
+
 const getCardLabel = (value: Card | null | undefined) => {
   if (typeof value === "number") {
     return value;
@@ -73,6 +81,16 @@ const getCardLabel = (value: Card | null | undefined) => {
     return value.code;
   }
   return "—";
+};
+
+const renderItemContent = (code: ItemCode) => {
+  const details = itemCardDetails[code];
+  return (
+    <span className="card__item-content">
+      <span className="card__item-eyebrow">{details.eyebrow}</span>
+      <img className="card__item-art" src={details.image} alt={`${details.name} item art`} />
+    </span>
+  );
 };
 
 export default function PlayerGrid({
@@ -137,6 +155,7 @@ export default function PlayerGrid({
       <div className="player-grid__cards">
         {cards.map((value, index) => {
           const isRevealed = visibility[index];
+          const isItem = isItemCard(value);
           const cardClassName = `card${
             isRevealed
               ? `${getCardValueClass(value)}${getCardItemClass(value)}`
@@ -185,7 +204,13 @@ export default function PlayerGrid({
                     !isItemSelectable && (!isSelectable || (isRevealSelectionActive && isRevealed))
                   }
                 >
-                  <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
+                  {isRevealed && value ? (
+                    isItem ? (
+                      renderItemContent(value.code)
+                    ) : (
+                      <span className="card__value">{getCardLabel(value)}</span>
+                    )
+                  ) : null}
                   {isItemSelectable ? (
                     <span className="card__target-overlay" aria-hidden="true">
                       {isTargetSelected ? `${targetOrderIndex + 1}` : "+"}
@@ -194,7 +219,13 @@ export default function PlayerGrid({
                 </button>
               ) : (
                 <div className={cardClassName}>
-                  <span className="card__value">{isRevealed ? getCardLabel(value) : ""}</span>
+                  {isRevealed && value ? (
+                    isItem ? (
+                      renderItemContent(value.code)
+                    ) : (
+                      <span className="card__value">{getCardLabel(value)}</span>
+                    )
+                  ) : null}
                   {isItemSelectable ? (
                     <span className="card__target-overlay" aria-hidden="true">
                       {isTargetSelected ? `${targetOrderIndex + 1}` : "+"}
