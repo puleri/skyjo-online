@@ -2372,7 +2372,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
               <div>
-                <p className="item-panel__title">Item {itemName}</p>
+                <p className="item-panel__title">{itemName}</p>
                 <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
               </div>
             </div>
@@ -2451,10 +2451,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         ) : isItemDrawnByOtherPlayer && itemCode ? (
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
-              
+              <div>
+                <span className="player-item-panel">{itemOwnerName} drew</span>
+              </div>
               <div>
                 <p className="item-panel__title">
-                  <span className="player-item-panel">{itemOwnerName}</span> drew Item {itemName}
+                  {itemName}
                 </p>
                 <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
               </div>
