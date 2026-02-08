@@ -30,7 +30,7 @@ import {
   useItemCard,
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
-import type { Card, ItemCard, SpikeItemCount } from "../lib/game/deck";
+import type { Card, ItemCard, ItemCode, SpikeItemCount } from "../lib/game/deck";
 import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
@@ -296,14 +296,32 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isItemCard = (value: Card | null | undefined): value is ItemCard =>
     value != null && typeof value === "object" && value.kind === "item";
 
+  const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
+    A: { name: "Randomize", image: "/cards/random.png", eyebrow: "Randomize" },
+    C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
+    E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
+    F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
+    G: { name: "Push", image: "/cards/push.png", eyebrow: "Push" },
+  };
+
   const getCardLabel = (value: Card | null | undefined) => {
     if (typeof value === "number") {
       return value;
     }
     if (isItemCard(value)) {
-      return value.code;
+      return itemCardDetails[value.code]?.name ?? value.code;
     }
     return "—";
+  };
+
+  const renderItemContent = (code: ItemCode) => {
+    const details = itemCardDetails[code];
+    return (
+      <span className="card__item-content">
+        <span className="card__item-eyebrow">{details.eyebrow}</span>
+        <img className="card__item-art" src={details.image} alt={`${details.name} item art`} />
+      </span>
+    );
   };
 
   const getCardStyleClass = (value: Card | null | undefined) => {
@@ -2244,7 +2262,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
               >
-                <span className="card__value">{discardCardLabel}</span>
+                {isItemCard(topDiscard) ? (
+                  renderItemContent(topDiscard.code)
+                ) : (
+                  <span className="card__value">{discardCardLabel}</span>
+                )}
               </button>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
@@ -2260,7 +2282,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}`}
                   aria-label="Selected card"
                 >
-                  <span className="card__value">{selectedCardLabel}</span>
+                  {isItemCard(selectedCardValue) ? (
+                    renderItemContent(selectedCardValue.code)
+                  ) : (
+                    <span className="card__value">{selectedCardLabel}</span>
+                  )}
                 </div>
               ) : (
                 <div className="card card--empty-selected" aria-label="No selected card">
@@ -2303,7 +2329,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
               >
-                <span className="card__value">{discardCardLabel}</span>
+                {isItemCard(topDiscard) ? (
+                  renderItemContent(topDiscard.code)
+                ) : (
+                  <span className="card__value">{discardCardLabel}</span>
+                )}
               </button>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
@@ -2319,7 +2349,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}`}
                   aria-label="Selected card"
                 >
-                  <span className="card__value">{selectedCardLabel}</span>
+                  {isItemCard(selectedCardValue) ? (
+                    renderItemContent(selectedCardValue.code)
+                  ) : (
+                    <span className="card__value">{selectedCardLabel}</span>
+                  )}
                 </div>
               ) : (
                 <div className="card card--empty-selected" aria-label="No selected card">
@@ -2337,7 +2371,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
               <div className={`item-panel__badge card card--item card--item-${itemCode}`}>
-                <span className="card__value">{itemCode}</span>
+                {renderItemContent(itemCode)}
               </div>
               <div>
                 <p className="item-panel__title">Item {itemCode}</p>
@@ -2420,7 +2454,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
               <div className={`item-panel__badge card card--item card--item-${itemCode}`}>
-                <span className="card__value">{itemCode}</span>
+                {renderItemContent(itemCode)}
               </div>
               <div>
                 <p className="item-panel__title">{itemOwnerName} drew Item {itemCode}</p>
