@@ -937,13 +937,30 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       })),
     [orderedPlayers]
   );
+  const discardSkewsRef = useRef<number[]>([]);
   const topDiscard =
     discardPile.length > 0 ? discardPile[discardPile.length - 1] : null;
   const discardStackCards = useMemo(() => discardPile.slice(-6), [discardPile]);
-  const discardStackSkews = useMemo(
-    () => discardStackCards.map(() => Math.random() * 40 - 20),
-    [discardStackCards]
-  );
+  useEffect(() => {
+    const existingSkews = discardSkewsRef.current;
+    if (discardPile.length < existingSkews.length) {
+      discardSkewsRef.current = existingSkews.slice(0, discardPile.length);
+      return;
+    }
+    if (discardPile.length === existingSkews.length) {
+      return;
+    }
+    const nextSkews = [...existingSkews];
+    for (let i = existingSkews.length; i < discardPile.length; i += 1) {
+      nextSkews.push(Math.random() * 40 - 20);
+    }
+    discardSkewsRef.current = nextSkews;
+  }, [discardPile.length]);
+  const discardStackSkews = useMemo(() => {
+    const allSkews = discardSkewsRef.current;
+    const startIndex = Math.max(allSkews.length - discardStackCards.length, 0);
+    return allSkews.slice(startIndex);
+  }, [discardPile.length, discardStackCards.length]);
   const hasCardValue = (value: Card | null | undefined): value is Card =>
     value !== null && value !== undefined;
   const hasDiscard = hasCardValue(topDiscard);
