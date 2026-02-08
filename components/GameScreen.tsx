@@ -111,6 +111,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const cardSoundsStorageKey = "skyjo-card-sounds";
   const backgroundMusicStorageKey = "skyjo-background-music";
   const snowStorageKey = "skyjo-snow";
+  const discardStorageKey = `skyjo-discard-${gameId}`;
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
@@ -171,6 +172,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
+  const [discardPile, setDiscardPile] = useState<Card[]>([]);
   const pendingDrawRef = useRef<Map<string, Card | null>>(new Map());
   const hasInitializedDrawSoundRef = useRef(false);
   const hasInitializedDiscardSelectSoundRef = useRef(false);
@@ -209,6 +211,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return { ...player, ...summaryState };
     });
   }, [localPlayerState, playerSummaries, uid]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedDiscard = window.localStorage.getItem(discardStorageKey);
+    if (!storedDiscard) {
+      setDiscardPile([]);
+      return;
+    }
+
+    try {
+      const parsedDiscard = JSON.parse(storedDiscard);
+      if (Array.isArray(parsedDiscard)) {
+        setDiscardPile(parsedDiscard as Card[]);
+      }
+    } catch {
+      setDiscardPile([]);
+    }
+  }, [discardStorageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -493,6 +516,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           return;
         }
         const data = snapshot.data();
+        const discard = Array.isArray(data.discard) ? (data.discard as Card[]) : [];
         setGame({
           status: (data.status as string | undefined) ?? "pending",
           lobbyId: (data.lobbyId as string | null | undefined) ?? null,
@@ -501,7 +525,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             ? (data.activePlayerOrder as string[])
             : [],
           deck: Array.isArray(data.deck) ? (data.deck as Card[]) : [],
-          discard: Array.isArray(data.discard) ? (data.discard as Card[]) : [],
+          discard,
           hostId: (data.hostId as string | null | undefined) ?? null,
           roundNumber: (data.roundNumber as number | undefined) ?? 1,
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
@@ -522,6 +546,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             (data.lastClearType as "row" | "column" | "row-column" | null | undefined) ?? null,
           lastClearTypeAt: (data.lastClearTypeAt as Timestamp | null | undefined) ?? null,
         });
+        setDiscardPile(discard);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(discardStorageKey, JSON.stringify(discard));
+        }
       },
       (err) => {
         setError(err.message);
@@ -592,7 +620,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     const currentSelectedDiscardPlayerId = game?.selectedDiscardPlayerId ?? null;
     const previousSelectedDiscardPlayerId = lastSelectedDiscardPlayerIdRef.current;
-    const hasTopDiscard = (game?.discard?.length ?? 0) > 0;
+    const hasTopDiscard = discardPile.length > 0;
 
     if (!hasInitializedDiscardSelectSoundRef.current) {
       hasInitializedDiscardSelectSoundRef.current = true;
@@ -609,7 +637,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     lastSelectedDiscardPlayerIdRef.current = currentSelectedDiscardPlayerId;
-  }, [firebaseReady, game?.discard, game?.selectedDiscardPlayerId]);
+  }, [discardPile.length, firebaseReady, game?.selectedDiscardPlayerId]);
 
   useEffect(() => {
     if (!firebaseReady || !game) {
@@ -910,7 +938,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     [orderedPlayers]
   );
   const topDiscard =
-    game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
+    discardPile.length > 0 ? discardPile[discardPile.length - 1] : null;
+  const discardStackCards = useMemo(() => discardPile.slice(-6), [discardPile]);
+  const discardStackSkews = useMemo(
+    () => discardStackCards.map(() => Math.random() * 40 - 20),
+    [discardStackCards]
+  );
   const hasCardValue = (value: Card | null | undefined): value is Card =>
     value !== null && value !== undefined;
   const hasDiscard = hasCardValue(topDiscard);
@@ -938,6 +971,58 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return getModeDetails(game.spikeMode, game.spikeItemCount, game.spikeRowClear);
   }, [game]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+
+  const renderDiscardStack = () => {
+    if (!hasDiscard) {
+      return (
+        <div className="card card--discard" aria-label="Empty discard pile">
+          —
+        </div>
+      );
+    }
+
+    return (
+      <div className="discard-stack" aria-label="Discard pile">
+        {discardStackCards.map((card, index) => {
+          const isTop = index === discardStackCards.length - 1;
+          const offset = index * 2;
+          const skew = discardStackSkews[index] ?? 0;
+          const style = {
+            transform: `translate(${offset}px, ${offset * -1}px) rotate(${skew}deg)`,
+            zIndex: index + 1,
+          };
+          if (isTop) {
+            return (
+              <button
+                type="button"
+                key={`discard-top-${index}`}
+                className={`card card--discard-pile card--discard-stack card--discard-stack-top${getCardStyleClass(card)}`}
+                aria-label="Discard pile"
+                onClick={handleSelectDiscard}
+                disabled={!canSelectDiscardTarget}
+                style={style}
+              >
+                {isItemCard(card) ? (
+                  renderItemContent(card.code)
+                ) : (
+                  <span className="card__value">{discardCardLabel}</span>
+                )}
+              </button>
+            );
+          }
+
+          return (
+            <div
+              key={`discard-stack-${index}`}
+              className={`card card--discard-pile card--discard-stack${getCardStyleClass(card)}`}
+              style={style}
+              aria-hidden="true"
+            />
+          );
+        })}
+      </div>
+    );
+  };
   useEffect(() => {
     if (!isModeTooltipOpen) {
       return;
@@ -2255,25 +2340,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
-            {hasDiscard ? (
-              <button
-                type="button"
-                className={`card card--discard-pile${getCardStyleClass(topDiscard)}`}
-                aria-label="Discard pile"
-                onClick={handleSelectDiscard}
-                disabled={!canSelectDiscardTarget}
-              >
-                {isItemCard(topDiscard) ? (
-                  renderItemContent(topDiscard.code)
-                ) : (
-                  <span className="card__value">{discardCardLabel}</span>
-                )}
-              </button>
-            ) : (
-              <div className="card card--discard" aria-label="Empty discard pile">
-                —
-              </div>
-            )}
+            {renderDiscardStack()}
           </div>
           <div className="game-pile">
             <h6>Selected card</h6>
@@ -2322,25 +2389,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
           <div className="game-pile">
             <h6>Discard</h6>
-            {hasDiscard ? (
-              <button
-                type="button"
-                className={`card card--discard-pile${getCardStyleClass(topDiscard)}`}
-                aria-label="Discard pile"
-                onClick={handleSelectDiscard}
-                disabled={!canSelectDiscardTarget}
-              >
-                {isItemCard(topDiscard) ? (
-                  renderItemContent(topDiscard.code)
-                ) : (
-                  <span className="card__value">{discardCardLabel}</span>
-                )}
-              </button>
-            ) : (
-              <div className="card card--discard" aria-label="Empty discard pile">
-                —
-              </div>
-            )}
+            {renderDiscardStack()}
           </div>
           <div className="game-pile">
             <h6>Selected card</h6>

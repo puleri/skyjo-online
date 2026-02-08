@@ -1207,6 +1207,26 @@ button.card.card--discard-pile:hover {
   overflow: hidden;
 }
 
+.discard-stack {
+  position: relative;
+  width: 152px;
+  aspect-ratio: 4 / 6;
+}
+
+.discard-stack .card {
+  position: absolute;
+  inset: 0;
+}
+
+.card--discard-stack {
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.card--discard-stack-top {
+  pointer-events: auto;
+}
+
 .card--discard-pile::after {
   content: "";
   position: absolute;
@@ -2604,8 +2624,21 @@ border: 1px solid #ffedef;
     border-radius: 8px;
   }
 
+  .game-piles .discard-stack {
+    min-width: 82px;
+    width: 100%;
+    max-width: 100%;
+    height: 33vw;
+    aspect-ratio: 4 / 6;
+  }
+
   .game-piles--dock .card,
   .game-piles--dock .card-back-image {
+    height: 120px;
+    width: auto;
+  }
+
+  .game-piles--dock .discard-stack {
     height: 120px;
     width: auto;
   }
