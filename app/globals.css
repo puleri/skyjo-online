@@ -969,7 +969,6 @@ button.player-grid__name:hover {
   -webkit-box-sizing: border-box;
   border: 7px solid var(--color-card-edge);
   outline: 2px solid var(--color-border);
-
 }
 
 .card--value-low {
@@ -1016,7 +1015,6 @@ button.player-grid__name:hover {
 
 .card--item {
   color: var(--color-on-dark);
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
   font-weight: 700;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
@@ -1037,8 +1035,10 @@ button.player-grid__name:hover {
 }
 
 .card__item-eyebrow {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
+  color: #454545;
+  font-weight: 900;
   letter-spacing: 0.12em;
 }
 
@@ -1050,23 +1050,23 @@ button.player-grid__name:hover {
 }
 
 .card--item-A {
-  background: linear-gradient(135deg, #3b1f6f, #6f44bf);
+  background: linear-gradient(135deg, #fffbf1, #FFF6DC);
 }
 
 .card--item-G {
-  background: linear-gradient(135deg, #0f6b4f, #24a07f);
+  background: #CED6BD;
 }
 
 .card--item-C {
-  background: linear-gradient(135deg, #7a1f3d, #c94d8c);
+  background: #C6CFB7;
 }
 
 .card--item-F {
-  background: linear-gradient(135deg, #8b5a0a, #d5a32d);
+  background:#D7DAC4;
 }
 
 .card--item-E {
-  background: linear-gradient(135deg, #24365b, #4f6fb2);
+  background: #EDE6CF;
 }
 
 .card--item .card__value {
