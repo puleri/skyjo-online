@@ -204,7 +204,7 @@ export default function PlayerGrid({
                     !isItemSelectable && (!isSelectable || (isRevealSelectionActive && isRevealed))
                   }
                 >
-                  {isRevealed && value ? (
+                  {isRevealed && value !== null && value !== undefined ? (
                     isItem ? (
                       renderItemContent(value.code)
                     ) : (
@@ -219,7 +219,7 @@ export default function PlayerGrid({
                 </button>
               ) : (
                 <div className={cardClassName}>
-                  {isRevealed && value ? (
+                  {isRevealed && value !== null && value !== undefined ? (
                     isItem ? (
                       renderItemContent(value.code)
                     ) : (
