@@ -930,16 +930,29 @@ button.player-grid__name:hover {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("/cards/card-corners.png");
   background-size: 100% 100%;
   background-repeat: no-repeat;
   pointer-events: none;
-  z-index: 1;
+    --b: 30%;   /* thickness of the border */
+  --c: var(--color-card-edge);   /* color of the border */
+  --w: 20%;  /* width of border */
+
+  border: var(--b) solid #0000; /* space for the border */
+  --_g: #0000 90deg,var(--c) 0;
+  --_p: var(--w) var(--w) border-box no-repeat;
+  background:
+    conic-gradient(from 90deg  at top    var(--b) left  var(--b),var(--_g)) 0    0    / var(--_p),
+    conic-gradient(from 180deg at top    var(--b) right var(--b),var(--_g)) 100% 0    / var(--_p),
+    conic-gradient(from 0deg   at bottom var(--b) left  var(--b),var(--_g)) 0    100% / var(--_p),
+    conic-gradient(from -90deg at bottom var(--b) right var(--b),var(--_g)) 100% 100% / var(--_p);
+    z-index: 1;
 }
+
+
 
 .card--value-negative {
   background: #C1CDE1;
-  color: #454545;
+  color: #325082;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -950,7 +963,7 @@ button.player-grid__name:hover {
 
 .card--value-zero {
   background: #D1EFF3;
-  color: #454545;
+  color: #29676F;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -961,7 +974,7 @@ button.player-grid__name:hover {
 
 .card--value-low {
   background: #CCE9BF;
-  color: #454545;
+  color: #3F662D;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -972,7 +985,7 @@ button.player-grid__name:hover {
 
 .card--value-mid {
   background: #FBEDBE;
-  color: #454545;
+  color: #825F05;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -982,7 +995,7 @@ button.player-grid__name:hover {
 
 .card--value-high {
   background: #FED5BE;
-  color: #454545;
+  color: #884B29;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -992,7 +1005,7 @@ button.player-grid__name:hover {
 
 .card--value-max {
   background: #F5BFBB;
-  color: #454545;
+  color: #7D3C37;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -1057,6 +1070,11 @@ button.card:hover:not(:disabled) {
 button.card:disabled {
   cursor: not-allowed;
 }
+button.card.card--discard-pile:hover {
+  box-shadow: none;
+  background-color: inherit;
+}
+
 
 .player-grid--mini .card {
   font-size: 1rem;
@@ -1087,7 +1105,7 @@ button.card:disabled {
   align-items: center;
   font-weight: 100;
   width: 100%;
-  font-size: 110px;
+  font-size: 80px;
 }
 
 @media (max-width: 640px) {
@@ -1096,7 +1114,7 @@ button.card:disabled {
   .pile {
     font-weight: 100;
     width: 100%;
-    font-size: 18vw;
+    font-size: 12vw;
   }
 }
 
