@@ -1126,7 +1126,7 @@ button.card.card--discard-pile:hover {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-weight: 100;
+  font-weight: 900;
   width: 100%;
   font-size: 80px;
 }
@@ -1135,7 +1135,7 @@ button.card.card--discard-pile:hover {
 
   .game-pile,
   .pile {
-    font-weight: 100;
+    font-weight: 900;
     width: 100%;
     font-size: 12vw;
   }
