@@ -1077,6 +1077,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
+  const itemName = itemCode ? itemCardDetails[itemCode]?.name ?? itemCode : null;
   const itemTargetsNeeded =
     itemCode === "E"
       ? 2
@@ -2371,7 +2372,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
               <div>
-                <p className="item-panel__title">Item {itemCode}</p>
+                <p className="item-panel__title">Item {itemName}</p>
                 <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
               </div>
             </div>
@@ -2452,7 +2453,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div className="item-panel__summary">
               
               <div>
-                <p className="item-panel__title"><span className="player-item-panel">{itemOwnerName}</span> drew Item {itemCode}</p>
+                <p className="item-panel__title">
+                  <span className="player-item-panel">{itemOwnerName}</span> drew Item {itemName}
+                </p>
                 <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
               </div>
             </div>
