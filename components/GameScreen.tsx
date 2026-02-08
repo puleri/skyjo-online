@@ -2370,9 +2370,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         {isResolvingItem && itemCode ? (
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
-              <div className={`item-panel__badge card card--item card--item-${itemCode}`}>
-                {renderItemContent(itemCode)}
-              </div>
               <div>
                 <p className="item-panel__title">Item {itemCode}</p>
                 <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
@@ -2453,11 +2450,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         ) : isItemDrawnByOtherPlayer && itemCode ? (
           <div className="item-panel" role="status" aria-live="polite">
             <div className="item-panel__summary">
-              <div className={`item-panel__badge card card--item card--item-${itemCode}`}>
-                {renderItemContent(itemCode)}
-              </div>
+              
               <div>
-                <p className="item-panel__title">{itemOwnerName} drew Item {itemCode}</p>
+                <p className="item-panel__title"><span className="player-item-panel">{itemOwnerName}</span> drew Item {itemCode}</p>
                 <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
               </div>
             </div>

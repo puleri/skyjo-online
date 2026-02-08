@@ -1035,7 +1035,7 @@ button.player-grid__name:hover {
 }
 
 .card__item-eyebrow {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
   color: #454545;
   font-weight: 900;
@@ -1043,14 +1043,14 @@ button.player-grid__name:hover {
 }
 
 .card__item-art {
-  width: 64%;
+  width: 74%;
   max-height: 60%;
   height: auto;
   object-fit: contain;
 }
 
 .card--item-A {
-  background: linear-gradient(135deg, #fffbf1, #FFF6DC);
+  background: #C6D2B9;
 }
 
 .card--item-G {
@@ -1331,7 +1331,7 @@ button.card.card--discard-pile:hover {
 .item-panel {
   margin: 16px auto 24px;
   padding: 18px 22px;
-  max-width: 880px;
+  max-width: max-content;
   border-radius: 18px;
   background: var(--color-surface-bright);
   border: 1px solid var(--color-border);
@@ -1363,9 +1363,9 @@ button.card.card--discard-pile:hover {
 }
 
 .item-panel__description {
-  margin: 4px 0 0;
+  margin: 10px 0 0;
   color: var(--color-text-muted);
-  font-weight: 500;
+  font-weight: 100;
 }
 
 .item-panel__instruction {
@@ -2618,8 +2618,16 @@ border: 1px solid #ffedef;
     border-radius: 10px !important;
   }
 }
+.player-item-panel {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 100;
+  padding: 0 10px 0 0;
+}
 
 /* utilities */
+
+
 
 .mt-20 {
   margin-top: 20px; 

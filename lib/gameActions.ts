@@ -334,15 +334,15 @@ type ItemUsage =
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
     case "A":
-      return "used item A to reroll a card.";
+      return "used Randomize to reroll a card.";
     case "C":
-      return `used item C to set a card to ${usage.value}.`;
+      return `used Wild to set a card to ${usage.value}.`;
     case "E":
-      return "used item E to swap two cards.";
+      return "used Swap to swap two cards.";
     case "F":
-      return "used item F to summon mist.";
+      return "used Mist to summon mist.";
     case "G":
-      return "used item G to sprint through extra turns.";
+      return "used Push to draw three.";
     default:
       return "used an item.";
   }
