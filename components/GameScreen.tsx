@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
 import SnowfallLayer from "./SnowfallLayer";
@@ -155,6 +155,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
+  const discardSkewRef = useRef<number[]>([]);
+  const discardCountRef = useRef(0);
   const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
   const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
   const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
@@ -610,6 +612,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     lastSelectedDiscardPlayerIdRef.current = currentSelectedDiscardPlayerId;
   }, [firebaseReady, game?.discard, game?.selectedDiscardPlayerId]);
+
+  useEffect(() => {
+    const discardCount = game?.discard?.length ?? 0;
+    const previousCount = discardCountRef.current;
+
+    if (discardCount > previousCount) {
+      const additions = discardCount - previousCount;
+      const nextSkews = discardSkewRef.current.slice();
+
+      for (let i = 0; i < additions; i += 1) {
+        nextSkews.push(Math.random() * 4 - 2);
+      }
+
+      discardSkewRef.current = nextSkews;
+    } else if (discardCount < previousCount) {
+      discardSkewRef.current = discardSkewRef.current.slice(0, discardCount);
+    }
+
+    discardCountRef.current = discardCount;
+  }, [game?.discard?.length]);
 
   useEffect(() => {
     if (!firebaseReady || !game) {
@@ -1072,6 +1094,30 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const discardCardLabel = getCardLabel(topDiscard);
+  const discardCount = game?.discard?.length ?? 0;
+  const discardLayerCount = Math.min(Math.max(discardCount - 1, 0), 6);
+  const discardStackLayers =
+    discardLayerCount > 0
+      ? Array.from({ length: discardLayerCount }, (_, index) => {
+          const rotationIndex = discardCount - 2 - index;
+          const rotation = discardSkewRef.current[rotationIndex] ?? 0;
+          const offset = (discardLayerCount - index) * 2;
+
+          return (
+            <div
+              key={`discard-layer-${rotationIndex}`}
+              className="card card--discard discard-stack__layer"
+              style={
+                {
+                  "--discard-rotate": `${rotation}deg`,
+                  transform: `translate(${offset}px, ${-offset}px) rotate(var(--discard-rotate))`,
+                } as CSSProperties
+              }
+              aria-hidden="true"
+            />
+          );
+        })
+      : null;
   const canSelectGridCard =
     isGameActive &&
     (showDrawnCard || discardSelectionActive || isItemRevealPending) &&
@@ -2287,19 +2333,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="game-pile">
             <h6>Discard</h6>
             {hasDiscard ? (
-              <button
-                type="button"
-                className={`card card--discard-pile${getCardStyleClass(topDiscard)}`}
-                aria-label="Discard pile"
-                onClick={handleSelectDiscard}
-                disabled={!canSelectDiscardTarget}
-              >
-                {isItemCard(topDiscard) ? (
-                  renderItemContent(topDiscard.code)
-                ) : (
-                  <span className="card__value">{discardCardLabel}</span>
-                )}
-              </button>
+              <div className="discard-stack">
+                {discardStackLayers}
+                <button
+                  type="button"
+                  className={`card card--discard-pile discard-stack__card${getCardStyleClass(
+                    topDiscard
+                  )}`}
+                  aria-label="Discard pile"
+                  onClick={handleSelectDiscard}
+                  disabled={!canSelectDiscardTarget}
+                >
+                  {isItemCard(topDiscard) ? (
+                    renderItemContent(topDiscard.code)
+                  ) : (
+                    <span className="card__value">{discardCardLabel}</span>
+                  )}
+                </button>
+              </div>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
                 —
@@ -2354,19 +2405,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="game-pile">
             <h6>Discard</h6>
             {hasDiscard ? (
-              <button
-                type="button"
-                className={`card card--discard-pile${getCardStyleClass(topDiscard)}`}
-                aria-label="Discard pile"
-                onClick={handleSelectDiscard}
-                disabled={!canSelectDiscardTarget}
-              >
-                {isItemCard(topDiscard) ? (
-                  renderItemContent(topDiscard.code)
-                ) : (
-                  <span className="card__value">{discardCardLabel}</span>
-                )}
-              </button>
+              <div className="discard-stack">
+                {discardStackLayers}
+                <button
+                  type="button"
+                  className={`card card--discard-pile discard-stack__card${getCardStyleClass(
+                    topDiscard
+                  )}`}
+                  aria-label="Discard pile"
+                  onClick={handleSelectDiscard}
+                  disabled={!canSelectDiscardTarget}
+                >
+                  {isItemCard(topDiscard) ? (
+                    renderItemContent(topDiscard.code)
+                  ) : (
+                    <span className="card__value">{discardCardLabel}</span>
+                  )}
+                </button>
+              </div>
             ) : (
               <div className="card card--discard" aria-label="Empty discard pile">
                 —

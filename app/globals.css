@@ -1241,6 +1241,24 @@ button.card.card--discard-pile:hover {
   border-radius: inherit;
 }
 
+.discard-stack {
+  position: relative;
+  display: inline-block;
+}
+
+.discard-stack__layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transform: translate(0, 0) rotate(var(--discard-rotate, 0deg));
+}
+
+.discard-stack__card {
+  position: relative;
+  z-index: 2;
+}
+
 .card-back-button {
   padding: 0;
   border: 0;
