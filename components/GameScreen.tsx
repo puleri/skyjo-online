@@ -1065,6 +1065,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     !hasCardValue(currentPlayer?.pendingDraw) &&
     !isSprinting &&
     (game?.discard.length ?? 0) > 0;
+  const deckCount = game?.deck?.length ?? 0;
+  const stackDepth = Math.min(deckCount, 6);
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
@@ -1824,10 +1826,39 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     );
   }
 
-  return (
-    <>          {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
+  const renderDeckStack = (stackKey: string) => {
+    if (stackDepth === 0) {
+      return <span className="card-back-image" aria-hidden="true" />;
+    }
 
-    <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
+    return (
+      <span className="card-back-stack" aria-hidden="true">
+        {Array.from({ length: stackDepth }, (_, index) => {
+          const offset = stackDepth - index - 1;
+          const isTopLayer = index === stackDepth - 1;
+          return (
+            <span
+              key={`${stackKey}-${index}`}
+              className={`card-back-image${isTopLayer ? "" : " card-back-image--stacked"}`}
+              style={
+                isTopLayer
+                  ? undefined
+                  : {
+                      transform: `translate(${offset * 3}px, ${offset * 3}px)`,
+                    }
+              }
+              aria-hidden="true"
+            />
+          );
+        })}
+      </span>
+    );
+  };
+
+  return (
+    <>
+      {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
+      <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
       <div className="game-screen__tags">
         <span className="game-screen__tag" title={lobbyLabel}>
           {lobbyLabel}
@@ -2247,7 +2278,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <span className="card-back-image" aria-hidden="true" />
+              {renderDeckStack("dock")}
             </button>
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
@@ -2314,7 +2345,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
             >
-              <span className="card-back-image" aria-hidden="true" />
+              {renderDeckStack("main")}
             </button>
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
@@ -2534,7 +2565,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <p className="legal-tiny">I do not own the rights to Skyjo; this is just a
           fan project made for learning purposes. If you enjoy this project, please
           consider buying the physical game online or from a game store near you</p>
-    </main>
+      </main>
 
     </>
 
