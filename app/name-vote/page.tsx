@@ -2,30 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-type Matchup = {
-  id: string;
-  candidates: [string, string];
-  totalVotes: number;
-};
+import {
+  getCurrentNameVotingMatchup,
+  getNameVoteProgressLabel,
+  ensureNameVotingSession,
+  type NameVotingMatchup,
+} from '../../lib/nameVoting';
 
-type RoundData = {
-  id: string;
-  matchups: Matchup[];
-};
-
-const rounds: RoundData[] = [
-  {
-    id: 'round-1',
-    matchups: [
-      { id: 'r1-m1', candidates: ['Aurora', 'Juniper'], totalVotes: 7 },
-      { id: 'r1-m2', candidates: ['Maple', 'Poppy'], totalVotes: 7 },
-    ],
-  },
-  {
-    id: 'round-2',
-    matchups: [{ id: 'r2-m1', candidates: ['Aurora', 'Maple'], totalVotes: 7 }],
-  },
-];
+const DEFAULT_NAME_VOTING_SESSION_ID = 'default-session';
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,8 +18,8 @@ function wait(ms: number) {
 export default function NameVotePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [matchupIndex, setMatchupIndex] = useState(0);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [currentMatchup, setCurrentMatchup] = useState<(NameVotingMatchup & { id: string }) | null>(null);
   const [votesSubmitted, setVotesSubmitted] = useState(0);
   const [isVoting, setIsVoting] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
@@ -45,10 +29,19 @@ export default function NameVotePage() {
 
     const bootstrap = async () => {
       try {
-        await wait(500);
+        await ensureNameVotingSession(DEFAULT_NAME_VOTING_SESSION_ID);
+        const payload = await getCurrentNameVotingMatchup(DEFAULT_NAME_VOTING_SESSION_ID);
+
+        if (!payload) {
+          throw new Error('No name voting session found.');
+        }
+
         if (!isMounted) {
           return;
         }
+
+        setCurrentRound(payload.session.currentRound);
+        setCurrentMatchup(payload.matchup);
         setLoadError(null);
       } catch (error) {
         if (isMounted) {
@@ -68,61 +61,30 @@ export default function NameVotePage() {
     };
   }, []);
 
-  const currentRound = rounds[roundIndex];
-  const currentMatchup = currentRound?.matchups[matchupIndex] ?? null;
   const votingLocked = isVoting || Boolean(transitionMessage);
 
   const progressLabel = useMemo(() => {
     if (!currentMatchup) {
       return '0 / 0 votes';
     }
-    return `${votesSubmitted} / ${currentMatchup.totalVotes} votes`;
+
+    return getNameVoteProgressLabel(votesSubmitted, currentMatchup.voteTarget);
   }, [currentMatchup, votesSubmitted]);
 
-  const advanceToNextMatchup = async () => {
-    if (!currentRound || !currentMatchup) {
-      return;
-    }
-
-    setTransitionMessage(`Matchup ${matchupIndex + 1} closed. Tallying votes...`);
-    await wait(1000);
-
-    const isLastMatchupInRound = matchupIndex >= currentRound.matchups.length - 1;
-
-    if (!isLastMatchupInRound) {
-      setMatchupIndex((value) => value + 1);
-      setVotesSubmitted(0);
-      setTransitionMessage(null);
-      return;
-    }
-
-    const hasMoreRounds = roundIndex < rounds.length - 1;
-    if (!hasMoreRounds) {
-      setTransitionMessage('Voting complete. Final name selected!');
-      return;
-    }
-
-    setTransitionMessage(`Round ${roundIndex + 1} complete. Advancing to round ${roundIndex + 2}...`);
-    await wait(1100);
-    setRoundIndex((value) => value + 1);
-    setMatchupIndex(0);
-    setVotesSubmitted(0);
-    setTransitionMessage(null);
-  };
-
-  const submitVote = async (_candidateName: string) => {
+  const submitVote = async (candidateName: string) => {
     if (!currentMatchup || votingLocked) {
       return;
     }
 
     setIsVoting(true);
+
     try {
-      await wait(550);
+      await wait(450);
       const nextVotes = votesSubmitted + 1;
       setVotesSubmitted(nextVotes);
 
-      if (nextVotes >= currentMatchup.totalVotes) {
-        await advanceToNextMatchup();
+      if (nextVotes >= currentMatchup.voteTarget) {
+        setTransitionMessage(`${candidateName} takes the matchup. Waiting for next round...`);
       }
     } finally {
       setIsVoting(false);
@@ -154,7 +116,7 @@ export default function NameVotePage() {
     );
   }
 
-  if (!currentRound || !currentMatchup) {
+  if (!currentMatchup) {
     return (
       <main>
         <div className="container">
@@ -172,12 +134,12 @@ export default function NameVotePage() {
         <section className="name-vote-card" aria-live="polite">
           <h2 className="leaderboard-title">Name Vote</h2>
           <p className="leaderboard-sub">
-            Round <strong>{roundIndex + 1}</strong> • Matchup <strong>{matchupIndex + 1}</strong>
+            Round <strong>{currentRound}</strong> • Matchup <strong>{currentMatchup.id}</strong>
           </p>
 
           <div className="name-vote-candidates">
-            <article className="name-vote-candidate">{currentMatchup.candidates[0]}</article>
-            <article className="name-vote-candidate">{currentMatchup.candidates[1]}</article>
+            <article className="name-vote-candidate">{currentMatchup.leftName}</article>
+            <article className="name-vote-candidate">{currentMatchup.rightName}</article>
           </div>
 
           <div className="name-vote-actions">
@@ -185,17 +147,17 @@ export default function NameVotePage() {
               className="form-button-full-width"
               type="button"
               disabled={votingLocked}
-              onClick={() => void submitVote(currentMatchup.candidates[0])}
+              onClick={() => void submitVote(currentMatchup.leftName)}
             >
-              {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.candidates[0]}`}
+              {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.leftName}`}
             </button>
             <button
               className="form-button-full-width"
               type="button"
               disabled={votingLocked}
-              onClick={() => void submitVote(currentMatchup.candidates[1])}
+              onClick={() => void submitVote(currentMatchup.rightName)}
             >
-              {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.candidates[1]}`}
+              {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.rightName}`}
             </button>
           </div>
 
