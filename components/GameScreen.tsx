@@ -897,6 +897,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         id: player.id,
         displayName: player.displayName,
         roundScore: game.roundScores?.[player.id] ?? 0,
+        totalScore: player.totalScore ?? 0,
+        isReady: player.isReady,
       }))
       .sort((a, b) => a.roundScore - b.roundScore);
   }, [game?.roundScores, game?.status, orderedPlayers]);
@@ -2186,25 +2188,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       {game?.status === "round-complete" ? (
         <section className="game-results">
           <h2 className="sage-eyebrow-text">Round totals</h2>
-          <ol>
+          <ol className="round-score-list">
             {sortedScores.map((player) => (
               <li key={player.id} className="round-score-item">
-                {player.displayName}: {player.roundScore}
+                <span className="round-score-item__name">
+                  {player.displayName}
+                  {player.isReady ? <span aria-label="Ready"> ✓</span> : null}
+                </span>
+                <span className="round-score-item__score">
+                  {player.roundScore} ({player.totalScore})
+                </span>
               </li>
             ))}
           </ol>
           <div className="game-results__actions">
-            <div className="game-results__ready">
-              <h3 className="charcoal-eyebrow-text">Ready status</h3>
-              <ol className="player-list">
-                {orderedPlayers.map((player) => (
-                  <li key={player.id} className="player-list-item">
-                    {player.displayName}
-                    {player.isReady ? " ✓" : ""}
-                  </li>
-                ))}
-              </ol>
-            </div>
             {isLocalPlayerReady ? (
               <p className="notice">You are ready for the next round.</p>
             ) : (

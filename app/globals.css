@@ -1964,10 +1964,35 @@ small {
 }
 
 
-.round-score-item, .player-list-item {
+.player-list-item {
   font-family: "Merriweather", serif;
   font-weight: 700;
   letter-spacing: 1.2px;
+}
+
+.round-score-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.round-score-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.round-score-item__score {
+  white-space: nowrap;
 }
 
 .game-complete-list {
