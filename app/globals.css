@@ -1973,7 +1973,7 @@ small {
 .round-score-list {
   list-style: none;
   padding: 0;
-  margin: 14px 0 0;
+  margin: 14px 0;
   display: grid;
   gap: 8px;
 }
