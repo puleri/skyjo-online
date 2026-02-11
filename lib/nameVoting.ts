@@ -34,6 +34,10 @@ export type NameVotingSession = {
   status: NameVotingSessionStatus;
   currentRound: number;
   seedNames: string[];
+  finalWinnerName?: string | null;
+  metadata?: {
+    byePolicy?: 'auto-advance';
+  };
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 };
@@ -71,6 +75,10 @@ export async function ensureNameVotingSession(sessionId: string) {
     status: 'active',
     currentRound: 1,
     seedNames: canonicalSeedNames,
+    finalWinnerName: null,
+    metadata: {
+      byePolicy: 'auto-advance',
+    },
     createdAt: now,
     updatedAt: now,
   } satisfies Omit<NameVotingSession, 'createdAt' | 'updatedAt'> & {
