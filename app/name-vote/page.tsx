@@ -224,7 +224,10 @@ export default function NameVotePage() {
       setSessionStatus(payload.session.status);
       setFinalWinnerName(payload.session.finalWinnerName ?? null);
 
-      if (!nextMatchup) {
+      if (nextMatchup) {
+        setTransitionMessage(null);
+        setHasVotedCurrentMatchup(false);
+      } else {
         setTransitionMessage('You have voted on every open matchup this round. Waiting for other votes...');
       }
     } catch (error) {
