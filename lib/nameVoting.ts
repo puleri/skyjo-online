@@ -48,6 +48,8 @@ const RAW_SEED_NAMES = [
   'A Card Game',
   'Cardgame',
   'Carol',
+  'Pulermo',
+  'Weeping Willows'
 ];
 
 export const canonicalSeedNames = RAW_SEED_NAMES.map((name) =>
