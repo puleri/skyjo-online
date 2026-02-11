@@ -299,9 +299,16 @@ export default function NameVotePage() {
 
           {currentMatchup ? (
             <>
-              <div className="name-vote-candidates">
-                <article className="name-vote-candidate">{currentMatchup.leftName}</article>
-                <article className="name-vote-candidate">{currentMatchup.rightName}</article>
+              <div className="name-vote-candidates" role="group" aria-label="Current matchup">
+                <article className="name-vote-candidate">
+                  <span className="name-vote-candidate-name">{currentMatchup.leftName}</span>
+                  <span className="name-vote-score-chip">{currentMatchup.leftVotes}</span>
+                </article>
+                <span className="name-vote-versus" aria-hidden="true">VS</span>
+                <article className="name-vote-candidate">
+                  <span className="name-vote-candidate-name">{currentMatchup.rightName}</span>
+                  <span className="name-vote-score-chip">{currentMatchup.rightVotes}</span>
+                </article>
               </div>
 
               <div className="name-vote-actions">
