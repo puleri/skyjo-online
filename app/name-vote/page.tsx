@@ -141,6 +141,20 @@ export default function NameVotePage() {
     return getNameVoteProgressLabel(currentMatchup.totalVotes, currentMatchup.voteTarget);
   }, [currentMatchup]);
 
+  const matchupSummary = useMemo(() => {
+    const totalMatchups = roundMatchups.length;
+    const closedMatchups = roundMatchups.filter((matchup) => matchup.status === 'closed').length;
+    const openMatchups = totalMatchups - closedMatchups;
+    const completionPercent = totalMatchups > 0 ? Math.round((closedMatchups / totalMatchups) * 100) : 0;
+
+    return {
+      totalMatchups,
+      closedMatchups,
+      openMatchups,
+      completionPercent,
+    };
+  }, [roundMatchups]);
+
   const submitVote = async (voteSide: NameVoteSide) => {
     if (!currentMatchup || votingLocked) {
       return;
@@ -316,6 +330,26 @@ export default function NameVotePage() {
           {!currentMatchup ? (
             <div className="name-vote-overview" role="status" aria-live="polite">
               <h3 className="leaderboard-title">Round {currentRound} Bracket Overview</h3>
+              <section className="name-vote-overview-summary" aria-label="Round progress">
+                <div className="name-vote-overview-summary-row">
+                  <p className="name-vote-overview-summary-progress">
+                    {matchupSummary.closedMatchups} of {matchupSummary.totalMatchups} matchups closed
+                  </p>
+                  <p className="name-vote-overview-summary-percent">
+                    {matchupSummary.completionPercent}% complete
+                  </p>
+                </div>
+                <div className="name-vote-overview-progress-track" aria-hidden="true">
+                  <div
+                    className="name-vote-overview-progress-fill"
+                    style={{ width: `${matchupSummary.completionPercent}%` }}
+                  />
+                </div>
+                <p className="name-vote-overview-summary-meta">
+                  {matchupSummary.openMatchups} open matchup
+                  {matchupSummary.openMatchups === 1 ? '' : 's'} remaining
+                </p>
+              </section>
               <ul className="name-vote-overview-list">
                 {roundMatchups.map((matchup) => (
                   <li
