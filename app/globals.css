@@ -1207,16 +1207,32 @@ button.card.card--discard-top:hover {
   overflow: hidden;
 }
 
-.card--discard-top {
-  /* Keep transforms/tilt effects scoped to the interactive discard stack card only. */
-  transform: rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
+.discard-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.discard-stack .card {
+  position: absolute;
+  inset: 0;
+}
+
+.card--discard-pile-stack {
+  transform: translate(var(--discard-stack-offset-x, 0px), var(--discard-stack-offset-y, 0px))
+    rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
     translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
   transform-origin: center;
 }
 
+.card--discard-under {
+  pointer-events: none;
+}
+
 button.card.card--discard-top:hover:not(:disabled),
 button.card.card--discard-top:active:not(:disabled) {
-  transform: rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
+  transform: translate(var(--discard-stack-offset-x, 0px), var(--discard-stack-offset-y, 0px))
+    rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
     translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
 }
 
