@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
 import SnowfallLayer from "./SnowfallLayer";
@@ -911,11 +911,46 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       })),
     [orderedPlayers]
   );
+  const gameIdHash = useMemo(
+    () =>
+      Array.from(gameId).reduce((hash, char, index) => {
+        return hash + char.charCodeAt(0) * (index + 1);
+      }, 0),
+    [gameId]
+  );
+  const getDiscardTransformStyle = (discardCount: number, seed: number): CSSProperties => {
+    if (discardCount <= 0) {
+      return {};
+    }
+    const index = discardCount - 1;
+    const fract = (value: number) => value - Math.floor(value);
+    const lerp = (min: number, max: number, t: number) => min + (max - min) * t;
+    const u = fract(Math.sin(index * 12.9898 + seed) * 43758.5453);
+    const rotateDeg = lerp(-6, 6, u);
+    const skewDeg = lerp(-2, 2, fract(u * 97.13));
+    const offsetX = lerp(-1.5, 1.5, fract(u * 53.7));
+    const offsetY = lerp(-1, 1, fract(u * 29.41));
+
+    return {
+      "--discard-rotate": `${rotateDeg.toFixed(3)}deg`,
+      "--discard-skew": `${skewDeg.toFixed(3)}deg`,
+      "--discard-offset-x": `${offsetX.toFixed(3)}px`,
+      "--discard-offset-y": `${offsetY.toFixed(3)}px`,
+    } as CSSProperties;
+  };
   const topDiscard =
     game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
   const hasCardValue = (value: Card | null | undefined): value is Card =>
     value !== null && value !== undefined;
   const hasDiscard = hasCardValue(topDiscard);
+  const discardTransformSeed = useMemo(
+    () => gameIdHash * 0.013 + (game?.roundNumber ?? 0) * 0.73,
+    [game?.roundNumber, gameIdHash]
+  );
+  const discardTopStyle = useMemo(
+    () => getDiscardTransformStyle(game?.discard.length ?? 0, discardTransformSeed),
+    [discardTransformSeed, game?.discard.length]
+  );
   const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
   const isSprinting = Boolean(
     isCurrentTurn && (currentPlayer?.sprintTurnsRemaining ?? 0) > 0
@@ -2259,6 +2294,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
+                style={discardTopStyle}
               >
                 {isItemCard(topDiscard) ? (
                   renderItemContent(topDiscard.code)
@@ -2326,6 +2362,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
+                style={discardTopStyle}
               >
                 {isItemCard(topDiscard) ? (
                   renderItemContent(topDiscard.code)
