@@ -7,6 +7,7 @@ import {
   getNameVoteProgressLabel,
   getRoundNameVotingMatchups,
   ensureNameVotingSession,
+  NAME_VOTING_VOTE_TARGET,
   type NameVotingMatchupWithId,
 } from '../../lib/nameVoting';
 import { hasUserVotedForMatchup, submitNameVote, type NameVoteSide } from '../../lib/nameVoteActions';
@@ -32,6 +33,7 @@ export default function NameVotePage() {
   const [finalWinnerName, setFinalWinnerName] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [voteFeedback, setVoteFeedback] = useState<VoteFeedbackState | null>(null);
+  const [animatedVoteFillPercent, setAnimatedVoteFillPercent] = useState(0);
   const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
   const [hasVotedCurrentMatchup, setHasVotedCurrentMatchup] = useState(false);
 
@@ -139,6 +141,22 @@ export default function NameVotePage() {
     };
   }, [currentMatchup, uid]);
 
+  useEffect(() => {
+    if (!voteFeedback) {
+      setAnimatedVoteFillPercent(0);
+      return;
+    }
+
+    setAnimatedVoteFillPercent(0);
+    const frameId = window.requestAnimationFrame(() => {
+      setAnimatedVoteFillPercent(voteFeedback.percent);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [voteFeedback]);
+
   const votingLocked = isVoting || Boolean(transitionMessage) || hasVotedCurrentMatchup || !uid;
 
   const progressLabel = useMemo(() => {
@@ -177,9 +195,8 @@ export default function NameVotePage() {
     setLoadError(null);
 
     const nextTotalVotes = currentMatchup.totalVotes + 1;
-    const nextSideVotes =
-      voteSide === 'left' ? currentMatchup.leftVotes + 1 : currentMatchup.rightVotes + 1;
-    const projectedPercent = Math.max(0, Math.min(100, Math.round((nextSideVotes / nextTotalVotes) * 100)));
+    const voteTarget = currentMatchup.voteTarget || NAME_VOTING_VOTE_TARGET;
+    const projectedPercent = Math.max(0, Math.min(100, Math.round((nextTotalVotes / voteTarget) * 100)));
     const selectedCandidateName = voteSide === 'left' ? currentMatchup.leftName : currentMatchup.rightName;
 
     setVoteFeedback({
@@ -473,7 +490,7 @@ export default function NameVotePage() {
             <p className="name-vote-feedback-title">Vote cast for {voteFeedback.candidateName}</p>
             <div
               className="name-vote-feedback-water-circle"
-              style={{ '--vote-fill-level': `${voteFeedback.percent}%` } as CSSProperties}
+              style={{ '--vote-fill-level': `${animatedVoteFillPercent}%` } as CSSProperties}
               aria-hidden="true"
             >
               <div className="name-vote-feedback-water-layer" />
@@ -481,7 +498,7 @@ export default function NameVotePage() {
               <div className="name-vote-feedback-water-wave name-vote-feedback-water-wave--alt" />
               <span className="name-vote-feedback-percent">{voteFeedback.percent}%</span>
             </div>
-            <p className="name-vote-feedback-caption">Share of votes in this matchup</p>
+            <p className="name-vote-feedback-caption">Votes cast toward matchup target</p>
           </div>
         </div>
       ) : null}
