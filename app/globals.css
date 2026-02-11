@@ -2776,6 +2776,14 @@ border: 1px solid #ffedef;
   background: var(--color-surface-alt);
 }
 
+.name-vote-overview-item--open {
+  border-color: color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+}
+
+.name-vote-overview-item--closed {
+  border-color: color-mix(in srgb, var(--color-sage-600) 38%, var(--color-border));
+}
+
 .name-vote-overview-item-header {
   display: flex;
   align-items: center;
@@ -2801,6 +2809,13 @@ border: 1px solid #ffedef;
   gap: 4px;
 }
 
+.name-vote-overview-candidate--winner {
+  background: color-mix(in srgb, var(--color-accent-soft) 58%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent-strong) 34%, transparent);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
 .name-vote-overview-candidate-name {
   font-size: 1.03rem;
   font-weight: 700;
@@ -2822,15 +2837,39 @@ border: 1px solid #ffedef;
   border-top: 1px solid color-mix(in srgb, var(--color-text-muted) 22%, transparent);
 }
 
-.name-vote-overview-status {
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+.name-vote-overview-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.name-vote-overview-winner {
+.name-vote-overview-status-badge--open {
+  color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
+  background: color-mix(in srgb, var(--color-accent-soft) 65%, var(--color-surface-bright));
+  border-color: color-mix(in srgb, var(--color-accent-strong) 42%, transparent);
+}
+
+.name-vote-overview-status-badge--closed {
+  color: color-mix(in srgb, var(--color-sage-700) 78%, var(--color-text));
+  background: color-mix(in srgb, var(--color-sage-300) 56%, var(--color-surface-bright));
+  border-color: color-mix(in srgb, var(--color-sage-600) 52%, transparent);
+}
+
+.name-vote-overview-winner-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-secondary-strong) 46%, transparent);
+  background: color-mix(in srgb, var(--color-accent-secondary) 30%, var(--color-surface-bright));
+  color: color-mix(in srgb, var(--color-accent-secondary-strong) 68%, var(--color-text));
   font-size: 0.9rem;
-  color: var(--color-text);
+  font-weight: 700;
 }
 
 @media (max-width: 640px) {
