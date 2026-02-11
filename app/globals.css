@@ -1093,7 +1093,7 @@ button.card:hover:not(:disabled) {
 button.card:disabled {
   cursor: not-allowed;
 }
-button.card.card--discard-pile:hover {
+button.card.card--discard-top:hover {
   box-shadow: none;
   background-color: inherit;
 }
@@ -1205,6 +1205,10 @@ button.card.card--discard-pile:hover {
 .card--discard-pile {
   position: relative;
   overflow: hidden;
+}
+
+.card--discard-top {
+  /* Keep transforms/tilt effects scoped to the interactive discard stack card only. */
 }
 
 .card--discard-pile::after {
@@ -2563,6 +2567,10 @@ border: 1px solid #ffedef;
   }
 
   .card--discard-pile {
+    border-radius: 14px;
+  }
+
+  .card--discard-top {
     border-radius: 14px;
   }
 
