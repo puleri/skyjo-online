@@ -2255,7 +2255,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {hasDiscard ? (
               <button
                 type="button"
-                className={`card card--discard-pile${getCardStyleClass(topDiscard)}`}
+                className={`card card--discard-pile card--discard-top${getCardStyleClass(topDiscard)}`}
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
@@ -2322,7 +2322,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {hasDiscard ? (
               <button
                 type="button"
-                className={`card card--discard-pile${getCardStyleClass(topDiscard)}`}
+                className={`card card--discard-pile card--discard-top${getCardStyleClass(topDiscard)}`}
                 aria-label="Discard pile"
                 onClick={handleSelectDiscard}
                 disabled={!canSelectDiscardTarget}
