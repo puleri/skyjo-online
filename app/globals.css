@@ -3218,7 +3218,7 @@ border: 1px solid #ffedef;
 .name-vote-winner-name {
   position: relative;
   z-index: 1;
-  margin: 8px 0 0;
+  margin: 8px 0 0 10px;
   font-size: clamp(1.8rem, 6vw, 2.5rem);
   line-height: 1.1;
   font-weight: 900;
