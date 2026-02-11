@@ -2826,6 +2826,18 @@ border: 1px solid #ffedef;
   gap: 12px;
 }
 
+@keyframes name-vote-overview-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .name-vote-overview-item {
   display: grid;
   gap: 12px;
@@ -2833,6 +2845,40 @@ border: 1px solid #ffedef;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--color-text-muted) 28%, transparent);
   background: var(--color-surface-alt);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  animation: name-vote-overview-item-enter 300ms ease both;
+}
+
+.name-vote-overview-item:hover,
+.name-vote-overview-item:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+}
+
+.name-vote-overview-item:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--color-accent-strong) 80%, white 20%);
+  outline-offset: 2px;
+}
+
+.name-vote-overview-item:nth-child(1) {
+  animation-delay: 40ms;
+}
+
+.name-vote-overview-item:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.name-vote-overview-item:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.name-vote-overview-item:nth-child(4) {
+  animation-delay: 190ms;
+}
+
+.name-vote-overview-item:nth-child(n + 5) {
+  animation-delay: 230ms;
 }
 
 .name-vote-overview-item--open {
@@ -2905,6 +2951,7 @@ border: 1px solid #ffedef;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
 }
 
 .name-vote-overview-status-badge--open {
@@ -2929,6 +2976,23 @@ border: 1px solid #ffedef;
   color: color-mix(in srgb, var(--color-accent-secondary-strong) 68%, var(--color-text));
   font-size: 0.9rem;
   font-weight: 700;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name-vote-overview-item,
+  .name-vote-overview-status-badge,
+  .name-vote-overview-winner-chip,
+  .name-vote-overview-progress-fill {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .name-vote-overview-item:hover,
+  .name-vote-overview-item:focus-within {
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
 }
 
 @media (max-width: 640px) {
