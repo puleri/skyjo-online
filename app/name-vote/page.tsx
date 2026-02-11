@@ -318,28 +318,55 @@ export default function NameVotePage() {
               <h3 className="leaderboard-title">Round {currentRound} Bracket Overview</h3>
               <ul className="name-vote-overview-list">
                 {roundMatchups.map((matchup) => (
-                  <li key={matchup.id} className="name-vote-overview-item">
+                  <li
+                    key={matchup.id}
+                    className={`name-vote-overview-item ${
+                      matchup.status === 'closed'
+                        ? 'name-vote-overview-item--closed'
+                        : 'name-vote-overview-item--open'
+                    }`}
+                  >
                     <header className="name-vote-overview-item-header">
                       <span className="name-vote-overview-item-label">Matchup {matchup.id}</span>
                     </header>
 
                     <div className="name-vote-overview-item-body">
-                      <article className="name-vote-overview-candidate">
+                      <article
+                        className={`name-vote-overview-candidate ${
+                          matchup.status === 'closed' && matchup.winnerName === matchup.leftName
+                            ? 'name-vote-overview-candidate--winner'
+                            : ''
+                        }`}
+                      >
                         <span className="name-vote-overview-candidate-name">{matchup.leftName}</span>
                         <span className="name-vote-overview-candidate-votes">{matchup.leftVotes} votes</span>
                       </article>
-                      <article className="name-vote-overview-candidate">
+                      <article
+                        className={`name-vote-overview-candidate ${
+                          matchup.status === 'closed' && matchup.winnerName === matchup.rightName
+                            ? 'name-vote-overview-candidate--winner'
+                            : ''
+                        }`}
+                      >
                         <span className="name-vote-overview-candidate-name">{matchup.rightName}</span>
                         <span className="name-vote-overview-candidate-votes">{matchup.rightVotes} votes</span>
                       </article>
                     </div>
 
                     <footer className="name-vote-overview-item-footer">
-                      <span className="name-vote-overview-status">
+                      <span
+                        className={`name-vote-overview-status-badge ${
+                          matchup.status === 'closed'
+                            ? 'name-vote-overview-status-badge--closed'
+                            : 'name-vote-overview-status-badge--open'
+                        }`}
+                      >
                         {matchup.status === 'closed' ? 'Closed' : 'Open'}
                       </span>
                       {matchup.status === 'closed' && matchup.winnerName ? (
-                        <strong className="name-vote-overview-winner">Winner: {matchup.winnerName}</strong>
+                        <strong className="name-vote-overview-winner-chip">
+                          Winner: {matchup.winnerName}
+                        </strong>
                       ) : null}
                     </footer>
                   </li>
