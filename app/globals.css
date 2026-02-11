@@ -2718,18 +2718,57 @@ border: 1px solid #ffedef;
 
 .name-vote-candidates {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: 12px;
   margin: 18px 0;
 }
 
 .name-vote-candidate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   border-radius: 12px;
   padding: 14px;
   background: var(--color-surface-alt);
   color: var(--color-text);
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.name-vote-candidate-name {
+  line-height: 1.2;
+}
+
+.name-vote-versus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-strong) 44%, transparent);
+  background: color-mix(in srgb, var(--color-accent-soft) 72%, var(--color-surface-bright));
+  color: color-mix(in srgb, var(--color-accent-strong) 58%, var(--color-text));
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.name-vote-score-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-text-muted) 32%, transparent);
+  background: color-mix(in srgb, var(--color-surface-bright) 88%, white);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .name-vote-actions {
@@ -2996,7 +3035,19 @@ border: 1px solid #ffedef;
 }
 
 @media (max-width: 640px) {
-  .name-vote-candidates,
+  .name-vote-candidates {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .name-vote-candidate {
+    justify-content: space-between;
+  }
+
+  .name-vote-versus {
+    justify-self: center;
+  }
+
   .name-vote-actions {
     grid-template-columns: 1fr;
   }
