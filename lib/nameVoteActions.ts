@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -179,10 +180,12 @@ async function advanceNameVotingSessionIfRoundClosed(
 export async function submitNameVote(
   sessionId: string,
   matchupId: string,
-  voteSide: NameVoteSide
+  voteSide: NameVoteSide,
+  uid: string
 ) {
   const sessionRef = doc(db, NAME_VOTING_COLLECTION, sessionId);
   const matchupRef = doc(db, NAME_VOTING_COLLECTION, sessionId, 'matchups', matchupId);
+  const voteRef = doc(db, NAME_VOTING_COLLECTION, sessionId, 'matchups', matchupId, 'votes', uid);
 
   const result = await runTransaction(db, async (transaction) => {
     const sessionSnapshot = await transaction.get(sessionRef);
@@ -191,6 +194,9 @@ export async function submitNameVote(
 
     const matchupSnapshot = await transaction.get(matchupRef);
     assertCondition(matchupSnapshot.exists(), 'Name vote matchup not found.');
+
+    const voteSnapshot = await transaction.get(voteRef);
+    assertCondition(!voteSnapshot.exists(), 'You already voted for this matchup.');
 
     const matchup = matchupSnapshot.data() as NameVotingMatchup;
 
@@ -224,6 +230,11 @@ export async function submitNameVote(
       updates.closedAt = serverTimestamp();
     }
 
+    transaction.set(voteRef, {
+      selectedSide: voteSide,
+      createdAt: serverTimestamp(),
+    });
+
     transaction.update(matchupRef, updates);
 
     return {
@@ -244,4 +255,15 @@ export async function submitNameVote(
   }
 
   return result;
+}
+
+export async function hasUserVotedForMatchup(
+  sessionId: string,
+  matchupId: string,
+  uid: string
+) {
+  const voteRef = doc(db, NAME_VOTING_COLLECTION, sessionId, 'matchups', matchupId, 'votes', uid);
+  const voteSnapshot = await getDoc(voteRef);
+
+  return voteSnapshot.exists();
 }

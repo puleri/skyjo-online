@@ -8,21 +8,20 @@ import {
   ensureNameVotingSession,
   type NameVotingMatchup,
 } from '../../lib/nameVoting';
+import { hasUserVotedForMatchup, submitNameVote, type NameVoteSide } from '../../lib/nameVoteActions';
+import { useAnonymousAuth } from '../../lib/auth';
 
 const DEFAULT_NAME_VOTING_SESSION_ID = 'default-session';
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export default function NameVotePage() {
+  const { uid, error: authError } = useAnonymousAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [currentRound, setCurrentRound] = useState(1);
   const [currentMatchup, setCurrentMatchup] = useState<(NameVotingMatchup & { id: string }) | null>(null);
-  const [votesSubmitted, setVotesSubmitted] = useState(0);
   const [isVoting, setIsVoting] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
+  const [hasVotedCurrentMatchup, setHasVotedCurrentMatchup] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,31 +60,93 @@ export default function NameVotePage() {
     };
   }, []);
 
-  const votingLocked = isVoting || Boolean(transitionMessage);
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadVoteStatus = async () => {
+      if (!uid || !currentMatchup) {
+        if (isMounted) {
+          setHasVotedCurrentMatchup(false);
+        }
+        return;
+      }
+
+      try {
+        const hasVoted = await hasUserVotedForMatchup(
+          DEFAULT_NAME_VOTING_SESSION_ID,
+          currentMatchup.id,
+          uid
+        );
+
+        if (isMounted) {
+          setHasVotedCurrentMatchup(hasVoted);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setLoadError(error instanceof Error ? error.message : 'Failed to load vote status.');
+        }
+      }
+    };
+
+    void loadVoteStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentMatchup, uid]);
+
+  const votingLocked = isVoting || Boolean(transitionMessage) || hasVotedCurrentMatchup || !uid;
 
   const progressLabel = useMemo(() => {
     if (!currentMatchup) {
       return '0 / 0 votes';
     }
 
-    return getNameVoteProgressLabel(votesSubmitted, currentMatchup.voteTarget);
-  }, [currentMatchup, votesSubmitted]);
+    return getNameVoteProgressLabel(currentMatchup.totalVotes, currentMatchup.voteTarget);
+  }, [currentMatchup]);
 
-  const submitVote = async (candidateName: string) => {
+  const submitVote = async (voteSide: NameVoteSide) => {
     if (!currentMatchup || votingLocked) {
       return;
     }
 
+    if (!uid) {
+      setLoadError('Sign-in is still in progress. Please wait a moment and try again.');
+      return;
+    }
+
     setIsVoting(true);
+    setLoadError(null);
 
     try {
-      await wait(450);
-      const nextVotes = votesSubmitted + 1;
-      setVotesSubmitted(nextVotes);
+      const result = await submitNameVote(
+        DEFAULT_NAME_VOTING_SESSION_ID,
+        currentMatchup.id,
+        voteSide,
+        uid
+      );
 
-      if (nextVotes >= currentMatchup.voteTarget) {
-        setTransitionMessage(`${candidateName} takes the matchup. Waiting for next round...`);
+      setHasVotedCurrentMatchup(true);
+      setCurrentMatchup((previous) => {
+        if (!previous || previous.id !== result.matchupId) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          leftVotes: result.leftVotes,
+          rightVotes: result.rightVotes,
+          totalVotes: result.totalVotes,
+          status: result.status,
+          winnerName: result.winnerName,
+        };
+      });
+
+      if (result.justClosed && result.winnerName) {
+        setTransitionMessage(`${result.winnerName} takes the matchup. Waiting for next round...`);
       }
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to submit vote.');
     } finally {
       setIsVoting(false);
     }
@@ -110,6 +171,18 @@ export default function NameVotePage() {
         <div className="container">
           <section className="name-vote-card">
             <p className="notice">{loadError}</p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (authError) {
+    return (
+      <main>
+        <div className="container">
+          <section className="name-vote-card">
+            <p className="notice">{authError}</p>
           </section>
         </div>
       </main>
@@ -147,7 +220,7 @@ export default function NameVotePage() {
               className="form-button-full-width"
               type="button"
               disabled={votingLocked}
-              onClick={() => void submitVote(currentMatchup.leftName)}
+              onClick={() => void submitVote('left')}
             >
               {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.leftName}`}
             </button>
@@ -155,7 +228,7 @@ export default function NameVotePage() {
               className="form-button-full-width"
               type="button"
               disabled={votingLocked}
-              onClick={() => void submitVote(currentMatchup.rightName)}
+              onClick={() => void submitVote('right')}
             >
               {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.rightName}`}
             </button>
@@ -165,6 +238,8 @@ export default function NameVotePage() {
 
           {transitionMessage ? (
             <p className="notice name-vote-transition">{transitionMessage}</p>
+          ) : hasVotedCurrentMatchup ? (
+            <p className="name-vote-helper">You already voted for this matchup.</p>
           ) : (
             <p className="name-vote-helper">Cast your vote to move this matchup forward.</p>
           )}
