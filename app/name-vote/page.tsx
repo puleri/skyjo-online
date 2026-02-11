@@ -461,7 +461,20 @@ export default function NameVotePage() {
                 ))}
               </ul>
               {sessionStatus === 'complete' && finalWinnerName ? (
-                <p className="notice">Tournament complete. Winner: {finalWinnerName}</p>
+                <section className="name-vote-winner-celebration" aria-live="assertive" aria-atomic="true">
+                  <div className="name-vote-confetti" aria-hidden="true">
+                    {Array.from({ length: 18 }).map((_, index) => (
+                      <span
+                        key={index}
+                        className="name-vote-confetti-piece"
+                        style={{ '--confetti-index': index } as CSSProperties}
+                      />
+                    ))}
+                  </div>
+                  <p className="name-vote-winner-label">🏆 Name Vote Champion</p>
+                  <h3 className="name-vote-winner-name">{finalWinnerName}</h3>
+                  <p className="name-vote-winner-caption">Tournament complete. Thanks for voting!</p>
+                </section>
               ) : (
                 <p className="name-vote-helper">Waiting for the rest of the round votes to finish.</p>
               )}

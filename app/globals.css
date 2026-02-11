@@ -3162,6 +3162,116 @@ border: 1px solid #ffedef;
   transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
 }
 
+.name-vote-winner-celebration {
+  position: relative;
+  margin-top: 16px;
+  overflow: hidden;
+  padding: 22px 18px 20px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-secondary-strong) 36%, transparent);
+  background:
+    radial-gradient(circle at 12% 16%, color-mix(in srgb, white 65%, transparent), transparent 45%),
+    radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--color-accent-soft) 72%, transparent), transparent 52%),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--color-accent-soft) 48%, var(--color-surface-bright)),
+      color-mix(in srgb, var(--color-accent-secondary) 36%, var(--color-surface-alt))
+    );
+  box-shadow:
+    0 16px 34px color-mix(in srgb, var(--color-accent-secondary-strong) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent);
+}
+
+.name-vote-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.name-vote-confetti-piece {
+  --confetti-size: 9px;
+  --confetti-duration: calc(2.1s + (var(--confetti-index) * 0.08s));
+  position: absolute;
+  top: -18%;
+  left: calc((var(--confetti-index) * 5.6%) + 2%);
+  width: var(--confetti-size);
+  height: calc(var(--confetti-size) * 1.8);
+  border-radius: 3px;
+  opacity: 0;
+  transform: translateY(-10px) rotate(0deg);
+  background: hsl(calc(18 * var(--confetti-index)), 88%, 62%);
+  animation: name-vote-confetti-fall var(--confetti-duration) ease-in infinite;
+  animation-delay: calc(var(--confetti-index) * 0.09s);
+}
+
+.name-vote-winner-label {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-accent-secondary-strong) 76%, var(--color-text));
+}
+
+.name-vote-winner-name {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  font-size: clamp(1.8rem, 6vw, 2.5rem);
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  color: var(--color-text);
+  text-shadow:
+    0 0 0 rgba(255, 255, 255, 0.7),
+    0 8px 18px color-mix(in srgb, var(--color-accent-secondary-strong) 24%, transparent);
+  animation: name-vote-winner-pulse 1.7s ease-in-out infinite;
+}
+
+.name-vote-winner-caption {
+  position: relative;
+  z-index: 1;
+  margin: 10px 0 0;
+  font-size: 0.93rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+@keyframes name-vote-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) rotate(0deg);
+  }
+
+  12% {
+    opacity: 0.95;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(185px) rotate(420deg);
+  }
+}
+
+@keyframes name-vote-winner-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    text-shadow:
+      0 0 0 rgba(255, 255, 255, 0.7),
+      0 8px 18px color-mix(in srgb, var(--color-accent-secondary-strong) 24%, transparent);
+  }
+
+  50% {
+    transform: scale(1.03);
+    text-shadow:
+      0 0 16px color-mix(in srgb, white 64%, transparent),
+      0 12px 24px color-mix(in srgb, var(--color-accent-secondary-strong) 42%, transparent);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .name-vote-overview-item,
   .name-vote-overview-status-badge,
@@ -3169,7 +3279,9 @@ border: 1px solid #ffedef;
   .name-vote-overview-progress-fill,
   .name-vote-feedback-modal,
   .name-vote-feedback-water-wave,
-  .name-vote-feedback-water-layer {
+  .name-vote-feedback-water-layer,
+  .name-vote-winner-name,
+  .name-vote-confetti-piece {
     animation: none !important;
     transition: none !important;
   }
