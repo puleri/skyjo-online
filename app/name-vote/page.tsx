@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import {
   getCurrentNameVotingMatchup,
@@ -13,6 +13,13 @@ import { hasUserVotedForMatchup, submitNameVote, type NameVoteSide } from '../..
 import { useAnonymousAuth } from '../../lib/auth';
 
 const DEFAULT_NAME_VOTING_SESSION_ID = 'default-session';
+const VOTE_MODAL_EXIT_MS = 320;
+
+type VoteFeedbackState = {
+  candidateName: string;
+  percent: number;
+  phase: 'enter' | 'exit';
+};
 
 export default function NameVotePage() {
   const { uid, error: authError } = useAnonymousAuth();
@@ -24,6 +31,7 @@ export default function NameVotePage() {
   const [sessionStatus, setSessionStatus] = useState<'setup' | 'active' | 'complete'>('active');
   const [finalWinnerName, setFinalWinnerName] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
+  const [voteFeedback, setVoteFeedback] = useState<VoteFeedbackState | null>(null);
   const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
   const [hasVotedCurrentMatchup, setHasVotedCurrentMatchup] = useState(false);
 
@@ -168,6 +176,18 @@ export default function NameVotePage() {
     setIsVoting(true);
     setLoadError(null);
 
+    const nextTotalVotes = currentMatchup.totalVotes + 1;
+    const nextSideVotes =
+      voteSide === 'left' ? currentMatchup.leftVotes + 1 : currentMatchup.rightVotes + 1;
+    const projectedPercent = Math.max(0, Math.min(100, Math.round((nextSideVotes / nextTotalVotes) * 100)));
+    const selectedCandidateName = voteSide === 'left' ? currentMatchup.leftName : currentMatchup.rightName;
+
+    setVoteFeedback({
+      candidateName: selectedCandidateName,
+      percent: projectedPercent,
+      phase: 'enter',
+    });
+
     try {
       const result = await submitNameVote(
         DEFAULT_NAME_VOTING_SESSION_ID,
@@ -230,7 +250,14 @@ export default function NameVotePage() {
       } else {
         setTransitionMessage('You have voted on every open matchup this round. Waiting for other votes...');
       }
+
+      setVoteFeedback((previous) => (previous ? { ...previous, phase: 'exit' } : previous));
+      await new Promise((resolve) => {
+        setTimeout(resolve, VOTE_MODAL_EXIT_MS);
+      });
+      setVoteFeedback(null);
     } catch (error) {
+      setVoteFeedback(null);
       setLoadError(error instanceof Error ? error.message : 'Failed to submit vote.');
     } finally {
       setIsVoting(false);
@@ -321,7 +348,7 @@ export default function NameVotePage() {
                   disabled={votingLocked}
                   onClick={() => void submitVote('left')}
                 >
-                  {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.leftName}`}
+                  {`Vote ${currentMatchup.leftName}`}
                 </button>
                 <button
                   className="form-button-full-width"
@@ -329,7 +356,7 @@ export default function NameVotePage() {
                   disabled={votingLocked}
                   onClick={() => void submitVote('right')}
                 >
-                  {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.rightName}`}
+                  {`Vote ${currentMatchup.rightName}`}
                 </button>
               </div>
 
@@ -435,6 +462,29 @@ export default function NameVotePage() {
           )}
         </section>
       </div>
+      {voteFeedback ? (
+        <div
+          className={`name-vote-feedback-modal name-vote-feedback-modal--${voteFeedback.phase}`}
+          role="status"
+          aria-live="assertive"
+          aria-atomic="true"
+        >
+          <div className="name-vote-feedback-panel">
+            <p className="name-vote-feedback-title">Vote cast for {voteFeedback.candidateName}</p>
+            <div
+              className="name-vote-feedback-water-circle"
+              style={{ '--vote-fill-level': `${voteFeedback.percent}%` } as CSSProperties}
+              aria-hidden="true"
+            >
+              <div className="name-vote-feedback-water-layer" />
+              <div className="name-vote-feedback-water-wave" />
+              <div className="name-vote-feedback-water-wave name-vote-feedback-water-wave--alt" />
+              <span className="name-vote-feedback-percent">{voteFeedback.percent}%</span>
+            </div>
+            <p className="name-vote-feedback-caption">Share of votes in this matchup</p>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
