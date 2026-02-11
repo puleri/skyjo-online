@@ -319,10 +319,29 @@ export default function NameVotePage() {
               <ul className="name-vote-overview-list">
                 {roundMatchups.map((matchup) => (
                   <li key={matchup.id} className="name-vote-overview-item">
-                    <span>
-                      {matchup.leftName} ({matchup.leftVotes}) vs {matchup.rightName} ({matchup.rightVotes})
-                    </span>
-                    <strong>{matchup.status === 'closed' ? matchup.winnerName : 'Open'}</strong>
+                    <header className="name-vote-overview-item-header">
+                      <span className="name-vote-overview-item-label">Matchup {matchup.id}</span>
+                    </header>
+
+                    <div className="name-vote-overview-item-body">
+                      <article className="name-vote-overview-candidate">
+                        <span className="name-vote-overview-candidate-name">{matchup.leftName}</span>
+                        <span className="name-vote-overview-candidate-votes">{matchup.leftVotes} votes</span>
+                      </article>
+                      <article className="name-vote-overview-candidate">
+                        <span className="name-vote-overview-candidate-name">{matchup.rightName}</span>
+                        <span className="name-vote-overview-candidate-votes">{matchup.rightVotes} votes</span>
+                      </article>
+                    </div>
+
+                    <footer className="name-vote-overview-item-footer">
+                      <span className="name-vote-overview-status">
+                        {matchup.status === 'closed' ? 'Closed' : 'Open'}
+                      </span>
+                      {matchup.status === 'closed' && matchup.winnerName ? (
+                        <strong className="name-vote-overview-winner">Winner: {matchup.winnerName}</strong>
+                      ) : null}
+                    </footer>
                   </li>
                 ))}
               </ul>
