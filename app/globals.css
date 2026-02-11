@@ -2810,7 +2810,7 @@ border: 1px solid #ffedef;
 }
 
 .name-vote-feedback-modal--exit {
-  animation: name-vote-feedback-slide-out 320ms ease-in both;
+  animation: name-vote-feedback-slide-out 1220ms ease-in both;
 }
 
 .name-vote-feedback-panel {
