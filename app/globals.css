@@ -2003,6 +2003,33 @@ small {
   gap: 12px;
 }
 
+.game-complete-hero {
+  margin: 8px 0 0;
+  padding: 20px 18px 18px;
+  border-radius: 16px;
+  text-align: center;
+  background: radial-gradient(circle at top, rgba(141, 159, 143, 0.45), rgba(141, 159, 143, 0.1));
+  border: 1px solid rgba(69, 69, 69, 0.3);
+}
+
+.game-complete-hero__eyebrow {
+  margin: 0;
+  font-family: "Merriweather", serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.game-complete-hero__title {
+  margin: 6px 0 0;
+  font-family: "Merriweather", serif;
+  font-size: clamp(1.8rem, 6vw, 3.3rem);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+
 .game-complete-actions {
   display: flex ;
   justify-content: center;

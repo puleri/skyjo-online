@@ -1351,6 +1351,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         return a.displayName.localeCompare(b.displayName);
       });
   }, [isGameComplete, orderedPlayers]);
+  const winningPlayer = finalScores[0] ?? null;
 
   useEffect(() => {
     if (!firebaseReady || !gameId || !isGameComplete || !finalScores.length) {
@@ -2152,6 +2153,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       {isGameComplete && isFinalScoresOpen ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal" onClick={(event) => event.stopPropagation()}>
+            {winningPlayer ? (
+              <header className="game-complete-hero" aria-live="polite">
+                <p className="game-complete-hero__eyebrow">Winner decided</p>
+                <h1 className="game-complete-hero__title">Welcome to {winningPlayer.displayName}</h1>
+              </header>
+            ) : null}
             <h2 className="sage-eyebrow-text">Game over</h2>
             <ol className="game-complete-list">
               {finalScores.map((player, index) => {
