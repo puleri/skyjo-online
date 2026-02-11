@@ -17,7 +17,38 @@ import { db } from './firebase';
 export const NAME_VOTING_COLLECTION = 'nameVotingSessions';
 export const NAME_VOTING_VOTE_TARGET = 7;
 
-const RAW_SEED_NAMES = ['Unki\n', 'Yuki\r\n', 'Kuru\n', 'Suko'];
+const RAW_SEED_NAMES = [
+  'Canopy',
+  'Stillwild',
+  'Clearing',
+  'Ground Tom',
+  'Earth Sue',
+  'Water Em',
+  'Fire Mae',
+  'Space Matt',
+  'Sky Nate',
+  'stay low',
+  'oopsie',
+  'Grassfed',
+  'Meku',
+  'Opto',
+  'Popjo',
+  'Tacta',
+  'Kairo',
+  'Spike City',
+  'Unki',
+  'Yuki',
+  'Kuru',
+  'Suko',
+  'This or That',
+  'Moonbeam',
+  'Starry Starry Night',
+  'Trade or Reveal?',
+  'StarNite',
+  'A Card Game',
+  'Cardgame',
+  'Carol',
+];
 
 export const canonicalSeedNames = RAW_SEED_NAMES.map((name) =>
   name
@@ -59,6 +90,8 @@ export type NameVotingMatchup = {
   winnerName: string | null;
   closedAt: Timestamp | null;
 };
+
+export type NameVotingMatchupWithId = NameVotingMatchup & { id: string };
 
 export async function ensureNameVotingSession(sessionId: string) {
   const sessionRef = doc(db, NAME_VOTING_COLLECTION, sessionId);
@@ -152,6 +185,22 @@ export async function getCurrentNameVotingMatchup(sessionId: string) {
       ...(matchup.data() as NameVotingMatchup),
     },
   };
+}
+
+export async function getRoundNameVotingMatchups(sessionId: string, roundNumber: number) {
+  const sessionRef = doc(db, NAME_VOTING_COLLECTION, sessionId);
+  const matchupsRef = collection(sessionRef, 'matchups');
+  const matchupsQuery = query(
+    matchupsRef,
+    where('roundNumber', '==', roundNumber),
+    orderBy('leftName', 'asc')
+  );
+  const snapshots = await getDocs(matchupsQuery);
+
+  return snapshots.docs.map((matchup) => ({
+    id: matchup.id,
+    ...(matchup.data() as NameVotingMatchup),
+  }));
 }
 
 export function getNameVoteProgressLabel(totalVotes: number, voteTarget: number) {

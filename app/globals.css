@@ -2753,6 +2753,31 @@ border: 1px solid #ffedef;
   margin-top: 0;
 }
 
+
+.name-vote-overview {
+  margin-top: 16px;
+  text-align: left;
+}
+
+.name-vote-overview-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+  display: grid;
+  gap: 8px;
+}
+
+.name-vote-overview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  font-size: 0.95rem;
+}
+
 @media (max-width: 640px) {
   .name-vote-candidates,
   .name-vote-actions {

@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   getCurrentNameVotingMatchup,
   getNameVoteProgressLabel,
+  getRoundNameVotingMatchups,
   ensureNameVotingSession,
-  type NameVotingMatchup,
+  type NameVotingMatchupWithId,
 } from '../../lib/nameVoting';
 import { hasUserVotedForMatchup, submitNameVote, type NameVoteSide } from '../../lib/nameVoteActions';
 import { useAnonymousAuth } from '../../lib/auth';
@@ -18,7 +19,10 @@ export default function NameVotePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [currentRound, setCurrentRound] = useState(1);
-  const [currentMatchup, setCurrentMatchup] = useState<(NameVotingMatchup & { id: string }) | null>(null);
+  const [currentMatchup, setCurrentMatchup] = useState<NameVotingMatchupWithId | null>(null);
+  const [roundMatchups, setRoundMatchups] = useState<NameVotingMatchupWithId[]>([]);
+  const [sessionStatus, setSessionStatus] = useState<'setup' | 'active' | 'complete'>('active');
+  const [finalWinnerName, setFinalWinnerName] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
   const [hasVotedCurrentMatchup, setHasVotedCurrentMatchup] = useState(false);
@@ -26,22 +30,54 @@ export default function NameVotePage() {
   useEffect(() => {
     let isMounted = true;
 
+    const loadSessionState = async (userId: string | null) => {
+      await ensureNameVotingSession(DEFAULT_NAME_VOTING_SESSION_ID);
+      const payload = await getCurrentNameVotingMatchup(DEFAULT_NAME_VOTING_SESSION_ID);
+
+      if (!payload) {
+        throw new Error('No name voting session found.');
+      }
+
+      const roundNumber = payload.session.currentRound;
+      const matchups = await getRoundNameVotingMatchups(DEFAULT_NAME_VOTING_SESSION_ID, roundNumber);
+
+      const openMatchups = matchups.filter((matchup) => matchup.status === 'open');
+      let nextMatchup: NameVotingMatchupWithId | null = openMatchups[0] ?? null;
+
+      if (userId) {
+        for (const openMatchup of openMatchups) {
+          const hasVoted = await hasUserVotedForMatchup(
+            DEFAULT_NAME_VOTING_SESSION_ID,
+            openMatchup.id,
+            userId
+          );
+
+          if (!hasVoted) {
+            nextMatchup = openMatchup;
+            break;
+          }
+
+          nextMatchup = null;
+        }
+      }
+
+      if (!isMounted) {
+        return;
+      }
+
+      setCurrentRound(roundNumber);
+      setRoundMatchups(matchups);
+      setCurrentMatchup(nextMatchup);
+      setSessionStatus(payload.session.status);
+      setFinalWinnerName(payload.session.finalWinnerName ?? null);
+      setHasVotedCurrentMatchup(false);
+      setLoadError(null);
+      setTransitionMessage(null);
+    };
+
     const bootstrap = async () => {
       try {
-        await ensureNameVotingSession(DEFAULT_NAME_VOTING_SESSION_ID);
-        const payload = await getCurrentNameVotingMatchup(DEFAULT_NAME_VOTING_SESSION_ID);
-
-        if (!payload) {
-          throw new Error('No name voting session found.');
-        }
-
-        if (!isMounted) {
-          return;
-        }
-
-        setCurrentRound(payload.session.currentRound);
-        setCurrentMatchup(payload.matchup);
-        setLoadError(null);
+        await loadSessionState(uid);
       } catch (error) {
         if (isMounted) {
           setLoadError(error instanceof Error ? error.message : 'Failed to load matchup.');
@@ -58,7 +94,7 @@ export default function NameVotePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [uid]);
 
   useEffect(() => {
     let isMounted = true;
@@ -143,7 +179,39 @@ export default function NameVotePage() {
       });
 
       if (result.justClosed && result.winnerName) {
-        setTransitionMessage(`${result.winnerName} takes the matchup. Waiting for next round...`);
+        setTransitionMessage(`${result.winnerName} takes the matchup. Loading the next pairing...`);
+      }
+
+      const payload = await getCurrentNameVotingMatchup(DEFAULT_NAME_VOTING_SESSION_ID);
+
+      if (!payload) {
+        throw new Error('No name voting session found.');
+      }
+
+      const latestRound = payload.session.currentRound;
+      const matchups = await getRoundNameVotingMatchups(DEFAULT_NAME_VOTING_SESSION_ID, latestRound);
+      const openMatchups = matchups.filter((matchup) => matchup.status === 'open');
+
+      let nextMatchup: NameVotingMatchupWithId | null = openMatchups[0] ?? null;
+      for (const openMatchup of openMatchups) {
+        const hasVoted = await hasUserVotedForMatchup(DEFAULT_NAME_VOTING_SESSION_ID, openMatchup.id, uid);
+
+        if (!hasVoted) {
+          nextMatchup = openMatchup;
+          break;
+        }
+
+        nextMatchup = null;
+      }
+
+      setCurrentRound(latestRound);
+      setRoundMatchups(matchups);
+      setCurrentMatchup(nextMatchup);
+      setSessionStatus(payload.session.status);
+      setFinalWinnerName(payload.session.finalWinnerName ?? null);
+
+      if (!nextMatchup) {
+        setTransitionMessage('You have voted on every open matchup this round. Waiting for other votes...');
       }
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Failed to submit vote.');
@@ -189,7 +257,7 @@ export default function NameVotePage() {
     );
   }
 
-  if (!currentMatchup) {
+  if (!currentMatchup && roundMatchups.length === 0) {
     return (
       <main>
         <div className="container">
@@ -207,37 +275,69 @@ export default function NameVotePage() {
         <section className="name-vote-card" aria-live="polite">
           <h2 className="leaderboard-title">Name Vote</h2>
           <p className="leaderboard-sub">
-            Round <strong>{currentRound}</strong> • Matchup <strong>{currentMatchup.id}</strong>
+            Round <strong>{currentRound}</strong>
+            {currentMatchup ? (
+              <>
+                {' '}• Matchup <strong>{currentMatchup.id}</strong>
+              </>
+            ) : null}
           </p>
 
-          <div className="name-vote-candidates">
-            <article className="name-vote-candidate">{currentMatchup.leftName}</article>
-            <article className="name-vote-candidate">{currentMatchup.rightName}</article>
-          </div>
+          {currentMatchup ? (
+            <>
+              <div className="name-vote-candidates">
+                <article className="name-vote-candidate">{currentMatchup.leftName}</article>
+                <article className="name-vote-candidate">{currentMatchup.rightName}</article>
+              </div>
 
-          <div className="name-vote-actions">
-            <button
-              className="form-button-full-width"
-              type="button"
-              disabled={votingLocked}
-              onClick={() => void submitVote('left')}
-            >
-              {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.leftName}`}
-            </button>
-            <button
-              className="form-button-full-width"
-              type="button"
-              disabled={votingLocked}
-              onClick={() => void submitVote('right')}
-            >
-              {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.rightName}`}
-            </button>
-          </div>
+              <div className="name-vote-actions">
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  disabled={votingLocked}
+                  onClick={() => void submitVote('left')}
+                >
+                  {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.leftName}`}
+                </button>
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  disabled={votingLocked}
+                  onClick={() => void submitVote('right')}
+                >
+                  {isVoting ? 'Submitting vote...' : `Vote ${currentMatchup.rightName}`}
+                </button>
+              </div>
 
-          <p className="name-vote-progress">{progressLabel}</p>
+              <p className="name-vote-progress">{progressLabel}</p>
+            </>
+          ) : null}
+
+          {!currentMatchup ? (
+            <div className="name-vote-overview" role="status" aria-live="polite">
+              <h3 className="leaderboard-title">Round {currentRound} Bracket Overview</h3>
+              <ul className="name-vote-overview-list">
+                {roundMatchups.map((matchup) => (
+                  <li key={matchup.id} className="name-vote-overview-item">
+                    <span>
+                      {matchup.leftName} ({matchup.leftVotes}) vs {matchup.rightName} ({matchup.rightVotes})
+                    </span>
+                    <strong>{matchup.status === 'closed' ? matchup.winnerName : 'Open'}</strong>
+                  </li>
+                ))}
+              </ul>
+              {sessionStatus === 'complete' && finalWinnerName ? (
+                <p className="notice">Tournament complete. Winner: {finalWinnerName}</p>
+              ) : (
+                <p className="name-vote-helper">Waiting for the rest of the round votes to finish.</p>
+              )}
+            </div>
+          ) : null}
 
           {transitionMessage ? (
             <p className="notice name-vote-transition">{transitionMessage}</p>
+          ) : !currentMatchup ? (
+            <p className="name-vote-helper">You are caught up for this round.</p>
           ) : hasVotedCurrentMatchup ? (
             <p className="name-vote-helper">You already voted for this matchup.</p>
           ) : (
