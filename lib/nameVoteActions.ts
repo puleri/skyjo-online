@@ -7,11 +7,15 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  where,
 } from 'firebase/firestore';
 
 import { db } from './firebase';
-import { NAME_VOTING_COLLECTION, type NameVotingMatchup, type NameVotingSession } from './nameVoting';
+import {
+  getMatchupRoundNumber,
+  NAME_VOTING_COLLECTION,
+  type NameVotingMatchup,
+  type NameVotingSession,
+} from './nameVoting';
 
 export type NameVoteSide = 'left' | 'right';
 
@@ -60,11 +64,15 @@ async function advanceNameVotingSessionIfRoundClosed(
 
   const currentRoundMatchupsQuery = query(
     matchupsCollectionRef,
-    where('roundNumber', '==', roundNumber),
     orderBy('leftName', 'asc')
   );
   const currentRoundMatchupsSnapshot = await getDocs(currentRoundMatchupsQuery);
-  const matchupIds = currentRoundMatchupsSnapshot.docs.map((snapshot) => snapshot.id);
+  const matchupIds = currentRoundMatchupsSnapshot.docs
+    .filter((snapshot) => {
+      const matchup = snapshot.data() as NameVotingMatchup;
+      return getMatchupRoundNumber(snapshot.id, matchup.roundNumber) === roundNumber;
+    })
+    .map((snapshot) => snapshot.id);
 
   if (matchupIds.length === 0) {
     return;

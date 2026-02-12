@@ -95,6 +95,22 @@ export type NameVotingMatchup = {
 
 export type NameVotingMatchupWithId = NameVotingMatchup & { id: string };
 
+const ROUND_FROM_MATCHUP_ID_REGEX = /^round-(\d+)-matchup-/;
+
+export function getMatchupRoundNumber(matchupId: string, roundNumber?: number | null) {
+  if (typeof roundNumber === 'number' && Number.isFinite(roundNumber)) {
+    return roundNumber;
+  }
+
+  const roundFromId = ROUND_FROM_MATCHUP_ID_REGEX.exec(matchupId)?.[1];
+  if (!roundFromId) {
+    return null;
+  }
+
+  const parsedRound = Number.parseInt(roundFromId, 10);
+  return Number.isFinite(parsedRound) ? parsedRound : null;
+}
+
 export async function ensureNameVotingSession(sessionId: string) {
   const sessionRef = doc(db, NAME_VOTING_COLLECTION, sessionId);
   const sessionSnapshot = await getDoc(sessionRef);
@@ -192,17 +208,16 @@ export async function getCurrentNameVotingMatchup(sessionId: string) {
 export async function getRoundNameVotingMatchups(sessionId: string, roundNumber: number) {
   const sessionRef = doc(db, NAME_VOTING_COLLECTION, sessionId);
   const matchupsRef = collection(sessionRef, 'matchups');
-  const matchupsQuery = query(
-    matchupsRef,
-    where('roundNumber', '==', roundNumber),
-    orderBy('leftName', 'asc')
-  );
+  const matchupsQuery = query(matchupsRef, orderBy('leftName', 'asc'));
   const snapshots = await getDocs(matchupsQuery);
 
-  return snapshots.docs.map((matchup) => ({
-    id: matchup.id,
-    ...(matchup.data() as NameVotingMatchup),
-  }));
+  return snapshots.docs
+    .map((matchup) => ({
+      id: matchup.id,
+      ...(matchup.data() as NameVotingMatchup),
+    }))
+    .filter((matchup) => getMatchupRoundNumber(matchup.id, matchup.roundNumber) === roundNumber)
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 export function getNameVoteProgressLabel(totalVotes: number, voteTarget: number) {
