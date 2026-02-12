@@ -15,7 +15,7 @@ import {
 import { db } from './firebase';
 
 export const NAME_VOTING_COLLECTION = 'nameVotingSessions';
-export const NAME_VOTING_VOTE_TARGET = 2;
+export const NAME_VOTING_VOTE_TARGET = 7;
 
 const RAW_SEED_NAMES = [
   'Canopy',
