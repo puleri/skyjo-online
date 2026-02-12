@@ -16,34 +16,6 @@ import { db } from './firebase';
 
 export const NAME_VOTING_COLLECTION = 'nameVotingSessions';
 export const NAME_VOTING_VOTE_TARGET = 7;
-// app/vote/[sessionId]/page.tsx (or layout.tsx)
-import type { Metadata } from "next";
-
-export async function generateMetadata(
-  { params }: { params: { sessionId: string } }
-): Promise<Metadata> {
-  const url = `https://your-domain.com/vote/${params.sessionId}`;
-
-  return {
-    title: "Name Bracket Voting",
-    description: "Help pick the final name. Vote head-to-head in a tournament bracket.",
-    alternates: { canonical: url },
-    openGraph: {
-      title: "Name Bracket Voting",
-      description: "Help pick the final name. Vote head-to-head in a tournament bracket.",
-      url,
-      type: "website",
-      images: [{ url: "https://your-domain.com/og/name-vote.png", width: 1200, height: 630 }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "Name Bracket Voting",
-      description: "Help pick the final name. Vote head-to-head in a tournament bracket.",
-      images: ["https://your-domain.com/og/name-vote.png"],
-    },
-  };
-}
-
 
 const RAW_SEED_NAMES = [
   'Canopy',
