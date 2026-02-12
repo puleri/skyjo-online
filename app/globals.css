@@ -1095,7 +1095,8 @@ button.card:disabled {
 }
 button.card.card--discard-top:hover {
   box-shadow: none;
-  background-color: inherit;
+  background-color: var(--color-border);
+  opacity: 1
 }
 
 
@@ -1207,6 +1208,8 @@ button.card.card--discard-top:hover {
   position: relative;
   overflow: hidden;
 }
+
+
 
 .discard-stack {
   position: relative;
