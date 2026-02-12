@@ -1143,6 +1143,7 @@ button.card.card--discard-top:hover {
 
 
 .game-pile .card,
+.game-pile .discard-stack,
 .pile .card {
   width: 152px;
   min-height: 0;
@@ -2653,6 +2654,7 @@ border: 1px solid #ffedef;
   }
 
   .game-piles .card,
+  .game-piles .discard-stack,
   .game-piles .card-back-image {
     min-width: 82px;
     width: 100%;
@@ -2663,6 +2665,7 @@ border: 1px solid #ffedef;
   }
 
   .game-piles--dock .card,
+  .game-piles--dock .discard-stack,
   .game-piles--dock .card-back-image {
     height: 120px;
     width: auto;
