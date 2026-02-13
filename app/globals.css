@@ -1145,6 +1145,7 @@ button.card.card--discard-top:hover {
 
 .game-pile .card,
 .game-pile .discard-stack,
+.game-pile .draw-stack,
 .pile .card {
   width: 152px;
   min-height: 0;
@@ -1331,7 +1332,7 @@ button.card.card--discard-top:active:not(:disabled) {
   background-repeat: no-repeat;
   border-radius: 14px;
   border: 2px solid var(--color-border);
-  box-shadow: 0 4px 5px rgba(31, 41, 51, 0.42);
+  box-shadow: 0 2px 1px rgba(31, 41, 51, 0.22);
 }
 
 .card--drawn {
