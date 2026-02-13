@@ -958,6 +958,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     () => gameIdHash * 0.013 + (game?.roundNumber ?? 0) * 0.73,
     [game?.roundNumber, gameIdHash]
   );
+  const drawTransformSeed = useMemo(
+    () => gameIdHash * 0.021 + (game?.roundNumber ?? 0) * 0.41,
+    [game?.roundNumber, gameIdHash]
+  );
   const discardStackCards = useMemo(() => {
     const discardPile = game?.discard ?? [];
     const maxVisibleStackCards = 6;
@@ -973,6 +977,88 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       };
     });
   }, [discardTransformSeed, game?.discard]);
+
+  const getDrawTransformStyle = (
+    drawIndex: number,
+    drawCount: number,
+    seed: number
+  ): CSSProperties => {
+    if (drawCount <= 0 || drawIndex < 0 || drawIndex >= drawCount) {
+      return {};
+    }
+
+    const depthFromTop = drawCount - 1 - drawIndex;
+    const visibleDepth = Math.min(depthFromTop, 5);
+    const index = drawIndex;
+    const fract = (value: number) => value - Math.floor(value);
+    const lerp = (min: number, max: number, t: number) => min + (max - min) * t;
+    const u = fract(Math.sin(index * 15.734 + seed) * 24693.1719);
+    const rotateDeg = lerp(-4.5, 4.5, u);
+    const skewDeg = lerp(-1.7, 1.7, fract(u * 89.17));
+    const offsetX = lerp(-1.3, 1.3, fract(u * 41.3));
+    const offsetY = lerp(-0.8, 0.8, fract(u * 23.17));
+    const stackOffsetX = visibleDepth * -1.15;
+    const stackOffsetY = visibleDepth * -1.05;
+
+    return {
+      "--draw-stack-offset-x": `${stackOffsetX.toFixed(3)}px`,
+      "--draw-stack-offset-y": `${stackOffsetY.toFixed(3)}px`,
+      "--draw-rotate": `${rotateDeg.toFixed(3)}deg`,
+      "--draw-skew": `${skewDeg.toFixed(3)}deg`,
+      "--draw-offset-x": `${offsetX.toFixed(3)}px`,
+      "--draw-offset-y": `${offsetY.toFixed(3)}px`,
+      zIndex: drawIndex + 1,
+    } as CSSProperties;
+  };
+
+  const drawStackCards = useMemo(() => {
+    const drawPile = game?.deck ?? [];
+    const maxVisibleStackCards = 6;
+    const startIndex = Math.max(0, drawPile.length - maxVisibleStackCards);
+
+    return drawPile.slice(startIndex).map((_, localIndex) => {
+      const drawIndex = startIndex + localIndex;
+      return {
+        drawIndex,
+        isTopCard: drawIndex === drawPile.length - 1,
+        style: getDrawTransformStyle(drawIndex, drawPile.length, drawTransformSeed),
+      };
+    });
+  }, [drawTransformSeed, game?.deck]);
+
+  const renderDrawPile = () => {
+    if ((game?.deck.length ?? 0) <= 0) {
+      return (
+        <div className="card card--discard" aria-label="Empty draw pile">
+          —
+        </div>
+      );
+    }
+
+    return (
+      <div className="draw-stack">
+        {drawStackCards.map(({ drawIndex, isTopCard, style }) =>
+          isTopCard ? (
+            <button
+              key={`draw-top-${drawIndex}`}
+              type="button"
+              className="card-back-button card-back-button--stack card-back-button--top"
+              aria-label="Draw pile (face down)"
+              onClick={handleDrawFromDeck}
+              disabled={!canDrawFromDeck}
+              style={style}
+            >
+              <span className="card-back-image" aria-hidden="true" />
+            </button>
+          ) : (
+            <div key={`draw-${drawIndex}`} className="card-back-button card-back-button--stack" style={style}>
+              <span className="card-back-image" aria-hidden="true" />
+            </div>
+          )
+        )}
+      </div>
+    );
+  };
 
   const renderDiscardPile = () => {
     if (!hasDiscard) {
@@ -2339,15 +2425,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="game-piles game-piles--dock">
           <div className="game-pile">
             <h6>Deck</h6>
-            <button
-              type="button"
-              className="card-back-button"
-              aria-label="Draw pile (face down)"
-              onClick={handleDrawFromDeck}
-              disabled={!canDrawFromDeck}
-            >
-              <span className="card-back-image" aria-hidden="true" />
-            </button>
+            {renderDrawPile()}
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
@@ -2388,15 +2466,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="game-piles" ref={gamePilesRef}>
           <div className="game-pile">
             <h6>Deck</h6>
-            <button
-              type="button"
-              className="card-back-button"
-              aria-label="Draw pile (face down)"
-              onClick={handleDrawFromDeck}
-              disabled={!canDrawFromDeck}
-            >
-              <span className="card-back-image" aria-hidden="true" />
-            </button>
+            {renderDrawPile()}
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
