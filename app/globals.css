@@ -1316,6 +1316,32 @@ button.card.card--discard-top:active:not(:disabled) {
   scale: 1;
 }
 
+@media (max-width: 640px) {
+  .discard-stack,
+  .draw-stack {
+    perspective: none;
+  }
+
+  .discard-stack .card,
+  .draw-stack .card-back-button {
+    scale: 1;
+  }
+
+  .card--discard-pile-stack,
+  button.card.card--discard-top:hover:not(:disabled),
+  button.card.card--discard-top:active:not(:disabled) {
+    transform: translate(var(--discard-stack-offset-x, 0px), var(--discard-stack-offset-y, 0px))
+      translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
+  }
+
+  .card-back-button--stack,
+  .card-back-button--top:hover:not(:disabled),
+  .card-back-button--top:active:not(:disabled) {
+    transform: translate(var(--draw-stack-offset-x, 0px), var(--draw-stack-offset-y, 0px))
+      translate(var(--draw-offset-x, 0px), var(--draw-offset-y, 0px));
+  }
+}
+
 .card-back-button:disabled {
   cursor: not-allowed;
   opacity: 1;
