@@ -114,6 +114,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
+  const recoveryRevealTipMessage = "Select a card to reveal and finish your turn.";
   const firebaseReady = isFirebaseConfigured;
   const { uid, error: authError } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
@@ -1240,6 +1241,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isCurrentTurn && isGameActive && game?.turnPhase === "resolve-item" && isPendingItem;
   const isItemRevealPending =
     pendingItemReveal && isCurrentTurn && isGameActive && game?.turnPhase === "resolve";
+  const isRevealRecoveryActive =
+    isCurrentTurn &&
+    isGameActive &&
+    game?.turnPhase === "resolve" &&
+    !hasCardValue(currentPlayer?.pendingDraw) &&
+    !isSprinting;
   const discardSelectionActive =
     Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
@@ -1262,7 +1269,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const canSelectGridCard =
     isGameActive &&
-    (showDrawnCard || discardSelectionActive || isItemRevealPending) &&
+    (showDrawnCard || discardSelectionActive || isItemRevealPending || isRevealRecoveryActive) &&
     !isResolvingItem;
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
   const pendingItem = isPendingItem ? pendingItemCard : null;
@@ -1427,6 +1434,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setToastMessage(null);
     }
   }, [itemRevealTipMessage, pendingItemReveal, toastMessage]);
+
+  useEffect(() => {
+    if (isRevealRecoveryActive) {
+      setToastMessage(recoveryRevealTipMessage);
+      return;
+    }
+    if (toastMessage === recoveryRevealTipMessage) {
+      setToastMessage(null);
+    }
+  }, [isRevealRecoveryActive, recoveryRevealTipMessage, toastMessage]);
 
   useEffect(() => {
     if (!pendingItemReveal) {
@@ -1681,7 +1698,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!canSelectGridCard) {
       return;
     }
-    if (isItemRevealPending) {
+    if (isItemRevealPending || isRevealRecoveryActive) {
       void handleRevealAfterItemDiscard(index);
       return;
     }
@@ -2624,7 +2641,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       isLocalPlayer && showDrawActions && !isSprinting ? handleReveal : undefined
                     }
                     onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
-                    revealSelectionActive={isLocalPlayer && isItemRevealPending && !isSprinting}
+                    revealSelectionActive={
+                      isLocalPlayer && (isItemRevealPending || isRevealRecoveryActive) && !isSprinting
+                    }
                     onPlayerSelect={undefined}
                     isPlayerSelected={false}
                     itemSelection={
