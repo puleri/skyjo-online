@@ -1473,6 +1473,142 @@ export const revealAfterDiscard = async (
   });
 };
 
+export const discardAndRevealPendingDraw = async (
+  gameId: string,
+  playerId: string,
+  targetIndex: number
+) => {
+  const gameRef = doc(db, "games", gameId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    assertCondition(game.currentPlayerId === playerId, "Not your turn.");
+    assertCondition(game.turnPhase === "resolve-draw", "Not in resolve draw phase.");
+
+    const playerSnap = await transaction.get(playerStateRef);
+    assertCondition(playerSnap.exists(), "Player not found.");
+    const player = playerSnap.data() as PlayerStateDoc;
+    assertCondition(
+      (player.sprintTurnsRemaining ?? 0) <= 0,
+      "Cannot discard or reveal while sprinting."
+    );
+    validateGridIndex(player, targetIndex);
+    assertCondition(!player.revealed[targetIndex], "Slot already revealed.");
+    assertCondition(player.grid[targetIndex] !== null, "Slot is empty.");
+    assertCondition(player.pendingDraw != null, "No pending draw to discard.");
+    assertCondition(!isItemCard(player.pendingDraw), "Pending draw is an item.");
+
+    const discard = [...game.discard, player.pendingDraw];
+    const revealed = [...player.revealed];
+    revealed[targetIndex] = true;
+
+    const rowClear = Boolean(game.spikeMode && game.spikeRowClear);
+    const cleared = clearMatchesAtIndex([...player.grid], revealed, targetIndex, rowClear);
+    if (cleared.clearedCards.length > 0) {
+      discard.push(...cleared.clearedCards);
+    }
+
+    const updatedPlayer: PlayerStateDoc = {
+      ...player,
+      grid: cleared.grid,
+      revealed: cleared.revealed,
+      pendingDraw: null,
+      pendingDrawSource: null,
+    };
+    const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
+
+    const lastTurnAction = "discarded drawn card and revealed card.";
+    const resolution = resolveTurn(game, playerId, updatedPlayer);
+    const resolvedPlayer = resolution.updatedPlayer;
+
+    let roundScores: Record<string, number> | null = null;
+    let scoreUpdates: {
+      stateUpdates: Record<string, Partial<PlayerStateDoc>>;
+      summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
+    } | null = null;
+    let gameStatusOverride: string | null = null;
+
+    if (resolution.roundComplete) {
+      const players: Record<string, PlayerSnapshot> = {};
+      await Promise.all(
+        game.activePlayerOrder.map(async (activePlayerId) => {
+          if (activePlayerId === playerId) {
+            players[activePlayerId] = {
+              ...resolvedPlayer,
+            };
+            return;
+          }
+          const playerStateSnap = await transaction.get(
+            getPlayerStateRef(gameId, activePlayerId)
+          );
+          assertCondition(playerStateSnap.exists(), "Player not found.");
+          players[activePlayerId] = {
+            ...(playerStateSnap.data() as PlayerStateDoc),
+          };
+        })
+      );
+
+      const scoring = computeRoundScores(
+        game.activePlayerOrder,
+        players,
+        resolution.endingPlayerId,
+        rowClear
+      );
+      roundScores = scoring.roundScores;
+      scoreUpdates = {
+        stateUpdates: scoring.stateUpdates,
+        summaryUpdates: scoring.summaryUpdates,
+      };
+      gameStatusOverride = scoring.isGameComplete ? "game-complete" : "round-complete";
+    }
+
+    transaction.update(playerStateRef, {
+      grid: resolvedPlayer.grid,
+      revealed: resolvedPlayer.revealed,
+      pendingDraw: null,
+      pendingDrawSource: null,
+      mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
+      sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
+    });
+    const publicSummaryUpdates = getPublicSummaryUpdates(
+      player.mistTurnsRemaining,
+      resolvedPlayer
+    );
+    transaction.update(playerSummaryRef, {
+      ...(publicSummaryUpdates ?? {}),
+      ...getPendingSummaryUpdates(null, null),
+      ...getMistSummaryUpdates(resolvedPlayer.mistTurnsRemaining),
+      ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
+    });
+    transaction.update(gameRef, {
+      discard,
+      selectedDiscardPlayerId: null,
+      lastTurnPlayerId: playerId,
+      lastTurnAction,
+      lastTurnActionAt: serverTimestamp(),
+      lastClearType,
+      lastClearTypeAt: serverTimestamp(),
+      ...resolution.gameUpdates,
+      ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
+      ...(roundScores ? { roundScores } : {}),
+    });
+
+    if (scoreUpdates) {
+      Object.entries(scoreUpdates.stateUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerStateRef(gameId, targetPlayerId), updates);
+      });
+      Object.entries(scoreUpdates.summaryUpdates).forEach(([targetPlayerId, updates]) => {
+        transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), updates);
+      });
+    }
+  });
+};
+
 export const startNextRound = async (gameId: string, playerId: string) => {
   const gameRef = doc(db, "games", gameId);
 
