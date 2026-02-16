@@ -122,6 +122,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [playerSummaries, setPlayerSummaries] = useState<GamePlayerSummary[]>([]);
   const [localPlayerState, setLocalPlayerState] = useState<GamePlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionSyncError, setActionSyncError] = useState<string | null>(null);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
@@ -189,6 +191,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
+  const actionWatchdogTimerRef = useRef<number | null>(null);
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -1255,6 +1258,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     game?.turnPhase === "choose-draw" &&
     !hasCardValue(currentPlayer?.pendingDraw) &&
     !discardSelectionActive &&
+    !isSubmittingAction &&
     (game?.deck.length ?? 0) > 0;
   const canSelectDiscardTarget =
     isCurrentTurn &&
@@ -1262,6 +1266,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     game?.turnPhase === "choose-draw" &&
     !hasCardValue(currentPlayer?.pendingDraw) &&
     !isSprinting &&
+    !isSubmittingAction &&
     (game?.discard.length ?? 0) > 0;
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
@@ -1270,7 +1275,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const canSelectGridCard =
     isGameActive &&
     (showDrawnCard || discardSelectionActive || isItemRevealPending || isRevealRecoveryActive) &&
-    !isResolvingItem;
+    !isResolvingItem &&
+    !isSubmittingAction;
   const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
@@ -1306,7 +1312,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isResolvingItem &&
     Boolean(itemCode) &&
     currentPlayer?.pendingDrawSource === "deck" &&
-    !isSprinting;
+    !isSprinting &&
+    !isSubmittingAction;
   const itemDescriptions: Record<string, string> = {
     A: "Randomize a card on your own board.",
     C: "Set a card on your own board to any value.",
@@ -1672,6 +1679,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     };
   }, [firebaseReady, gameId, isLocalPlayer, uid]);
 
+  useEffect(() => {
+    return () => {
+      if (actionWatchdogTimerRef.current !== null) {
+        window.clearTimeout(actionWatchdogTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleDrawFromDeck = async () => {
     if (!uid) {
       setError("Sign in to draw a card.");
@@ -1685,13 +1700,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await drawFromDeck(gameId, uid);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleSelectGridCard = (index: number) => {
@@ -1722,14 +1733,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await drawFromDiscard(gameId, uid, targetIndex);
       setActiveActionIndex(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleSelectDiscard = async () => {
@@ -1745,14 +1752,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await selectDiscard(gameId, uid);
       setActiveActionIndex(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleReplace = async (index: number) => {
@@ -1765,14 +1768,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await swapPendingDraw(gameId, uid, index);
       setActiveActionIndex(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleReveal = async (index: number) => {
@@ -1789,14 +1788,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await discardAndRevealPendingDraw(gameId, uid, index);
       setActiveActionIndex(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleRevealAfterItemDiscard = async (index: number) => {
@@ -1820,15 +1815,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await revealAfterDiscard(gameId, uid, index);
       setPendingItemReveal(false);
       setActiveActionIndex(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleItemTargetSelect = (target: ItemTarget) => {
@@ -1889,8 +1880,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       const cardTargets = itemTargets.filter(isCardTarget);
       if (itemCode === "A") {
         await useItemCard(gameId, uid, { code: "A", target: cardTargets[0] });
@@ -1912,10 +1902,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         });
       }
       handleResetItemSelection();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    }
+    });
   };
 
   const handleDiscardItem = async () => {
@@ -1935,16 +1922,76 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    setError(null);
-    try {
+    await runWithActionSubmission(async () => {
       await discardItemForReveal(gameId, uid);
       handleResetItemSelection();
       setPendingItemReveal(true);
       setActiveActionIndex(null);
+    });
+  };
+
+  const runWithActionSubmission = async (action: () => Promise<void>) => {
+    if (isSubmittingAction) {
+      return;
+    }
+
+    setIsSubmittingAction(true);
+    setActionSyncError(null);
+    setError(null);
+    let didTimeout = false;
+    actionWatchdogTimerRef.current = window.setTimeout(() => {
+      didTimeout = true;
+      setActionSyncError("Action is taking longer than expected. Tap Resync turn.");
+    }, 10000);
+
+    try {
+      await action();
+      if (didTimeout) {
+        setToastMessage("Action synced. Turn state refreshed.");
+        setActionSyncError(null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
+      setActionSyncError("Action failed to sync. Tap Retry.");
+    } finally {
+      if (actionWatchdogTimerRef.current !== null) {
+        window.clearTimeout(actionWatchdogTimerRef.current);
+        actionWatchdogTimerRef.current = null;
+      }
+      setIsSubmittingAction(false);
     }
+  };
+
+  const handleResyncTurn = () => {
+    if (!isCurrentTurn || !isGameActive || !uid || !game) {
+      setToastMessage("Waiting for your turn.");
+      return;
+    }
+
+    setActiveActionIndex(null);
+    const hasPendingDraw = hasCardValue(currentPlayer?.pendingDraw);
+    const isDiscardSelectedByLocalPlayer = game.selectedDiscardPlayerId === uid;
+    const needsRevealRecovery =
+      game.turnPhase === "resolve" && !hasPendingDraw && !isSprinting && !isResolvingItem;
+
+    if (game.turnPhase === "choose-draw") {
+      setToastMessage(
+        isDiscardSelectedByLocalPlayer
+          ? "Discard selected. Tap one of your cards to swap with discard."
+          : "Tap deck or discard to choose your draw source."
+      );
+    } else if (game.turnPhase === "resolve-item" && isResolvingItem) {
+      setToastMessage("Resolve the item using the item panel options below the piles.");
+    } else if (isItemRevealPending || needsRevealRecovery) {
+      setToastMessage("Tap an unrevealed card on your grid to reveal and finish your turn.");
+    } else if (hasPendingDraw) {
+      setToastMessage("Tap one of your cards, then choose Trade or Reveal.");
+    } else {
+      setToastMessage("Turn synced. Follow the highlighted controls to continue.");
+    }
+
+    setActionSyncError(null);
   };
 
   const handleCancelMenu = () => {
@@ -2479,6 +2526,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       ) : null}
 
       <section className="game-board">
+        {(actionSyncError || error || (isCurrentTurn && isGameActive)) && (
+          <div className="notice" role="status" aria-live="polite">
+            {actionSyncError ? <p>{actionSyncError}</p> : null}
+            {error ? <p>{error}</p> : null}
+            {isCurrentTurn && isGameActive ? (
+              <button
+                type="button"
+                className="form-button-full-width"
+                onClick={handleResyncTurn}
+                disabled={isSubmittingAction}
+              >
+                {actionSyncError ? "Retry sync" : "Resync turn"}
+              </button>
+            ) : null}
+          </div>
+        )}
         <div className="game-piles" ref={gamePilesRef}>
           <div className="game-pile">
             <h6>Deck</h6>
@@ -2573,7 +2636,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 type="button"
                 className="item-panel__action item-panel__action--primary"
                 onClick={() => handleUseItem()}
-                disabled={!canUseItem}
+                disabled={!canUseItem || isSubmittingAction}
               >
                 Use item
               </button>
@@ -2582,6 +2645,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   type="button"
                   className="item-panel__action item-panel__action--ghost"
                   onClick={handleResetItemSelection}
+                  disabled={isSubmittingAction}
                 >
                   Clear selection
                 </button>
@@ -2591,6 +2655,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   type="button"
                   className="item-panel__action item-panel__action--ghost"
                   onClick={handleDiscardItem}
+                  disabled={isSubmittingAction}
                 >
                   Discard item to reveal
                 </button>
@@ -2644,6 +2709,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     revealSelectionActive={
                       isLocalPlayer && (isItemRevealPending || isRevealRecoveryActive) && !isSprinting
                     }
+                    disableActionControls={isLocalPlayer && isSubmittingAction}
                     onPlayerSelect={undefined}
                     isPlayerSelected={false}
                     itemSelection={
