@@ -19,6 +19,7 @@ type PlayerGridProps = {
   onReveal?: (index: number) => void;
   onCancel?: () => void;
   revealSelectionActive?: boolean;
+  disableActionControls?: boolean;
   itemSelection?: {
     active: boolean;
     targets: Array<{ playerId: string; index: number }>;
@@ -110,6 +111,7 @@ export default function PlayerGrid({
   onReveal,
   onCancel,
   revealSelectionActive = false,
+  disableActionControls = false,
   itemSelection,
 }: PlayerGridProps) {
   const cards = grid && grid.length === 12 ? grid : placeholderCards;
@@ -201,7 +203,8 @@ export default function PlayerGrid({
                     }
                   }}
                   disabled={
-                    !isItemSelectable && (!isSelectable || (isRevealSelectionActive && isRevealed))
+                    disableActionControls ||
+                    (!isItemSelectable && (!isSelectable || (isRevealSelectionActive && isRevealed)))
                   }
                 >
                   {isRevealed && value !== null && value !== undefined ? (
@@ -239,6 +242,7 @@ export default function PlayerGrid({
                     type="button"
                     className="player-grid__action player-grid__action--primary"
                     onClick={() => onReplace(index)}
+                    disabled={disableActionControls}
                   >
                     <span className="player-grid__action-icon" aria-hidden="true">
                       <img className="action-menu-icon" src="/trade-icon.svg" alt="" />
@@ -250,7 +254,7 @@ export default function PlayerGrid({
                       type="button"
                       className="player-grid__action"
                       onClick={() => onReveal(index)}
-                      disabled={isRevealed}
+                      disabled={disableActionControls || isRevealed}
                     >
                       <span className="player-grid__action-icon invert" aria-hidden="true">
                         <img className="action-menu-icon" src="/keep-icon.svg" alt="" />
@@ -262,6 +266,7 @@ export default function PlayerGrid({
                     type="button"
                     className="player-grid__action player-grid__action--ghost player-grid__action--cancel"
                     onClick={onCancel}
+                    disabled={disableActionControls}
                   >
                     Cancel
                   </button>
