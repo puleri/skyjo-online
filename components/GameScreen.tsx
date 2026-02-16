@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
 import SnowfallLayer from "./SnowfallLayer";
 import {
-  discardPendingDraw,
+  discardAndRevealPendingDraw,
   discardItemForReveal,
   drawFromDeck,
   drawFromDiscard,
@@ -1774,8 +1774,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     setError(null);
     try {
-      await discardPendingDraw(gameId, uid);
-      await revealAfterDiscard(gameId, uid, index);
+      await discardAndRevealPendingDraw(gameId, uid, index);
       setActiveActionIndex(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
