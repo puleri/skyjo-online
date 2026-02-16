@@ -2656,6 +2656,11 @@ border: 1px solid #ffedef;
     background-image: var(--card-back-image-wide);
   }
 
+  button.card.card--discard-top:hover:not(:disabled),
+  button.card.card--discard-top:active:not(:disabled) {
+    scale: 0.9;
+  }
+
   .card--discard-pile {
     border-radius: 14px;
   }
