@@ -41,6 +41,7 @@ type LobbyMeta = {
   spikeMode: boolean;
   spikeItemCount?: SpikeItemCount;
   spikeRowClear?: boolean;
+  spikeEndGameBonuses?: boolean;
 };
 
 const backgroundMusicStorageKey = "skyjo-background-music";
@@ -328,6 +329,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         const spikeMode = Boolean(lobbyData.spikeMode);
         const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
         const spikeRowClear = Boolean(lobbyData.spikeRowClear);
+        const spikeEndGameBonuses =
+          (lobbyData.spikeEndGameBonuses as boolean | undefined) ?? true;
         const playerQuery = query(
           collection(db, "lobbies", lobbyId, "players"),
           orderBy("joinedAt", "asc")
@@ -375,7 +378,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           discard: [discardCard],
           graveyard: [],
           spikeMode,
-          ...(spikeMode ? { spikeItemCount, spikeRowClear } : {}),
+          ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
           lastTurnPlayerId: null,
           lastTurnAction: null,
           lastTurnActionAt: null,
@@ -391,6 +394,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             isReady: false,
             roundScore: 0,
             totalScore: 0,
+            pointsClearedFromRows: 0,
+            pointsDiscarded: 0,
             revealed: initialRevealed,
             publicGrid: Array.from({ length: 12 }, () => null),
             revealedCount: 0,
@@ -401,6 +406,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             pendingDraw: null,
             pendingDrawSource: null,
             totalScore: 0,
+            pointsClearedFromRows: 0,
+            pointsDiscarded: 0,
           });
         });
 

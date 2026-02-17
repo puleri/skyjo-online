@@ -2145,6 +2145,71 @@ small {
   font-size: 1.1rem;
 }
 
+.bonus-announcement-wrap {
+  margin-top: 14px;
+}
+
+.bonus-announcement {
+  margin: 12px 0;
+  border: 1px dashed var(--color-border);
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: center;
+  background: radial-gradient(circle at top, rgba(141, 159, 143, 0.35), transparent 60%);
+  animation: bonus-flourish 560ms ease-out both;
+}
+
+.bonus-announcement__title {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.bonus-announcement__winner {
+  margin: 8px 0 0;
+  font-family: "Merriweather", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  color: var(--color-accent);
+  text-shadow: 0 0 10px rgba(141, 159, 143, 0.45);
+}
+
+.bonus-announcement__points {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+.bonus-results-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.bonus-results-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  padding: 10px 12px;
+  font-size: 0.94rem;
+}
+
+@keyframes bonus-flourish {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .join-button {
   background-color: #8D9F8F;
   border: 1px solid #4545457f;

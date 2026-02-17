@@ -23,6 +23,7 @@ import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import type { SpikeItemCount } from "../lib/game/deck";
 import {
+  endGameBonusesLabel,
   getSpikeItemCountLabel,
   rowClearLabel,
 } from "../lib/game/modeLabels";
@@ -40,6 +41,7 @@ type LobbyPreview = {
   spikeMode: boolean;
   spikeItemCount?: SpikeItemCount;
   spikeRowClear?: boolean;
+  spikeEndGameBonuses?: boolean;
   players: string[];
 };
 
@@ -204,6 +206,7 @@ export default function LobbyList() {
         spikeMode: Boolean(lobbyData.spikeMode),
         spikeItemCount,
         spikeRowClear: Boolean(lobbyData.spikeRowClear),
+        spikeEndGameBonuses: (lobbyData.spikeEndGameBonuses as boolean | undefined) ?? true,
         players: playersSnapshot.docs.map(
           (player) => player.data().displayName ?? "Anonymous player"
         ),
@@ -364,8 +367,11 @@ export default function LobbyList() {
   const rowClearStatus = activePreview?.spikeRowClear
     ? `${rowClearLabel}`
     : ``;
+  const bonusStatus = activePreview?.spikeEndGameBonuses
+    ? endGameBonusesLabel
+    : "";
   const modeDetails = activePreview?.spikeMode
-    ? `Spike • ${spikeItemLabel} • ${rowClearStatus}`
+    ? ["Spike", spikeItemLabel, rowClearStatus, bonusStatus].filter(Boolean).join(" • ")
     : "Classic";
 
   return (
