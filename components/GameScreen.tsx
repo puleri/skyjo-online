@@ -309,7 +309,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     value != null && typeof value === "object" && value.kind === "item";
 
   const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
-    A: { name: "Randomize", image: "/cards/random.png", eyebrow: "Randomize" },
+    A: { name: "????", image: "/cards/random.png", eyebrow: "Randomize" },
     C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
     E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
     F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
