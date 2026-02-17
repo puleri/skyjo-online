@@ -1630,7 +1630,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const timeouts = endGameBonuses.map((_, index) =>
       window.setTimeout(() => {
         setRevealedBonusCount(index + 1);
-      }, 900 + index * 2200)
+      }, 1000 + index * 5200)
     );
 
     return () => {
