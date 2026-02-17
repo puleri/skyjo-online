@@ -2463,6 +2463,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 Play theme music during round breaks and in the lobby.
               </p>
             </div>
+            {isCurrentTurn && isGameActive ? (
+              <div className="modal__option">
+                <button
+                  type="button"
+                  className="form-button-full-width"
+                  onClick={handleResyncTurn}
+                  disabled={isSubmittingAction}
+                >
+                  {actionSyncError ? "Retry sync" : "Resync turn"}
+                </button>
+                <p className="modal__option-help">
+                  Sync your turn state if an action appears stuck.
+                </p>
+              </div>
+            ) : null}
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
                 Main Menu
@@ -2624,20 +2639,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       ) : null}
 
       <section className="game-board">
-        {(actionSyncError || error || (isCurrentTurn && isGameActive)) && (
+        {(actionSyncError || error) && (
           <div className="notice" role="status" aria-live="polite">
             {actionSyncError ? <p>{actionSyncError}</p> : null}
             {error ? <p>{error}</p> : null}
-            {isCurrentTurn && isGameActive ? (
-              <button
-                type="button"
-                className="form-button-full-width"
-                onClick={handleResyncTurn}
-                disabled={isSubmittingAction}
-              >
-                {actionSyncError ? "Retry sync" : "Resync turn"}
-              </button>
-            ) : null}
           </div>
         )}
         <div className="game-piles" ref={gamePilesRef}>
