@@ -110,6 +110,7 @@ type ItemSelectionTarget = ItemTarget;
 
 const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
+const BONUS_ANNOUNCEMENT_DURATION_MS = 2800;
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
@@ -1630,7 +1631,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const timeouts = endGameBonuses.map((_, index) =>
       window.setTimeout(() => {
         setRevealedBonusCount(index + 1);
-      }, 1000 + index * 5200)
+      }, BONUS_ANNOUNCEMENT_DURATION_MS * (index + 1))
     );
 
     return () => {
