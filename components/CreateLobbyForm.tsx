@@ -13,6 +13,7 @@ export default function CreateLobbyForm() {
   const [spikeMode, setSpikeMode] = useState(false);
   const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("low");
   const [spikeRowClear, setSpikeRowClear] = useState(false);
+  const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export default function CreateLobbyForm() {
         hostId: uid,
         hostDisplayName: resolvedName,
         spikeMode,
-        ...(spikeMode ? { spikeItemCount, spikeRowClear } : {}),
+        ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
       });
       setName("");
     } catch (err) {
@@ -149,6 +150,7 @@ export default function CreateLobbyForm() {
                       setSpikeMode(nextValue);
                       if (!nextValue) {
                         setSpikeRowClear(false);
+                        setSpikeEndGameBonuses(true);
                       }
                     }}
                     aria-describedby="spike-mode-helper"
@@ -204,6 +206,22 @@ export default function CreateLobbyForm() {
                   </label>
                   <p className="modal__option-help" id="spike-row-clear-helper">
                     Clear a row when all revealed cards match.
+                  </p>
+                  <label className="modal__subsettings-option">
+                    <span>Enable end game bonuses</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={spikeEndGameBonuses}
+                        onChange={(event) => setSpikeEndGameBonuses(event.target.checked)}
+                        aria-describedby="spike-end-game-bonuses-helper"
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help" id="spike-end-game-bonuses-helper">
+                    Award two end-game bonuses worth -5 points each.
                   </p>
                 </div>
               ) : null}

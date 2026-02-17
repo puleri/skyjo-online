@@ -51,6 +51,7 @@ type GameMeta = {
   spikeMode: boolean;
   spikeItemCount?: SpikeItemCount;
   spikeRowClear?: boolean;
+  spikeEndGameBonuses?: boolean;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
@@ -60,6 +61,10 @@ type GameMeta = {
   lastTurnActionAt?: Timestamp | null;
   lastClearType?: "row" | "column" | "row-column" | null;
   lastClearTypeAt?: Timestamp | null;
+  endGameBonusResults?: {
+    mostRowsClearedWinnerId?: string | null;
+    lowestDiscardedWinnerId?: string | null;
+  } | null;
 };
 
 type GamePlayerSummary = {
@@ -74,6 +79,8 @@ type GamePlayerSummary = {
   revealed?: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  pointsClearedFromRows?: number;
+  pointsDiscarded?: number;
 };
 
 type GamePlayerState = {
@@ -168,6 +175,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
+  const [revealedBonusCount, setRevealedBonusCount] = useState(0);
   const hasGameCompletedRef = useRef(false);
   const podiumLabels = ["1st", "2nd", "3rd"];
   const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
@@ -512,6 +520,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           spikeMode: Boolean(data.spikeMode),
           spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
           spikeRowClear: Boolean(data.spikeRowClear),
+          spikeEndGameBonuses: (data.spikeEndGameBonuses as boolean | undefined) ?? true,
           endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
             ? (data.finalTurnRemainingIds as string[])
@@ -525,6 +534,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           lastClearType:
             (data.lastClearType as "row" | "column" | "row-column" | null | undefined) ?? null,
           lastClearTypeAt: (data.lastClearTypeAt as Timestamp | null | undefined) ?? null,
+          endGameBonusResults:
+            (data.endGameBonusResults as
+              | {
+                  mostRowsClearedWinnerId?: string | null;
+                  lowestDiscardedWinnerId?: string | null;
+                }
+              | null
+              | undefined) ?? null,
         });
       },
       (err) => {
@@ -766,6 +783,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
             pendingDrawSource:
               (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
+            pointsClearedFromRows: (data.pointsClearedFromRows as number | undefined) ?? 0,
+            pointsDiscarded: (data.pointsDiscarded as number | undefined) ?? 0,
           };
         });
         setPlayerSummaries(nextPlayers);
@@ -1130,7 +1149,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!game) {
       return "Loading mode details.";
     }
-    return getModeDetails(game.spikeMode, game.spikeItemCount, game.spikeRowClear);
+    return getModeDetails(
+      game.spikeMode,
+      game.spikeItemCount,
+      game.spikeRowClear,
+      game.spikeEndGameBonuses
+    );
   }, [game]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
   useEffect(() => {
@@ -1563,6 +1587,56 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         return a.displayName.localeCompare(b.displayName);
       });
   }, [isGameComplete, orderedPlayers]);
+
+  const endGameBonuses = useMemo(() => {
+    if (!isGameComplete || !game?.spikeMode || game?.spikeEndGameBonuses === false) {
+      return [];
+    }
+
+    const mostRowsWinnerId = game?.endGameBonusResults?.mostRowsClearedWinnerId ?? null;
+    const lowestDiscardedWinnerId = game?.endGameBonusResults?.lowestDiscardedWinnerId ?? null;
+    const getDisplayName = (playerId: string | null) =>
+      playerId
+        ? orderedPlayers.find((player) => player.id === playerId)?.displayName ?? "Unknown player"
+        : "No winner";
+
+    return [
+      {
+        id: "rows",
+        title: "Most points cleared from rows",
+        winnerName: getDisplayName(mostRowsWinnerId),
+      },
+      {
+        id: "discard",
+        title: "Lowest points discarded",
+        winnerName: getDisplayName(lowestDiscardedWinnerId),
+      },
+    ];
+  }, [
+    game?.endGameBonusResults,
+    game?.spikeEndGameBonuses,
+    game?.spikeMode,
+    isGameComplete,
+    orderedPlayers,
+  ]);
+
+  useEffect(() => {
+    if (!isGameComplete || !isFinalScoresOpen || !endGameBonuses.length) {
+      setRevealedBonusCount(0);
+      return;
+    }
+
+    setRevealedBonusCount(0);
+    const timeouts = endGameBonuses.map((_, index) =>
+      window.setTimeout(() => {
+        setRevealedBonusCount(index + 1);
+      }, 900 + index * 2200)
+    );
+
+    return () => {
+      timeouts.forEach((timeout) => window.clearTimeout(timeout));
+    };
+  }, [endGameBonuses, isFinalScoresOpen, isGameComplete]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId || !isGameComplete || !finalScores.length) {
@@ -2404,22 +2478,46 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 className="sage-eyebrow-text">Game over</h2>
-            <ol className="game-complete-list">
-              {finalScores.map((player, index) => {
-                const accolade = getAccolade(index);
-                return (
-                  <li key={player.id} className="game-complete-item">
-                    <span>
-                      {accolade ? (
-                        <span className="game-complete-badge">{accolade}</span>
-                      ) : null}
-                      {player.displayName}
-                    </span>
-                    <span className="game-complete-score">{player.totalScore}</span>
+            <div className="bonus-announcement-wrap">
+              {revealedBonusCount < endGameBonuses.length ? (
+                <div className="bonus-announcement" key={endGameBonuses[revealedBonusCount]?.id}>
+                  <p className="bonus-announcement__title">
+                    {endGameBonuses[revealedBonusCount]?.title}
+                  </p>
+                  <p className="bonus-announcement__winner">
+                    {endGameBonuses[revealedBonusCount]?.winnerName}
+                  </p>
+                  <p className="bonus-announcement__points">Bonus: -5 points</p>
+                </div>
+              ) : null}
+
+              <ol className="bonus-results-list">
+                {endGameBonuses.slice(0, revealedBonusCount).map((bonus) => (
+                  <li key={bonus.id} className="bonus-results-item">
+                    <span>{bonus.title}</span>
+                    <span>{bonus.winnerName} (-5)</span>
                   </li>
-                );
-              })}
-            </ol>
+                ))}
+              </ol>
+            </div>
+            {revealedBonusCount >= endGameBonuses.length ? (
+              <ol className="game-complete-list">
+                {finalScores.map((player, index) => {
+                  const accolade = getAccolade(index);
+                  return (
+                    <li key={player.id} className="game-complete-item">
+                      <span>
+                        {accolade ? (
+                          <span className="game-complete-badge">{accolade}</span>
+                        ) : null}
+                        {player.displayName}
+                      </span>
+                      <span className="game-complete-score">{player.totalScore}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : null}
             <div className="modal__actions">
               <button type="button" className="form-button-full-width" onClick={() => router.push("/")}>
                 Back to main menu
