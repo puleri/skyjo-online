@@ -868,7 +868,7 @@ button.player-grid__name:hover {
 
 .player-grid__card .card:not(.card--back)::after {
   content: "";
-  position: absolute;
+  position: relative;
   inset: 0;
   background-size: 400%;
   background-position: center;
@@ -930,12 +930,11 @@ button.player-grid__name:hover {
   content: "";
   position: absolute;
   inset: 0;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  right: -1px;
   pointer-events: none;
     --b: 30%;   /* thickness of the border */
   --c: var(--color-card-edge);   /* color of the border */
-  --w: 20%;  /* width of border */
+  --w: 22%;  /* width of border */
 
   border: var(--b) solid #0000; /* space for the border */
   --_g: #0000 90deg,var(--c) 0;
