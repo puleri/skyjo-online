@@ -79,6 +79,8 @@ html {
 
 main {
   height: 100%;
+  overflow-x: hidden;
+
 }
 
 body {
