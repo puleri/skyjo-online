@@ -26,6 +26,7 @@ import {
   readyForNextRound,
   selectDiscard,
   startNextRound,
+  submitEndGameTurnTime,
   swapPendingDraw,
   useItemCard,
 } from "../lib/gameActions";
@@ -64,7 +65,9 @@ type GameMeta = {
   endGameBonusResults?: {
     mostRowsClearedWinnerId?: string | null;
     lowestDiscardedWinnerId?: string | null;
+    fastestPlayerWinnerId?: string | null;
   } | null;
+  turnTimeSubmissionsMs?: Record<string, number>;
 };
 
 type GamePlayerSummary = {
@@ -178,6 +181,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
   const [revealedBonusCount, setRevealedBonusCount] = useState(0);
   const hasGameCompletedRef = useRef(false);
+  const localTurnTimeMsRef = useRef(0);
+  const currentTurnStartedAtRef = useRef<number | null>(null);
+  const submittedTurnTimeGamesRef = useRef(new Set<string>());
   const podiumLabels = ["1st", "2nd", "3rd"];
   const [itemTargets, setItemTargets] = useState<ItemTarget[]>([]);
   const [itemValue, setItemValue] = useState<number | null>(null);
@@ -540,9 +546,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               | {
                   mostRowsClearedWinnerId?: string | null;
                   lowestDiscardedWinnerId?: string | null;
+                  fastestPlayerWinnerId?: string | null;
                 }
               | null
               | undefined) ?? null,
+          turnTimeSubmissionsMs:
+            (data.turnTimeSubmissionsMs as Record<string, number> | undefined) ?? undefined,
         });
       },
       (err) => {
@@ -1158,6 +1167,53 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     );
   }, [game]);
   const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+
+  useEffect(() => {
+    localTurnTimeMsRef.current = 0;
+    currentTurnStartedAtRef.current = null;
+  }, [gameId]);
+
+  useEffect(() => {
+    const shouldTrackCurrentTurn = Boolean(uid && isCurrentTurn && isGameActive);
+
+    if (shouldTrackCurrentTurn) {
+      if (currentTurnStartedAtRef.current === null) {
+        currentTurnStartedAtRef.current = Date.now();
+      }
+      return;
+    }
+
+    if (currentTurnStartedAtRef.current !== null) {
+      localTurnTimeMsRef.current += Math.max(0, Date.now() - currentTurnStartedAtRef.current);
+      currentTurnStartedAtRef.current = null;
+    }
+  }, [isCurrentTurn, isGameActive, uid]);
+
+  useEffect(() => {
+    if (!firebaseReady || !uid || !isLocalPlayer || !game || !isGameComplete) {
+      return;
+    }
+
+    if (submittedTurnTimeGamesRef.current.has(gameId)) {
+      return;
+    }
+
+    if (typeof game.turnTimeSubmissionsMs?.[uid] === "number") {
+      submittedTurnTimeGamesRef.current.add(gameId);
+      return;
+    }
+
+    const inProgressTurnMs =
+      currentTurnStartedAtRef.current !== null ? Math.max(0, Date.now() - currentTurnStartedAtRef.current) : 0;
+    const totalTurnTimeMs = localTurnTimeMsRef.current + inProgressTurnMs;
+
+    submittedTurnTimeGamesRef.current.add(gameId);
+    submitEndGameTurnTime(gameId, uid, totalTurnTimeMs).catch((submitError) => {
+      submittedTurnTimeGamesRef.current.delete(gameId);
+      const message = submitError instanceof Error ? submitError.message : "Unable to submit turn time.";
+      setActionSyncError(message);
+    });
+  }, [firebaseReady, game, gameId, isGameComplete, isLocalPlayer, uid]);
   useEffect(() => {
     if (!isModeTooltipOpen) {
       return;
@@ -1596,6 +1652,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     const mostRowsWinnerId = game?.endGameBonusResults?.mostRowsClearedWinnerId ?? null;
     const lowestDiscardedWinnerId = game?.endGameBonusResults?.lowestDiscardedWinnerId ?? null;
+    const fastestPlayerWinnerId = game?.endGameBonusResults?.fastestPlayerWinnerId ?? null;
     const getDisplayName = (playerId: string | null) =>
       playerId
         ? orderedPlayers.find((player) => player.id === playerId)?.displayName ?? "Unknown player"
@@ -1611,6 +1668,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         id: "discard",
         title: "Lowest points discarded",
         winnerName: getDisplayName(lowestDiscardedWinnerId),
+      },
+      {
+        id: "fastest",
+        title: "Fastest player",
+        winnerName: getDisplayName(fastestPlayerWinnerId),
       },
     ];
   }, [
@@ -1641,6 +1703,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   useEffect(() => {
     if (!firebaseReady || !gameId || !isGameComplete || !finalScores.length) {
+      return;
+    }
+
+    const isAwaitingFastestBonus =
+      game?.spikeMode &&
+      game?.spikeEndGameBonuses !== false &&
+      !game?.endGameBonusResults?.fastestPlayerWinnerId;
+    if (isAwaitingFastestBonus) {
       return;
     }
 
@@ -1694,7 +1764,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     };
 
     updateLeaderboard().catch((err: Error) => setError(err.message));
-  }, [firebaseReady, finalScores, gameId, isGameComplete]);
+  }, [
+    firebaseReady,
+    finalScores,
+    game?.endGameBonusResults?.fastestPlayerWinnerId,
+    game?.spikeEndGameBonuses,
+    game?.spikeMode,
+    gameId,
+    isGameComplete,
+  ]);
 
   const getAccolade = (index: number) => {
     if (index === 0) {

@@ -45,7 +45,9 @@ type GameDoc = {
   endGameBonusResults?: {
     mostRowsClearedWinnerId?: string | null;
     lowestDiscardedWinnerId?: string | null;
+    fastestPlayerWinnerId?: string | null;
   } | null;
+  turnTimeSubmissionsMs?: Record<string, number>;
 };
 
 type PlayerStateDoc = {
@@ -1872,5 +1874,75 @@ export const readyForNextRound = async (gameId: string, playerId: string) => {
 
     transaction.update(gameRef, { readyPlayerIds: Array.from(readyPlayerIds) });
     transaction.update(playerSummaryRef, { isReady: true });
+  });
+};
+
+export const submitEndGameTurnTime = async (
+  gameId: string,
+  playerId: string,
+  cumulativeTurnTimeMs: number
+) => {
+  const gameRef = doc(db, "games", gameId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    assertCondition(game.status === "game-complete", "Game is not complete yet.");
+    const activeOrder = game.activePlayerOrder ?? [];
+    assertCondition(activeOrder.includes(playerId), "Player is not active in this game.");
+
+    const existingSubmissions = game.turnTimeSubmissionsMs ?? {};
+    const sanitizedTime = Math.max(0, Math.round(cumulativeTurnTimeMs));
+    const nextSubmissions = {
+      ...existingSubmissions,
+      [playerId]: sanitizedTime,
+    };
+
+    const gameUpdates: Partial<GameDoc> = {
+      turnTimeSubmissionsMs: nextSubmissions,
+    };
+
+    const isBonusEnabled = game.spikeMode && game.spikeEndGameBonuses !== false;
+    const hasAllSubmissions = activeOrder.every(
+      (activePlayerId) => typeof nextSubmissions[activePlayerId] === "number"
+    );
+    const existingFastestWinnerId = game.endGameBonusResults?.fastestPlayerWinnerId ?? null;
+
+    if (isBonusEnabled && hasAllSubmissions && !existingFastestWinnerId) {
+      const fastestWinnerId = activeOrder.reduce<string | null>((winnerId, activePlayerId) => {
+        if (!winnerId) {
+          return activePlayerId;
+        }
+        return nextSubmissions[activePlayerId] < nextSubmissions[winnerId] ? activePlayerId : winnerId;
+      }, null);
+
+      if (fastestWinnerId) {
+        const fastestPlayerStateSnap = await transaction.get(getPlayerStateRef(gameId, fastestWinnerId));
+        const fastestPlayerSummarySnap = await transaction.get(
+          getPlayerSummaryRef(gameId, fastestWinnerId)
+        );
+        assertCondition(fastestPlayerStateSnap.exists(), "Fastest player state not found.");
+        assertCondition(fastestPlayerSummarySnap.exists(), "Fastest player summary not found.");
+
+        const fastestPlayerState = fastestPlayerStateSnap.data() as PlayerStateDoc;
+        const updatedTotalScore = (fastestPlayerState.totalScore ?? 0) - 5;
+
+        transaction.update(getPlayerStateRef(gameId, fastestWinnerId), {
+          totalScore: updatedTotalScore,
+        });
+        transaction.update(getPlayerSummaryRef(gameId, fastestWinnerId), {
+          totalScore: updatedTotalScore,
+        });
+
+        gameUpdates.endGameBonusResults = {
+          ...(game.endGameBonusResults ?? {}),
+          fastestPlayerWinnerId: fastestWinnerId,
+        };
+      }
+    }
+
+    transaction.update(gameRef, gameUpdates);
   });
 };

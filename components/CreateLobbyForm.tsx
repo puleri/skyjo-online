@@ -221,7 +221,7 @@ export default function CreateLobbyForm() {
                     </span>
                   </label>
                   <p className="modal__option-help" id="spike-end-game-bonuses-helper">
-                    Award two end-game bonuses worth -5 points each.
+                    Award three end-game bonuses worth -5 points each, including Fastest player.
                   </p>
                 </div>
               ) : null}
