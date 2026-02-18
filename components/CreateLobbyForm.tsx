@@ -10,9 +10,9 @@ const storageKey = "skyjo:username";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
-  const [spikeMode, setSpikeMode] = useState(false);
-  const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("low");
-  const [spikeRowClear, setSpikeRowClear] = useState(false);
+  const [spikeMode, setSpikeMode] = useState(true);
+  const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("medium");
+  const [spikeRowClear, setSpikeRowClear] = useState(true);
   const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
