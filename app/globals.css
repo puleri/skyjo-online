@@ -1225,6 +1225,7 @@ button.card.card--discard-top:hover {
   width: 100%;
   height: 100%;
   perspective: 450px;
+  z-index: 2;
 }
 
 .discard-stack .card {
