@@ -114,6 +114,11 @@ type ItemSelectionTarget = ItemTarget;
 const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
 const BONUS_ANNOUNCEMENT_DURATION_MS = 2800;
+const LEADERBOARD_ENTRY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+function isLeaderboardEntryActive(expiresAt: unknown) {
+  return expiresAt instanceof Timestamp && expiresAt.toMillis() > Date.now();
+}
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
@@ -704,25 +709,33 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const leaderboardQuery = query(
-      collection(db, "leaderboard"),
-      orderBy("score", "asc"),
-      limit(10)
-    );
+    const leaderboardQuery = query(collection(db, "leaderboard"), orderBy("score", "asc"));
     const unsubscribe = onSnapshot(
       leaderboardQuery,
       (snapshot) => {
+        const expiredEntries = snapshot.docs.filter(
+          (entry) => !isLeaderboardEntryActive(entry.data().expiresAt)
+        );
+        if (expiredEntries.length) {
+          void Promise.all(expiredEntries.map((entry) => deleteDoc(entry.ref))).catch(
+            (err: Error) => setError(err.message)
+          );
+        }
+
         setLeaderboardEntries(
-          snapshot.docs.map((entry) => {
-            const data = entry.data();
-            return {
-              id: entry.id,
-              displayName: (data.displayName as string | undefined) ?? "Anonymous player",
-              score: (data.score as number | undefined) ?? 0,
-              gameId: (data.gameId as string | null | undefined) ?? null,
-              playerId: (data.playerId as string | null | undefined) ?? null,
-            };
-          })
+          snapshot.docs
+            .filter((entry) => isLeaderboardEntryActive(entry.data().expiresAt))
+            .slice(0, 10)
+            .map((entry) => {
+              const data = entry.data();
+              return {
+                id: entry.id,
+                displayName: (data.displayName as string | undefined) ?? "Anonymous player",
+                score: (data.score as number | undefined) ?? 0,
+                gameId: (data.gameId as string | null | undefined) ?? null,
+                playerId: (data.playerId as string | null | undefined) ?? null,
+              };
+            })
         );
       },
       (err) => {
@@ -1725,9 +1738,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     const updateLeaderboard = async () => {
       const leaderboardRef = collection(db, "leaderboard");
-      const leaderboardQuery = query(leaderboardRef, orderBy("score", "asc"), limit(10));
+      const leaderboardQuery = query(leaderboardRef, orderBy("score", "asc"));
       const leaderboardSnapshot = await getDocs(leaderboardQuery);
+      const expiredEntries = leaderboardSnapshot.docs.filter(
+        (entry) => !isLeaderboardEntryActive(entry.data().expiresAt)
+      );
+      if (expiredEntries.length) {
+        await Promise.all(expiredEntries.map((entry) => deleteDoc(entry.ref)));
+      }
+
       const leaderboardScores = leaderboardSnapshot.docs
+        .filter((entry) => isLeaderboardEntryActive(entry.data().expiresAt))
+        .slice(0, 10)
         .map((entry) => entry.data().score)
         .filter((score): score is number => typeof score === "number");
       const cutoffScore =
@@ -1756,6 +1778,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               gameId,
               playerId: entry.id,
               createdAt: serverTimestamp(),
+              expiresAt: Timestamp.fromMillis(Date.now() + LEADERBOARD_ENTRY_TTL_MS),
             },
             { merge: true }
           )
