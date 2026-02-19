@@ -1,5 +1,5 @@
 'use client';
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, deleteDoc, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
@@ -22,6 +22,10 @@ type LeaderboardEntry = {
   gameId?: string | null;
   playerId?: string | null;
 };
+
+function isLeaderboardEntryActive(expiresAt: unknown) {
+  return expiresAt instanceof Timestamp && expiresAt.toMillis() > Date.now();
+}
 
 function getInitialDarkModePreference() {
   if (typeof window === "undefined") {
@@ -80,25 +84,33 @@ export default function LobbyScreen() {
       return;
     }
 
-    const leaderboardQuery = query(
-      collection(db, "leaderboard"),
-      orderBy("score", "asc"),
-      limit(10)
-    );
+    const leaderboardQuery = query(collection(db, "leaderboard"), orderBy("score", "asc"));
     const unsubscribe = onSnapshot(
       leaderboardQuery,
       (snapshot) => {
+        const expiredEntries = snapshot.docs.filter(
+          (entry) => !isLeaderboardEntryActive(entry.data().expiresAt)
+        );
+        if (expiredEntries.length) {
+          void Promise.all(expiredEntries.map((entry) => deleteDoc(entry.ref))).catch(
+            (err: Error) => setLeaderboardError(err.message)
+          );
+        }
+
         setLeaderboardEntries(
-          snapshot.docs.map((entry) => {
-            const data = entry.data();
-            return {
-              id: entry.id,
-              displayName: (data.displayName as string | undefined) ?? "Anonymous player",
-              score: (data.score as number | undefined) ?? 0,
-              gameId: (data.gameId as string | null | undefined) ?? null,
-              playerId: (data.playerId as string | null | undefined) ?? null,
-            };
-          })
+          snapshot.docs
+            .filter((entry) => isLeaderboardEntryActive(entry.data().expiresAt))
+            .slice(0, 10)
+            .map((entry) => {
+              const data = entry.data();
+              return {
+                id: entry.id,
+                displayName: (data.displayName as string | undefined) ?? "Anonymous player",
+                score: (data.score as number | undefined) ?? 0,
+                gameId: (data.gameId as string | null | undefined) ?? null,
+                playerId: (data.playerId as string | null | undefined) ?? null,
+              };
+            })
         );
         setLeaderboardError(null);
       },

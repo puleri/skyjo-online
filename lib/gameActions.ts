@@ -60,6 +60,7 @@ type PlayerStateDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  itemCardsDrawn?: number;
 };
 
 type PlayerSummaryDoc = {
@@ -76,6 +77,7 @@ type PlayerSummaryDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  itemCardsDrawn?: number;
 };
 
 const columns = 4;
@@ -223,6 +225,7 @@ const clearMatchesAtIndex = (
       clearedRow,
       clearedColumn,
       rowClearedPoints: 0,
+      totalClearedPoints: 0,
     };
   }
   const nextGrid = [...grid];
@@ -240,6 +243,10 @@ const clearMatchesAtIndex = (
     (total, matchedIndex) => total + getNumberCardPoints(grid[matchedIndex]),
     0
   );
+  const totalClearedPoints = Array.from(matchedIndices).reduce(
+    (total, matchedIndex) => total + getNumberCardPoints(grid[matchedIndex]),
+    0
+  );
   return {
     grid: nextGrid,
     revealed: nextRevealed,
@@ -247,6 +254,7 @@ const clearMatchesAtIndex = (
     clearedRow,
     clearedColumn,
     rowClearedPoints,
+    totalClearedPoints,
   };
 };
 
@@ -282,7 +290,18 @@ const clearMatchedLines = (grid: Array<Card | null>, revealed: boolean[], rowCle
     nextGrid[matchedIndex] = null;
     nextRevealed[matchedIndex] = true;
   });
-  return { grid: nextGrid, revealed: nextRevealed, clearedCards, clearedRow, clearedColumn };
+  const totalClearedPoints = Array.from(matchedIndices).reduce(
+    (total, matchedIndex) => total + getNumberCardPoints(grid[matchedIndex]),
+    0
+  );
+  return {
+    grid: nextGrid,
+    revealed: nextRevealed,
+    clearedCards,
+    clearedRow,
+    clearedColumn,
+    totalClearedPoints,
+  };
 };
 
 const allCardsRevealed = (revealed: boolean[]) => revealed.every(Boolean);
@@ -326,18 +345,16 @@ const drawRandomNumberCard = (deck: Card[]) => {
 
 const clearPlayerMatches = (player: PlayerStateDoc, rowClear: boolean) => {
   const cleared = clearMatchedLines([...player.grid], [...player.revealed], rowClear);
-  const rowClearedPoints = cleared.clearedRow
-    ? cleared.clearedCards.reduce<number>(
-        (total, card) => total + getNumberCardPoints(card),
-        0
-      )
-    : 0;
+  const totalClearedPoints = cleared.clearedCards.reduce<number>(
+    (total, card) => total + getNumberCardPoints(card),
+    0
+  );
   return {
     player: {
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
-      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + rowClearedPoints,
+      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + totalClearedPoints,
     },
     clearedCards: cleared.clearedCards,
     clearedRow: cleared.clearedRow,
@@ -673,11 +690,13 @@ export const drawFromDiscard = async (
       transaction.update(playerStateRef, {
         pendingDraw: drawn,
         pendingDrawSource: "discard",
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
       });
       transaction.update(playerSummaryRef, {
         ...(publicSummaryUpdates ?? {}),
         ...getPendingSummaryUpdates(drawn, "discard"),
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
       });
       transaction.update(gameRef, {
@@ -707,7 +726,7 @@ export const drawFromDiscard = async (
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
-      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.rowClearedPoints,
+      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: (player.pointsDiscarded ?? 0) + getNumberCardPoints(replacedCard),
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
@@ -844,11 +863,13 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     transaction.update(playerStateRef, {
       pendingDraw: drawn,
       pendingDrawSource: "deck",
+      itemCardsDrawn: isItemCard(drawn) ? (player.itemCardsDrawn ?? 0) + 1 : player.itemCardsDrawn ?? 0,
       ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
     });
     transaction.update(playerSummaryRef, {
       ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(drawn, "deck"),
+      itemCardsDrawn: isItemCard(drawn) ? (player.itemCardsDrawn ?? 0) + 1 : player.itemCardsDrawn ?? 0,
       ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
     });
     transaction.update(gameRef, {
@@ -901,11 +922,13 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
       transaction.update(playerStateRef, {
         pendingDraw: topDiscard,
         pendingDrawSource: "discard",
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
       });
       transaction.update(playerSummaryRef, {
         ...(publicSummaryUpdates ?? {}),
         ...getPendingSummaryUpdates(topDiscard, "discard"),
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
       });
       transaction.update(gameRef, {
@@ -978,7 +1001,7 @@ export const swapPendingDraw = async (
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
-      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.rowClearedPoints,
+      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: (player.pointsDiscarded ?? 0) + getNumberCardPoints(replacedCard),
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
@@ -1512,7 +1535,7 @@ export const revealAfterDiscard = async (
       ...player,
       grid: cleared.grid,
       revealed: cleared.revealed,
-      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.rowClearedPoints,
+      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: player.pointsDiscarded ?? 0,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
@@ -1654,7 +1677,7 @@ export const discardAndRevealPendingDraw = async (
       revealed: cleared.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
-      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.rowClearedPoints,
+      pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded:
         (player.pointsDiscarded ?? 0) + getNumberCardPoints(player.pendingDraw),
     };
