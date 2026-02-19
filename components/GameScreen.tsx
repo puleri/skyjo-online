@@ -2643,10 +2643,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       <th scope="col">Rank</th>
                       <th scope="col">Player</th>
                       <th scope="col">Score</th>
-                      <th scope="col">Total turn length</th>
-                      <th scope="col">Total points discarded</th>
-                      <th scope="col">Points cleared from rows</th>
-                      <th scope="col">Item cards drawn</th>
+                      <th scope="col">Time</th>
+                      <th scope="col">Discarded</th>
+                      <th scope="col">Cleared</th>
+                      <th scope="col">Items</th>
                     </tr>
                   </thead>
                   <tbody>
