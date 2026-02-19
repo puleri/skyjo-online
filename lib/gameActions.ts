@@ -60,6 +60,7 @@ type PlayerStateDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  itemCardsDrawn?: number;
 };
 
 type PlayerSummaryDoc = {
@@ -76,6 +77,7 @@ type PlayerSummaryDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  itemCardsDrawn?: number;
 };
 
 const columns = 4;
@@ -673,11 +675,13 @@ export const drawFromDiscard = async (
       transaction.update(playerStateRef, {
         pendingDraw: drawn,
         pendingDrawSource: "discard",
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
       });
       transaction.update(playerSummaryRef, {
         ...(publicSummaryUpdates ?? {}),
         ...getPendingSummaryUpdates(drawn, "discard"),
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
       });
       transaction.update(gameRef, {
@@ -844,11 +848,13 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     transaction.update(playerStateRef, {
       pendingDraw: drawn,
       pendingDrawSource: "deck",
+      itemCardsDrawn: isItemCard(drawn) ? (player.itemCardsDrawn ?? 0) + 1 : player.itemCardsDrawn ?? 0,
       ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
     });
     transaction.update(playerSummaryRef, {
       ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(drawn, "deck"),
+      itemCardsDrawn: isItemCard(drawn) ? (player.itemCardsDrawn ?? 0) + 1 : player.itemCardsDrawn ?? 0,
       ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
     });
     transaction.update(gameRef, {
@@ -901,11 +907,13 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
       transaction.update(playerStateRef, {
         pendingDraw: topDiscard,
         pendingDrawSource: "discard",
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
       });
       transaction.update(playerSummaryRef, {
         ...(publicSummaryUpdates ?? {}),
         ...getPendingSummaryUpdates(topDiscard, "discard"),
+        itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
         ...(isMistItem ? getMistSummaryUpdates(updatedPlayer.mistTurnsRemaining) : {}),
       });
       transaction.update(gameRef, {

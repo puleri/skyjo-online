@@ -84,6 +84,7 @@ type GamePlayerSummary = {
   pendingDrawSource?: "deck" | "discard" | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  itemCardsDrawn?: number;
 };
 
 type GamePlayerState = {
@@ -114,6 +115,14 @@ type ItemSelectionTarget = ItemTarget;
 const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
 const BONUS_ANNOUNCEMENT_DURATION_MS = 2800;
+
+const formatTurnLength = (milliseconds: number) => {
+  const safeMilliseconds = Number.isFinite(milliseconds) ? Math.max(0, Math.round(milliseconds)) : 0;
+  const totalSeconds = Math.floor(safeMilliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
@@ -795,6 +804,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
             pointsClearedFromRows: (data.pointsClearedFromRows as number | undefined) ?? 0,
             pointsDiscarded: (data.pointsDiscarded as number | undefined) ?? 0,
+            itemCardsDrawn: (data.itemCardsDrawn as number | undefined) ?? 0,
           };
         });
         setPlayerSummaries(nextPlayers);
@@ -1645,6 +1655,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       });
   }, [isGameComplete, orderedPlayers]);
 
+  const finalStatsRows = useMemo(() => {
+    if (!isGameComplete) {
+      return [];
+    }
+
+    return finalScores.map((scoreEntry, index) => {
+      const playerSummary = players.find((player) => player.id === scoreEntry.id);
+      const totalTurnLengthMs = game?.turnTimeSubmissionsMs?.[scoreEntry.id] ?? 0;
+      return {
+        id: scoreEntry.id,
+        rank: index + 1,
+        displayName: scoreEntry.displayName,
+        totalScore: scoreEntry.totalScore,
+        totalTurnLength: formatTurnLength(totalTurnLengthMs),
+        pointsDiscarded: playerSummary?.pointsDiscarded ?? 0,
+        pointsClearedFromRows: playerSummary?.pointsClearedFromRows ?? 0,
+        itemCardsDrawn: playerSummary?.itemCardsDrawn ?? 0,
+      };
+    });
+  }, [finalScores, game?.turnTimeSubmissionsMs, isGameComplete, players]);
+
   const endGameBonuses = useMemo(() => {
     if (!isGameComplete || !game?.spikeMode || game?.spikeEndGameBonuses === false) {
       return [];
@@ -1773,19 +1804,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     gameId,
     isGameComplete,
   ]);
-
-  const getAccolade = (index: number) => {
-    if (index === 0) {
-      return "1st";
-    }
-    if (index === 1) {
-      return "2nd";
-    }
-    if (index === 2) {
-      return "3rd";
-    }
-    return null;
-  };
 
   useEffect(() => {
     if (!canSelectGridCard) {
@@ -2595,22 +2613,34 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </ol>
             </div>
             {revealedBonusCount >= endGameBonuses.length ? (
-              <ol className="game-complete-list">
-                {finalScores.map((player, index) => {
-                  const accolade = getAccolade(index);
-                  return (
-                    <li key={player.id} className="game-complete-item">
-                      <span>
-                        {accolade ? (
-                          <span className="game-complete-badge">{accolade}</span>
-                        ) : null}
-                        {player.displayName}
-                      </span>
-                      <span className="game-complete-score">{player.totalScore}</span>
-                    </li>
-                  );
-                })}
-              </ol>
+              <div className="game-complete-table-wrap">
+                <table className="game-complete-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Rank</th>
+                      <th scope="col">Player</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Total turn length</th>
+                      <th scope="col">Total points discarded</th>
+                      <th scope="col">Points cleared from rows</th>
+                      <th scope="col">Item cards drawn</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finalStatsRows.map((player) => (
+                      <tr key={player.id}>
+                        <td>{player.rank}</td>
+                        <td>{player.displayName}</td>
+                        <td>{player.totalScore}</td>
+                        <td>{player.totalTurnLength}</td>
+                        <td>{player.pointsDiscarded}</td>
+                        <td>{player.pointsClearedFromRows}</td>
+                        <td>{player.itemCardsDrawn}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : null}
             <div className="modal__actions">
               <button type="button" className="form-button-full-width" onClick={() => router.push("/")}>

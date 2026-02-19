@@ -2144,6 +2144,50 @@ small {
   font-size: 1.1rem;
 }
 
+
+.game-complete-table-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow-x: auto;
+  background: var(--color-surface-alt);
+}
+
+.game-complete-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.game-complete-table th,
+.game-complete-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+  font-size: 0.92rem;
+}
+
+.game-complete-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: var(--color-text-muted);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.game-complete-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.game-complete-table td:nth-child(1),
+.game-complete-table td:nth-child(3),
+.game-complete-table td:nth-child(5),
+.game-complete-table td:nth-child(6),
+.game-complete-table td:nth-child(7) {
+  font-variant-numeric: tabular-nums;
+}
+
 .bonus-announcement-wrap {
   margin-top: 14px;
 }
