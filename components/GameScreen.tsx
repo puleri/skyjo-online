@@ -1705,7 +1705,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return [
       {
         id: "rows",
-        title: "Most points cleared from rows",
+        title: "Most points cleared (rows + columns)",
         winnerName: getDisplayName(mostRowsWinnerId),
       },
       {
@@ -2645,7 +2645,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       <th scope="col">Score</th>
                       <th scope="col">Time</th>
                       <th scope="col">Discarded</th>
-                      <th scope="col">Cleared</th>
+                      <th scope="col">Cleared (rows + columns)</th>
                       <th scope="col">Items</th>
                     </tr>
                   </thead>
