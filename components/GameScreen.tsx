@@ -2370,7 +2370,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         >
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 className="leaderboard-title" id="leaderboard-title">Leaderboard</h2>
-            <p>Lowest 10 scores of all time.</p>
+            <p>Lowest 10 scores of the season.</p>
+              <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
             {leaderboardEntries.length ? (
               <ol className="leaderboard-list">
                 {leaderboardEntries.map((entry, index) => {

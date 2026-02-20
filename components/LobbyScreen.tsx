@@ -369,7 +369,9 @@ export default function LobbyScreen() {
           >
             <div className="modal" onClick={(event) => event.stopPropagation()}>
               <h3 id="leaderboard-title">Leaderboard</h3>
-              <p className="leaderboard-sub">Lowest 10 scores of all time.</p>
+              <p className="leaderboard-sub mb-0">Lowest 10 scores of the season.</p>
+              <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
+
               {!firebaseReady ? (
                 <p>
                   Provide your Firebase environment variables to load leaderboard results.

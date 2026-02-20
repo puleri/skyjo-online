@@ -2888,7 +2888,9 @@ border: 1px solid #ffedef;
 
 /* utilities */
 
-
+.text-xs {
+  font-size: 10px;
+}
 .font-light {
   font-weight: 100;
 }
@@ -2898,6 +2900,9 @@ border: 1px solid #ffedef;
 }
 .mb-20 {
   margin-bottom: 20px;
+}
+.mb-0 {
+  margin-bottom: 0;
 }
 .mb-10 {
   margin-bottom: 10px;
