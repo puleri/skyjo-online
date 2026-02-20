@@ -1,5 +1,6 @@
 'use client';
 import { collection, deleteDoc, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
@@ -222,20 +223,17 @@ export default function LobbyScreen() {
             >
               <img className="settings-icon" src="/settings-icon.png" alt="Settings icon" />
             </button>
-            <button
-              type="button"
+            <Link
+              href="/rules"
               className="menu-action-button"
               aria-label="Open game rules"
-              onClick={() => {
-                window.open("/rules.png", "_blank");
-              }}
             >
               <img
                 className="question-mark-icon"
                 src="/question-mark-icon.png"
                 alt="Skyjo Instructions Menu Icon"
               />
-            </button>
+            </Link>
           </div>
         </div>
         {isSettingsOpen ? (
