@@ -21,6 +21,7 @@ import {
   discardAndRevealPendingDraw,
   discardItemForReveal,
   drawFromDeck,
+  leaveGame,
   drawFromDiscard,
   revealAfterDiscard,
   readyForNextRound,
@@ -153,6 +154,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLeaveGameConfirmArmed, setIsLeaveGameConfirmArmed] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -2192,6 +2194,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     setActiveActionIndex(null);
   };
 
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+    setIsLeaveGameConfirmArmed(false);
+  };
+
+  const handleLeaveGame = async () => {
+    if (!uid) {
+      setError("Sign in to leave the game.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (!isLeaveGameConfirmArmed) {
+      setIsLeaveGameConfirmArmed(true);
+      return;
+    }
+
+    setError(null);
+    try {
+      await leaveGame(gameId, uid);
+      handleCloseSettings();
+      router.push("/");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+      setIsLeaveGameConfirmArmed(false);
+    }
+  };
+
   const handleStartNextRound = async () => {
     if (!uid) {
       setError("Sign in to start the next round.");
@@ -2315,7 +2348,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           type="button"
           className="settings-button"
           aria-label="Open settings"
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => {
+            setIsSettingsOpen(true);
+            setIsLeaveGameConfirmArmed(false);
+          }}
         >
           <img className="settings-icon" src="/settings-icon.png"/>
         </button>
@@ -2494,7 +2530,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="game-settings-title"
-          onClick={() => setIsSettingsOpen(false)}
+          onClick={handleCloseSettings}
         >
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 id="game-settings-title">Game menu</h2>
@@ -2599,10 +2635,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </div>
             ) : null}
             <div className="modal__actions">
+              {isLocalPlayer ? (
+                <button className="form-button-full-width" type="button" onClick={handleLeaveGame}>
+                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
+                </button>
+              ) : null}
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
                 Main Menu
               </button>
-              <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
+              <button className="form-button-full-width" type="button" onClick={handleCloseSettings}>
                 Close
               </button>
             </div>
