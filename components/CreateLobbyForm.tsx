@@ -1,7 +1,7 @@
 "use client";
 
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
@@ -19,6 +19,7 @@ export default function CreateLobbyForm() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isJoiningLobby, setIsJoiningLobby] = useState(false);
+  const [savedDisplayName, setSavedDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { uid } = useAnonymousAuth();
   const router = useRouter();
@@ -35,10 +36,20 @@ export default function CreateLobbyForm() {
   );
   const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "Low";
   const modeTagLabel = spikeMode ? "spike" : "classic";
+  const hasSavedDisplayName = Boolean(savedDisplayName?.trim());
+
+  useEffect(() => {
+    const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
+    setSavedDisplayName(storedName || null);
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!firebaseReady || !name.trim()) {
+      return;
+    }
+    if (!hasSavedDisplayName) {
+      setError("Save your display name before creating a lobby.");
       return;
     }
     if (!uid) {
@@ -50,8 +61,11 @@ export default function CreateLobbyForm() {
     setError(null);
 
     try {
-      const storedName = window.localStorage.getItem(storageKey);
-      const resolvedName = storedName?.trim() || "A player";
+      const resolvedName = savedDisplayName;
+      if (!resolvedName) {
+        setError("Save your display name before creating a lobby.");
+        return;
+      }
       const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
       const lobbyRef = await addDoc(collection(db, "lobbies"), {
         name: name.trim(),
@@ -137,10 +151,13 @@ export default function CreateLobbyForm() {
       <button
         className="form-button-full-width form-card-font mb-10"
         type="submit"
-        disabled={isSubmitting || !name.trim() || !uid}
+        disabled={isSubmitting || !name.trim() || !uid || !hasSavedDisplayName}
       >
         {isSubmitting ? "Creating..." : "Create Lobby"}
       </button>
+      {!hasSavedDisplayName ? (
+        <p className="notice">Save your player name above before creating a lobby.</p>
+      ) : null}
       {error ? <p className="notice">{error}</p> : null}
       {isJoiningLobby ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="join-lobby-title">
