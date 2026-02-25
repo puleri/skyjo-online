@@ -1969,3 +1969,86 @@ export const submitEndGameTurnTime = async (
     transaction.update(gameRef, gameUpdates);
   });
 };
+
+export const leaveGame = async (gameId: string, playerId: string) => {
+  const gameRef = doc(db, "games", gameId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    const activeOrder = game.activePlayerOrder ?? [];
+    assertCondition(activeOrder.includes(playerId), "Player is not active in this game.");
+
+    const playerStateSnap = await transaction.get(playerStateRef);
+    assertCondition(playerStateSnap.exists(), "Player state not found.");
+    const playerState = playerStateSnap.data() as PlayerStateDoc;
+
+    const recycledGridCards = playerState.grid.filter(
+      (card): card is Card => card !== null && card !== undefined
+    );
+    const pendingCard = playerState.pendingDraw;
+    const recycledCards =
+      pendingCard !== null && pendingCard !== undefined
+        ? [...recycledGridCards, pendingCard]
+        : recycledGridCards;
+    const nextDeck = recycledCards.length > 0 ? shuffleDeck([...game.deck, ...recycledCards]) : game.deck;
+
+    const nextActiveOrder = activeOrder.filter((activePlayerId) => activePlayerId !== playerId);
+    const leavingIndex = activeOrder.indexOf(playerId);
+    const fallbackNextPlayerId =
+      nextActiveOrder.length > 0
+        ? nextActiveOrder[leavingIndex % nextActiveOrder.length] ?? nextActiveOrder[0]
+        : null;
+
+    const nextRoundScores = { ...(game.roundScores ?? {}) };
+    delete nextRoundScores[playerId];
+
+    const nextTurnTimeSubmissions = { ...(game.turnTimeSubmissionsMs ?? {}) };
+    delete nextTurnTimeSubmissions[playerId];
+
+    const endingPlayerId = game.endingPlayerId === playerId ? null : game.endingPlayerId ?? null;
+    const finalTurnRemainingIds = endingPlayerId
+      ? (game.finalTurnRemainingIds ?? []).filter((activePlayerId) => activePlayerId !== playerId)
+      : null;
+    const shouldCompleteRound = Boolean(endingPlayerId && (finalTurnRemainingIds ?? []).length === 0);
+
+    transaction.delete(playerStateRef);
+    transaction.delete(playerSummaryRef);
+    transaction.update(gameRef, {
+      activePlayerOrder: nextActiveOrder,
+      currentPlayerId:
+        game.currentPlayerId === playerId
+          ? shouldCompleteRound
+            ? endingPlayerId
+            : fallbackNextPlayerId
+          : game.currentPlayerId,
+      hostId:
+        game.hostId === playerId
+          ? nextActiveOrder[0] ?? null
+          : (game.hostId ?? null),
+      deck: nextDeck,
+      endingPlayerId,
+      finalTurnRemainingIds: shouldCompleteRound ? [] : finalTurnRemainingIds,
+      readyPlayerIds: (game.readyPlayerIds ?? []).filter((activePlayerId) => activePlayerId !== playerId),
+      selectedDiscardPlayerId:
+        game.selectedDiscardPlayerId === playerId ? null : (game.selectedDiscardPlayerId ?? null),
+      skipNextTurnPlayerIds: (game.skipNextTurnPlayerIds ?? []).filter(
+        (activePlayerId) => activePlayerId !== playerId
+      ),
+      status:
+        nextActiveOrder.length === 0
+          ? "game-complete"
+          : shouldCompleteRound
+            ? "round-complete"
+            : game.status,
+      roundScores: Object.keys(nextRoundScores).length > 0 ? nextRoundScores : deleteField(),
+      turnTimeSubmissionsMs:
+        Object.keys(nextTurnTimeSubmissions).length > 0 ? nextTurnTimeSubmissions : deleteField(),
+      ...(nextActiveOrder.length === 0 ? { turnPhase: "choose-draw" } : {}),
+    });
+  });
+};
