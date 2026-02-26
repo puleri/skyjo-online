@@ -387,20 +387,20 @@ type ItemTarget = {
 };
 
 type ItemUsage =
-  | { code: "A"; target: ItemTarget }
   | { code: "C"; target: ItemTarget; value: number }
   | { code: "E"; first: ItemTarget; second: ItemTarget }
+  | { code: "H"; first: ItemTarget; second: ItemTarget }
   | { code: "F" }
   | { code: "G" };
 
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
-    case "A":
-      return "used Randomize to reroll a card.";
     case "C":
       return `used Wild to set a card to ${usage.value}.`;
     case "E":
       return "used Swap to swap two cards.";
+    case "H":
+      return "used Mirror to copy one card's value onto another.";
     case "F":
       return "used Mist to summon mist.";
     case "G":
@@ -1231,28 +1231,6 @@ export const useItemCard = async (
     };
 
     switch (usage.code) {
-      case "A": {
-        assertCondition(
-          usage.target.playerId === playerId,
-          "Item A must target your own grid."
-        );
-        const targetPlayer = await loadPlayer(usage.target.playerId);
-        validateCardSlot(targetPlayer, usage.target.index);
-        const targetCard = targetPlayer.grid[usage.target.index];
-        assertNumberCard(targetCard, "Target card must be a number.");
-
-        nextDeck = shuffleDeck([...nextDeck, targetCard]);
-        const replacement = drawRandomNumberCard(nextDeck);
-
-        const nextGrid = [...targetPlayer.grid];
-        nextGrid[usage.target.index] = replacement;
-        playersToUpdate.set(usage.target.playerId, {
-          ...targetPlayer,
-          grid: nextGrid,
-        });
-        affectedPlayerIds.add(usage.target.playerId);
-        break;
-      }
       case "C": {
         assertCondition(
           usage.target.playerId === playerId,
@@ -1341,6 +1319,31 @@ export const useItemCard = async (
           affectedPlayerIds.add(usage.first.playerId);
           affectedPlayerIds.add(usage.second.playerId);
         }
+        break;
+      }
+      case "H": {
+        assertCondition(
+          usage.first.playerId === playerId,
+          "Item H must target your own grid."
+        );
+        assertCondition(
+          usage.second.playerId === playerId,
+          "Item H must target your own grid."
+        );
+        const targetPlayer = await loadPlayer(usage.first.playerId);
+        validateCardSlot(targetPlayer, usage.first.index);
+        validateCardSlot(targetPlayer, usage.second.index);
+
+        const sourceCard = targetPlayer.grid[usage.first.index];
+        assertNumberCard(sourceCard, "Mirror source card must be a number.");
+
+        const nextGrid = [...targetPlayer.grid];
+        nextGrid[usage.second.index] = sourceCard;
+        playersToUpdate.set(usage.first.playerId, {
+          ...targetPlayer,
+          grid: nextGrid,
+        });
+        affectedPlayerIds.add(usage.first.playerId);
         break;
       }
       default:

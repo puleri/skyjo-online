@@ -1050,10 +1050,6 @@ button.player-grid__name:hover {
   object-fit: contain;
 }
 
-.card--item-A {
-  background: #C6D2B9;
-}
-
 .card--item-G {
   background: #CED6BD;
 }
@@ -1068,6 +1064,10 @@ button.player-grid__name:hover {
 
 .card--item-E {
   background: #EDE6CF;
+}
+
+.card--item-H {
+  background: #D6D7C8;
 }
 
 .card--item .card__value {

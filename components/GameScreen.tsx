@@ -332,11 +332,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     value != null && typeof value === "object" && value.kind === "item";
 
   const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
-    A: { name: "Randomize", image: "/cards/random.png", eyebrow: "?" },
     C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
     E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
     F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
     G: { name: "Push", image: "/cards/push.png", eyebrow: "Push" },
+    H: { name: "Mirror", image: "/cards/mirror.png", eyebrow: "Mirror" },
   };
 
   const getCardLabel = (value: Card | null | undefined) => {
@@ -1388,7 +1388,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemCode = pendingItem?.code ?? null;
   const itemName = itemCode ? itemCardDetails[itemCode]?.name ?? itemCode : null;
   const itemTargetsNeeded =
-    itemCode === "E"
+    itemCode === "E" || itemCode === "H"
       ? 2
       : itemCode === "F" || itemCode === "G"
         ? 0
@@ -1407,13 +1407,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showDrawActions = showDrawnCard && !isPendingItem;
   const itemCardSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
   const itemTargetInstruction =
-    itemTargets.length === 0
-      ? itemTargetsNeeded === 1
-        ? "Select a target card."
-        : "Select two target cards."
-      : itemTargets.length < itemTargetsNeeded
-        ? "Select a second target."
-        : "Targets selected.";
+    itemCode === "H"
+      ? itemTargets.length === 0
+        ? "Select the card with the value to copy first."
+        : itemTargets.length === 1
+          ? "Select the card to update second."
+          : "Targets selected."
+      : itemTargets.length === 0
+        ? itemTargetsNeeded === 1
+          ? "Select a target card."
+          : "Select two target cards."
+        : itemTargets.length < itemTargetsNeeded
+          ? "Select a second target."
+          : "Targets selected.";
   const canDiscardItem =
     isResolvingItem &&
     Boolean(itemCode) &&
@@ -1421,11 +1427,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     !isSprinting &&
     !isSubmittingAction;
   const itemDescriptions: Record<string, string> = {
-    A: "Randomize a card on your own board.",
     C: "Set a card on your own board to any value.",
     E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
     G: "Draw three from the draw pile. You may not reveal cards during a push.",
+    H: "Mirror: pick one of your cards, then pick another of your cards to copy that value without revealing it.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
@@ -2078,9 +2084,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     await runWithActionSubmission(async () => {
       const cardTargets = itemTargets.filter(isCardTarget);
-      if (itemCode === "A") {
-        await useItemCard(gameId, uid, { code: "A", target: cardTargets[0] });
-      } else if (itemCode === "C") {
+      if (itemCode === "C") {
         await useItemCard(gameId, uid, {
           code: "C",
           target: cardTargets[0],
@@ -2093,6 +2097,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       } else if (itemCode === "E") {
         await useItemCard(gameId, uid, {
           code: "E",
+          first: cardTargets[0],
+          second: cardTargets[1],
+        });
+      } else if (itemCode === "H") {
+        await useItemCard(gameId, uid, {
+          code: "H",
           first: cardTargets[0],
           second: cardTargets[1],
         });
