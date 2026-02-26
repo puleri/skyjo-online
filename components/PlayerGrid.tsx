@@ -67,11 +67,11 @@ const getCardItemClass = (value: Card | null | undefined) => {
 };
 
 const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
-  A: { name: "Randomize", image: "/cards/random.png", eyebrow: "Randomize" },
   C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
   E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
   F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
   G: { name: "Push", image: "/cards/push.png", eyebrow: "Push" },
+  H: { name: "Mirror", image: "/cards/mirror.png", eyebrow: "Mirror" },
 };
 
 const getCardLabel = (value: Card | null | undefined) => {
