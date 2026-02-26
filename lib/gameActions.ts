@@ -35,6 +35,7 @@ type GameDoc = {
   selectedDiscardPlayerId?: string | null;
   status?: string;
   roundScores?: Record<string, number>;
+  roundClearingPlayerIds?: string[];
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
   lastTurnActionAt?: unknown;
@@ -536,11 +537,17 @@ const computeRoundScores = (
   applyEndGameBonuses: boolean
 ) => {
   const roundScores: Record<string, number> = {};
+  const roundClearingPlayerIds: string[] = [];
   const scoresByPlayer = activeOrder.map((playerId) => {
     const player = players[playerId];
     const revealed = player.revealed.map(() => true);
     const cleared = clearMatchedLines(player.grid, revealed, rowClear);
-    const score = calculateScore(cleared.grid);
+    const baseScore = calculateScore(cleared.grid);
+    const clearedEntireBoard = cleared.grid.every((card) => card === null);
+    const score = clearedEntireBoard ? -10 : baseScore;
+    if (clearedEntireBoard) {
+      roundClearingPlayerIds.push(playerId);
+    }
     roundScores[playerId] = score;
     return { playerId, score, cleared };
   });
@@ -646,7 +653,14 @@ const computeRoundScores = (
     };
   }
 
-  return { roundScores, stateUpdates, summaryUpdates, isGameComplete, endGameBonusResults };
+  return {
+    roundScores,
+    roundClearingPlayerIds,
+    stateUpdates,
+    summaryUpdates,
+    isGameComplete,
+    endGameBonusResults,
+  };
 };
 
 export const drawFromDiscard = async (
@@ -743,6 +757,7 @@ export const drawFromDiscard = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -778,6 +793,7 @@ export const drawFromDiscard = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -821,6 +837,7 @@ export const drawFromDiscard = async (
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1021,6 +1038,7 @@ export const swapPendingDraw = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1056,6 +1074,7 @@ export const swapPendingDraw = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1098,6 +1117,7 @@ export const swapPendingDraw = async (
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1394,6 +1414,7 @@ export const useItemCard = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1429,6 +1450,7 @@ export const useItemCard = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1475,6 +1497,7 @@ export const useItemCard = async (
       ...(updatedDiscard ? { discard: updatedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1563,6 +1586,7 @@ export const revealAfterDiscard = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1598,6 +1622,7 @@ export const revealAfterDiscard = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1641,6 +1666,7 @@ export const revealAfterDiscard = async (
       ...(clearedDiscard ? { discard: clearedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1716,6 +1742,7 @@ export const discardAndRevealPendingDraw = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1751,6 +1778,7 @@ export const discardAndRevealPendingDraw = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1798,6 +1826,7 @@ export const discardAndRevealPendingDraw = async (
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1885,6 +1914,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       lastClearTypeAt: null,
       skipNextTurnPlayerIds: [],
       roundScores: deleteField(),
+      roundClearingPlayerIds: deleteField(),
       readyPlayerIds: [],
     });
 
@@ -2040,6 +2070,9 @@ export const leaveGame = async (gameId: string, playerId: string) => {
 
     const nextRoundScores = { ...(game.roundScores ?? {}) };
     delete nextRoundScores[playerId];
+    const nextRoundClearingPlayerIds = (game.roundClearingPlayerIds ?? []).filter(
+      (activePlayerId) => activePlayerId !== playerId
+    );
 
     const nextTurnTimeSubmissions = { ...(game.turnTimeSubmissionsMs ?? {}) };
     delete nextTurnTimeSubmissions[playerId];
@@ -2080,6 +2113,8 @@ export const leaveGame = async (gameId: string, playerId: string) => {
             ? "round-complete"
             : game.status,
       roundScores: Object.keys(nextRoundScores).length > 0 ? nextRoundScores : deleteField(),
+      roundClearingPlayerIds:
+        nextRoundClearingPlayerIds.length > 0 ? nextRoundClearingPlayerIds : deleteField(),
       turnTimeSubmissionsMs:
         Object.keys(nextTurnTimeSubmissions).length > 0 ? nextTurnTimeSubmissions : deleteField(),
       ...(nextActiveOrder.length === 0 ? { turnPhase: "choose-draw" } : {}),
