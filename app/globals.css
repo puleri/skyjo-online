@@ -432,6 +432,34 @@ section {
   box-shadow: 0 16px 40px rgba(31, 41, 51, 0.25);
 }
 
+.modal--game-settings {
+  position: relative;
+}
+
+.modal__icon-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.modal__icon-close:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.modal__icon-close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .lobby-preview-title {
   text-align: center;
   padding: 0 0 5px;
