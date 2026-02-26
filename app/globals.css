@@ -1529,6 +1529,11 @@ button.card.card--discard-top:active:not(:disabled) {
   font-weight: 700;
 }
 
+.item-panel__target-question {
+  width: 20px;
+  height: 20px;
+}
+
 .item-panel__warning {
   margin: 0;
   color: #b3530a;

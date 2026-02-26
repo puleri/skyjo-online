@@ -920,12 +920,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return [...ordered, ...remaining];
   }, [game?.activePlayerOrder, players]);
 
-  const getPlayerLabel = (playerId: string) =>
-    orderedPlayers.find((player) => player.id === playerId)?.displayName ?? "Player";
-
   const getItemTargetLabel = (target: ItemSelectionTarget) => {
-    const playerName = getPlayerLabel(target.playerId);
-    return `${playerName} · Card ${target.index + 1}`;
+    const targetPlayer = orderedPlayers.find((player) => player.id === target.playerId);
+    const isTargetCardRevealed = Boolean(targetPlayer?.revealed?.[target.index]);
+    const targetCard = targetPlayer?.grid?.[target.index] ?? targetPlayer?.publicGrid?.[target.index] ?? null;
+
+    if (isTargetCardRevealed && targetCard !== null && targetCard !== undefined) {
+      return getCardLabel(targetCard);
+    }
+
+    return <img className="item-panel__target-question" src="/question-mark-icon.png" alt="Hidden card" />;
   };
 
   const displayPlayers = useMemo(() => {
