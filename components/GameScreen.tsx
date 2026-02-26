@@ -58,6 +58,7 @@ type GameMeta = {
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
   roundScores?: Record<string, number>;
+  roundClearingPlayerIds?: string[];
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
   lastTurnActionAt?: Timestamp | null;
@@ -563,6 +564,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           selectedDiscardPlayerId:
             (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
           roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
+          roundClearingPlayerIds:
+            (data.roundClearingPlayerIds as string[] | undefined) ?? undefined,
           lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
           lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
           lastTurnActionAt: (data.lastTurnActionAt as Timestamp | null | undefined) ?? null,
@@ -1333,9 +1336,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!isRoundComplete) {
       return false;
     }
-    const scores = game?.roundScores ?? {};
-    return Object.values(scores).some((score) => score === -10);
-  }, [game?.roundScores, isRoundComplete]);
+    return (game?.roundClearingPlayerIds?.length ?? 0) > 0;
+  }, [game?.roundClearingPlayerIds, isRoundComplete]);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
     [orderedPlayers]
