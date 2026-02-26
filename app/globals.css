@@ -2794,6 +2794,23 @@ border: 1px solid #ffedef;
     background-image: var(--card-back-image-wide);
   }
 
+  .card__item-content {
+    gap: 0.2rem;
+  }
+
+  .card__item-eyebrow {
+    max-width: 100%;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    line-height: 1.05;
+    white-space: nowrap;
+  }
+
+  .card__item-art {
+    width: 84%;
+    max-height: 68%;
+  }
+
   button.card.card--discard-top:hover:not(:disabled),
   button.card.card--discard-top:active:not(:disabled) {
     scale: 0.9;
