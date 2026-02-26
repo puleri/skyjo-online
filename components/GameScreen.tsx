@@ -2562,7 +2562,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-labelledby="game-settings-title"
           onClick={handleCloseSettings}
         >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+          <div className="modal modal--game-settings" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="modal__icon-close"
+              onClick={handleCloseSettings}
+              aria-label="Close game menu"
+            >
+              ×
+            </button>
             <h2 id="game-settings-title">Game menu</h2>
             <p>Manage your game settings.</p>
             <div className="modal__option">
@@ -2672,9 +2680,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               ) : null}
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
                 Main Menu
-              </button>
-              <button className="form-button-full-width" type="button" onClick={handleCloseSettings}>
-                Close
               </button>
             </div>
           </div>
