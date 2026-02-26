@@ -322,6 +322,53 @@ section {
   text-shadow: 0 0 16px rgba(170, 230, 255, 0.7);
 }
 
+.clearing-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(194, 243, 214, 0.32), rgba(53, 98, 76, 0.6));
+  box-shadow: inset 0 0 120px rgba(204, 255, 223, 0.2), 0 10px 40px rgba(18, 53, 37, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 42px;
+  z-index: 210;
+  cursor: pointer;
+  text-wrap: balance;
+  overflow: hidden;
+}
+
+.clearing-overlay::before,
+.clearing-overlay::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.clearing-overlay::before {
+  background: radial-gradient(circle, rgba(199, 255, 207, 0.45) 0%, rgba(164, 220, 189, 0.28) 45%, rgba(0, 0, 0, 0) 70%);
+  animation: clearing-pulse 2.8s ease-out infinite;
+}
+
+.clearing-overlay::after {
+  background: radial-gradient(circle, rgba(228, 255, 238, 0.42) 0%, rgba(145, 191, 163, 0.24) 45%, rgba(0, 0, 0, 0) 72%);
+  animation: clearing-pulse 2.8s ease-out infinite;
+  animation-delay: 1.4s;
+}
+
+.clearing-overlay__message {
+  position: relative;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: #e7fff0;
+  text-shadow: 0 0 18px rgba(176, 255, 208, 0.85);
+}
+
 /* on mobile */
 @media (max-width: 640px) {
   .final-turn-overlay__message {
@@ -350,6 +397,22 @@ section {
 
   100% {
     transform: translateX(120%) rotate(2deg);
+  }
+}
+
+@keyframes clearing-pulse {
+  0% {
+    transform: scale(0.25);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
   }
 }
 
