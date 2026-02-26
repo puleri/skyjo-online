@@ -201,6 +201,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     useState<string | null>(null);
   const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
   const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
+  const [isClearingOverlayOpen, setIsClearingOverlayOpen] = useState(false);
+  const [dismissedClearingOverlayRound, setDismissedClearingOverlayRound] = useState<number | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
@@ -1327,6 +1329,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const scores = game?.roundScores ?? {};
     return Object.values(scores).some((score) => score <= -5);
   }, [game?.roundScores, isRoundComplete]);
+  const hasClearingRoundScore = useMemo(() => {
+    if (!isRoundComplete) {
+      return false;
+    }
+    const scores = game?.roundScores ?? {};
+    return Object.values(scores).some((score) => score === -10);
+  }, [game?.roundScores, isRoundComplete]);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
     [orderedPlayers]
@@ -1652,8 +1661,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   useEffect(() => {
     if (!isRoundComplete) {
       setIsColdOverlayOpen(false);
+      setIsClearingOverlayOpen(false);
       return;
     }
+
+    if (hasClearingRoundScore && typeof game?.roundNumber === "number") {
+      setIsColdOverlayOpen(false);
+      if (dismissedClearingOverlayRound !== game.roundNumber) {
+        setIsClearingOverlayOpen(true);
+        return;
+      }
+      setIsClearingOverlayOpen(false);
+      return;
+    }
+
+    setIsClearingOverlayOpen(false);
 
     if (!hasColdRoundScore || typeof game?.roundNumber !== "number") {
       setIsColdOverlayOpen(false);
@@ -1666,13 +1688,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     setIsColdOverlayOpen(false);
-  }, [dismissedColdOverlayRound, game?.roundNumber, hasColdRoundScore, isRoundComplete]);
+  }, [
+    dismissedClearingOverlayRound,
+    dismissedColdOverlayRound,
+    game?.roundNumber,
+    hasClearingRoundScore,
+    hasColdRoundScore,
+    isRoundComplete,
+  ]);
 
   const handleDismissColdOverlay = () => {
     if (typeof game?.roundNumber === "number") {
       setDismissedColdOverlayRound(game.roundNumber);
     }
     setIsColdOverlayOpen(false);
+  };
+
+  const handleDismissClearingOverlay = () => {
+    if (typeof game?.roundNumber === "number") {
+      setDismissedClearingOverlayRound(game.roundNumber);
+    }
+    setIsClearingOverlayOpen(false);
   };
 
   const finalScores = useMemo(() => {
@@ -2556,6 +2592,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           }}
         >
           <div className="cold-overlay__message">that's cold</div>
+        </div>
+      ) : null}
+      {isClearingOverlayOpen ? (
+        <div
+          className="clearing-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss clearing celebration"
+          onClick={handleDismissClearingOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissClearingOverlay();
+            }
+          }}
+        >
+          <div className="clearing-overlay__message">Clearing!</div>
         </div>
       ) : null}
       {isSettingsOpen ? (
