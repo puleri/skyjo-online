@@ -60,6 +60,9 @@ type PlayerStateDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  discardedCardCount?: number;
+  revealedCardValueTotal?: number;
+  revealedCardCount?: number;
   itemCardsDrawn?: number;
 };
 
@@ -77,6 +80,9 @@ type PlayerSummaryDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  discardedCardCount?: number;
+  revealedCardValueTotal?: number;
+  revealedCardCount?: number;
   itemCardsDrawn?: number;
 };
 
@@ -728,6 +734,7 @@ export const drawFromDiscard = async (
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: (player.pointsDiscarded ?? 0) + getNumberCardPoints(replacedCard),
+      discardedCardCount: (player.discardedCardCount ?? 0) + 1,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -788,6 +795,7 @@ export const drawFromDiscard = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -800,6 +808,7 @@ export const drawFromDiscard = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
     });
     transaction.update(gameRef, {
       discard,
@@ -1003,6 +1012,7 @@ export const swapPendingDraw = async (
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: (player.pointsDiscarded ?? 0) + getNumberCardPoints(replacedCard),
+      discardedCardCount: (player.discardedCardCount ?? 0) + 1,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -1063,6 +1073,7 @@ export const swapPendingDraw = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1075,6 +1086,7 @@ export const swapPendingDraw = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
     });
     transaction.update(gameRef, {
       discard,
@@ -1540,6 +1552,9 @@ export const revealAfterDiscard = async (
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: player.pointsDiscarded ?? 0,
+      revealedCardValueTotal:
+        (player.revealedCardValueTotal ?? 0) + getNumberCardPoints(player.grid[targetIndex]),
+      revealedCardCount: (player.revealedCardCount ?? 0) + 1,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -1598,6 +1613,9 @@ export const revealAfterDiscard = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1609,6 +1627,9 @@ export const revealAfterDiscard = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
@@ -1683,6 +1704,10 @@ export const discardAndRevealPendingDraw = async (
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded:
         (player.pointsDiscarded ?? 0) + getNumberCardPoints(player.pendingDraw),
+      discardedCardCount: (player.discardedCardCount ?? 0) + 1,
+      revealedCardValueTotal:
+        (player.revealedCardValueTotal ?? 0) + getNumberCardPoints(player.grid[targetIndex]),
+      revealedCardCount: (player.revealedCardCount ?? 0) + 1,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -1743,6 +1768,9 @@ export const discardAndRevealPendingDraw = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1755,6 +1783,9 @@ export const discardAndRevealPendingDraw = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     transaction.update(gameRef, {
       discard,
