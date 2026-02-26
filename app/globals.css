@@ -2181,6 +2181,25 @@ small {
   letter-spacing: 1.2px;
 }
 
+
+.round-score-item__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.round-score-item__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: rgba(150, 108, 255, 0.2);
+  color: #6f41d8;
+}
+
 .round-score-item__score {
   white-space: nowrap;
 }

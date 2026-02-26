@@ -90,6 +90,7 @@ type GamePlayerSummary = {
   revealedCardValueTotal?: number;
   revealedCardCount?: number;
   itemCardsDrawn?: number;
+  roundSpiked?: boolean;
 };
 
 type GamePlayerState = {
@@ -838,6 +839,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             revealedCardValueTotal: (data.revealedCardValueTotal as number | undefined) ?? 0,
             revealedCardCount: (data.revealedCardCount as number | undefined) ?? 0,
             itemCardsDrawn: (data.itemCardsDrawn as number | undefined) ?? 0,
+            roundSpiked: Boolean(data.roundSpiked),
           };
         });
         setPlayerSummaries(nextPlayers);
@@ -979,6 +981,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         roundScore: game.roundScores?.[player.id] ?? 0,
         totalScore: player.totalScore ?? 0,
         isReady: player.isReady,
+        roundSpiked: Boolean(player.roundSpiked),
       }))
       .sort((a, b) => a.roundScore - b.roundScore);
   }, [game?.roundScores, game?.status, orderedPlayers]);
@@ -2826,6 +2829,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <li key={player.id} className="round-score-item">
                 <span className="round-score-item__name">
                   {player.displayName}
+                  {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
                   {player.isReady ? <span aria-label="Ready"> ✓</span> : null}
                 </span>
                 <span className="round-score-item__score">
