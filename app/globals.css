@@ -2185,7 +2185,8 @@ small {
 .game-complete-table td:nth-child(3),
 .game-complete-table td:nth-child(5),
 .game-complete-table td:nth-child(6),
-.game-complete-table td:nth-child(7) {
+.game-complete-table td:nth-child(7),
+.game-complete-table td:nth-child(8) {
   font-variant-numeric: tabular-nums;
 }
 

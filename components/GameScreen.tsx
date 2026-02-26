@@ -85,6 +85,9 @@ type GamePlayerSummary = {
   pendingDrawSource?: "deck" | "discard" | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  discardedCardCount?: number;
+  revealedCardValueTotal?: number;
+  revealedCardCount?: number;
   itemCardsDrawn?: number;
 };
 
@@ -128,6 +131,13 @@ const formatTurnLength = (milliseconds: number) => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
+const formatAverageValue = (total: number, count: number) => {
+  if (count <= 0) {
+    return "-";
+  }
+  return (Math.round((total / count) * 10) / 10).toFixed(1);
 };
 
 export default function GameScreen({ gameId }: GameScreenProps) {
@@ -819,6 +829,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
             pointsClearedFromRows: (data.pointsClearedFromRows as number | undefined) ?? 0,
             pointsDiscarded: (data.pointsDiscarded as number | undefined) ?? 0,
+            discardedCardCount: (data.discardedCardCount as number | undefined) ?? 0,
+            revealedCardValueTotal: (data.revealedCardValueTotal as number | undefined) ?? 0,
+            revealedCardCount: (data.revealedCardCount as number | undefined) ?? 0,
             itemCardsDrawn: (data.itemCardsDrawn as number | undefined) ?? 0,
           };
         });
@@ -1690,7 +1703,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         displayName: scoreEntry.displayName,
         totalScore: scoreEntry.totalScore,
         totalTurnLength: formatTurnLength(totalTurnLengthMs),
-        pointsDiscarded: playerSummary?.pointsDiscarded ?? 0,
+        averageDiscardedCardValue: formatAverageValue(
+          playerSummary?.pointsDiscarded ?? 0,
+          playerSummary?.discardedCardCount ?? 0
+        ),
+        averageRevealedCardValue: formatAverageValue(
+          playerSummary?.revealedCardValueTotal ?? 0,
+          playerSummary?.revealedCardCount ?? 0
+        ),
         pointsClearedFromRows: playerSummary?.pointsClearedFromRows ?? 0,
         itemCardsDrawn: playerSummary?.itemCardsDrawn ?? 0,
       };
@@ -2695,7 +2715,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       <th scope="col">Player</th>
                       <th scope="col">Score</th>
                       <th scope="col">Time</th>
-                      <th scope="col">Discarded</th>
+                      <th scope="col">Avg discarded card</th>
+                      <th scope="col">Avg revealed card</th>
                       <th scope="col">Cleared (rows + columns)</th>
                       <th scope="col">Items</th>
                     </tr>
@@ -2707,7 +2728,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                         <td>{player.displayName}</td>
                         <td>{player.totalScore}</td>
                         <td>{player.totalTurnLength}</td>
-                        <td>{player.pointsDiscarded}</td>
+                        <td>{player.averageDiscardedCardValue}</td>
+                        <td>{player.averageRevealedCardValue}</td>
                         <td>{player.pointsClearedFromRows}</td>
                         <td>{player.itemCardsDrawn}</td>
                       </tr>
