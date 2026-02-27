@@ -203,6 +203,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     useState<string | null>(null);
   const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
   const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
+  const [isSpikedOverlayOpen, setIsSpikedOverlayOpen] = useState(false);
+  const [dismissedSpikedOverlayRound, setDismissedSpikedOverlayRound] = useState<number | null>(null);
   const [isClearingOverlayOpen, setIsClearingOverlayOpen] = useState(false);
   const [dismissedClearingOverlayRound, setDismissedClearingOverlayRound] = useState<number | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
@@ -1341,6 +1343,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
     return (game?.roundClearingPlayerIds?.length ?? 0) > 0;
   }, [game?.roundClearingPlayerIds, isRoundComplete]);
+  const hasSpikedRoundScore = useMemo(() => {
+    if (!isRoundComplete) {
+      return false;
+    }
+    return orderedPlayers.some((player) => player.roundSpiked);
+  }, [isRoundComplete, orderedPlayers]);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
     [orderedPlayers]
@@ -1665,10 +1673,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   useEffect(() => {
     if (!isRoundComplete) {
+      setIsSpikedOverlayOpen(false);
       setIsColdOverlayOpen(false);
       setIsClearingOverlayOpen(false);
       return;
     }
+
+    if (hasSpikedRoundScore && typeof game?.roundNumber === "number") {
+      setIsColdOverlayOpen(false);
+      setIsClearingOverlayOpen(false);
+      if (dismissedSpikedOverlayRound !== game.roundNumber) {
+        setIsSpikedOverlayOpen(true);
+        return;
+      }
+      setIsSpikedOverlayOpen(false);
+      return;
+    }
+
+    setIsSpikedOverlayOpen(false);
 
     if (hasClearingRoundScore && typeof game?.roundNumber === "number") {
       setIsColdOverlayOpen(false);
@@ -1696,11 +1718,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [
     dismissedClearingOverlayRound,
     dismissedColdOverlayRound,
+    dismissedSpikedOverlayRound,
     game?.roundNumber,
     hasClearingRoundScore,
     hasColdRoundScore,
+    hasSpikedRoundScore,
     isRoundComplete,
   ]);
+
+  const handleDismissSpikedOverlay = () => {
+    if (typeof game?.roundNumber === "number") {
+      setDismissedSpikedOverlayRound(game.roundNumber);
+    }
+    setIsSpikedOverlayOpen(false);
+  };
 
   const handleDismissColdOverlay = () => {
     if (typeof game?.roundNumber === "number") {
@@ -2597,6 +2628,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           }}
         >
           <div className="cold-overlay__message">that's cold</div>
+        </div>
+      ) : null}
+      {isSpikedOverlayOpen ? (
+        <div
+          className="spiked-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss spiked celebration"
+          onClick={handleDismissSpikedOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissSpikedOverlay();
+            }
+          }}
+        >
+          <div className="spiked-overlay__message">SPIKED</div>
         </div>
       ) : null}
       {isClearingOverlayOpen ? (
