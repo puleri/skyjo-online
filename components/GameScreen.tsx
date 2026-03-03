@@ -2887,17 +2887,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             ))}
           </ol>
           <div className="game-results__actions">
-            {isLocalPlayerReady ? (
-              <p className="notice">You are ready for the next round.</p>
-            ) : (
-              <button
-                type="button"
-                className="form-button-full-width mb-20"
-                onClick={handleReadyForNextRound}
-              >
-                Ready up
-              </button>
-            )}
+            {isLocalPlayer ? (
+              <div className="game-results__primary-actions">
+                {isLocalPlayerReady ? (
+                  <p className="notice">You are ready for the next round.</p>
+                ) : (
+                  <button
+                    type="button"
+                    className="form-button-full-width"
+                    onClick={handleReadyForNextRound}
+                  >
+                    Ready up
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="form-button-full-width game-results__leave-button"
+                  onClick={handleLeaveGame}
+                >
+                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
+                </button>
+              </div>
+            ) : null}
             {isHost ? (
               <button
                 type="button"
