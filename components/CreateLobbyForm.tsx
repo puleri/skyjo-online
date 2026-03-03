@@ -1,8 +1,10 @@
 "use client";
 
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { FormEvent, useState } from "react";
+import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
+import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import type { SpikeItemCount } from "../lib/game/deck";
 
@@ -16,8 +18,11 @@ export default function CreateLobbyForm() {
   const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isJoiningLobby, setIsJoiningLobby] = useState(false);
+  const [savedDisplayName, setSavedDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { uid } = useAnonymousAuth();
+  const router = useRouter();
   const firebaseReady = isFirebaseConfigured;
   const spikeItemCountOptions: { value: SpikeItemCount; label: string }[] = [
     { value: "none", label: "None" },
@@ -31,10 +36,20 @@ export default function CreateLobbyForm() {
   );
   const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "Low";
   const modeTagLabel = spikeMode ? "spike" : "classic";
+  const hasSavedDisplayName = Boolean(savedDisplayName?.trim());
+
+  useEffect(() => {
+    const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
+    setSavedDisplayName(storedName || null);
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!firebaseReady || !name.trim()) {
+      return;
+    }
+    if (!hasSavedDisplayName) {
+      setError("Save your display name before creating a lobby.");
       return;
     }
     if (!uid) {
@@ -46,9 +61,13 @@ export default function CreateLobbyForm() {
     setError(null);
 
     try {
-      const storedName = window.localStorage.getItem(storageKey);
-      const resolvedName = storedName?.trim() || "A player";
-      await addDoc(collection(db, "lobbies"), {
+      const resolvedName = savedDisplayName;
+      if (!resolvedName) {
+        setError("Save your display name before creating a lobby.");
+        return;
+      }
+      const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
+      const lobbyRef = await addDoc(collection(db, "lobbies"), {
         name: name.trim(),
         createdAt: serverTimestamp(),
         status: "open",
@@ -58,13 +77,27 @@ export default function CreateLobbyForm() {
         playerNames: [resolvedName],
         hostId: uid,
         hostDisplayName: resolvedName,
+        assignedGlyphs: [hostGlyph],
+        availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
         spikeMode,
         ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
       });
+      setIsJoiningLobby(true);
+      await new Promise<void>((resolve) => {
+        window.setTimeout(() => resolve(), 1000);
+      });
+      await setDoc(doc(db, "lobbies", lobbyRef.id, "players", uid), {
+        displayName: resolvedName,
+        joinedAt: serverTimestamp(),
+        isReady: false,
+        glyph: hostGlyph,
+      });
       setName("");
+      router.push(`/lobby/${lobbyRef.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
+      setIsJoiningLobby(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -118,11 +151,22 @@ export default function CreateLobbyForm() {
       <button
         className="form-button-full-width form-card-font mb-10"
         type="submit"
-        disabled={isSubmitting || !name.trim() || !uid}
+        disabled={isSubmitting || !name.trim() || !uid || !hasSavedDisplayName}
       >
         {isSubmitting ? "Creating..." : "Create Lobby"}
       </button>
+      {!hasSavedDisplayName ? (
+        <p className="notice">Save your player name above before creating a lobby.</p>
+      ) : null}
       {error ? <p className="notice">{error}</p> : null}
+      {isJoiningLobby ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="join-lobby-title">
+          <div className="modal">
+            <h2 className="leaderboard-title" id="join-lobby-title">Lobby ready</h2>
+            <p className="leaderboard-sub">Joining your new lobby…</p>
+          </div>
+        </div>
+      ) : null}
       {isSettingsOpen ? (
         <div
           className="modal-backdrop"

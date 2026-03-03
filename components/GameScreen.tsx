@@ -21,6 +21,7 @@ import {
   discardAndRevealPendingDraw,
   discardItemForReveal,
   drawFromDeck,
+  leaveGame,
   drawFromDiscard,
   revealAfterDiscard,
   readyForNextRound,
@@ -57,6 +58,7 @@ type GameMeta = {
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
   roundScores?: Record<string, number>;
+  roundClearingPlayerIds?: string[];
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
   lastTurnActionAt?: Timestamp | null;
@@ -84,7 +86,11 @@ type GamePlayerSummary = {
   pendingDrawSource?: "deck" | "discard" | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  discardedCardCount?: number;
+  revealedCardValueTotal?: number;
+  revealedCardCount?: number;
   itemCardsDrawn?: number;
+  roundSpiked?: boolean;
 };
 
 type GamePlayerState = {
@@ -129,6 +135,13 @@ const formatTurnLength = (milliseconds: number) => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
+const formatAverageValue = (total: number, count: number) => {
+  if (count <= 0) {
+    return "-";
+  }
+  return (Math.round((total / count) * 10) / 10).toFixed(1);
+};
+
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
   const firstTimeTipsStorageKey = "skyjo-first-time-tips";
@@ -153,6 +166,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLeaveGameConfirmArmed, setIsLeaveGameConfirmArmed] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -189,6 +203,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     useState<string | null>(null);
   const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
   const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
+  const [isSpikedOverlayOpen, setIsSpikedOverlayOpen] = useState(false);
+  const [dismissedSpikedOverlayRound, setDismissedSpikedOverlayRound] = useState<number | null>(null);
+  const [isClearingOverlayOpen, setIsClearingOverlayOpen] = useState(false);
+  const [dismissedClearingOverlayRound, setDismissedClearingOverlayRound] = useState<number | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
@@ -330,11 +348,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     value != null && typeof value === "object" && value.kind === "item";
 
   const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
-    A: { name: "Randomize", image: "/cards/random.png", eyebrow: "?" },
     C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
     E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
     F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
     G: { name: "Push", image: "/cards/push.png", eyebrow: "Push" },
+    H: { name: "Mirror", image: "/cards/mirror.png", eyebrow: "Mirror" },
   };
 
   const getCardLabel = (value: Card | null | undefined) => {
@@ -549,6 +567,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           selectedDiscardPlayerId:
             (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
           roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
+          roundClearingPlayerIds:
+            (data.roundClearingPlayerIds as string[] | undefined) ?? undefined,
           lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
           lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
           lastTurnActionAt: (data.lastTurnActionAt as Timestamp | null | undefined) ?? null,
@@ -817,7 +837,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
             pointsClearedFromRows: (data.pointsClearedFromRows as number | undefined) ?? 0,
             pointsDiscarded: (data.pointsDiscarded as number | undefined) ?? 0,
+            discardedCardCount: (data.discardedCardCount as number | undefined) ?? 0,
+            revealedCardValueTotal: (data.revealedCardValueTotal as number | undefined) ?? 0,
+            revealedCardCount: (data.revealedCardCount as number | undefined) ?? 0,
             itemCardsDrawn: (data.itemCardsDrawn as number | undefined) ?? 0,
+            roundSpiked: Boolean(data.roundSpiked),
           };
         });
         setPlayerSummaries(nextPlayers);
@@ -905,12 +929,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return [...ordered, ...remaining];
   }, [game?.activePlayerOrder, players]);
 
-  const getPlayerLabel = (playerId: string) =>
-    orderedPlayers.find((player) => player.id === playerId)?.displayName ?? "Player";
-
   const getItemTargetLabel = (target: ItemSelectionTarget) => {
-    const playerName = getPlayerLabel(target.playerId);
-    return `${playerName} · Card ${target.index + 1}`;
+    const targetPlayer = orderedPlayers.find((player) => player.id === target.playerId);
+    const isTargetCardRevealed = Boolean(targetPlayer?.revealed?.[target.index]);
+    const targetCard = targetPlayer?.grid?.[target.index] ?? targetPlayer?.publicGrid?.[target.index] ?? null;
+
+    if (isTargetCardRevealed && targetCard !== null && targetCard !== undefined) {
+      return getCardLabel(targetCard);
+    }
+
+    return <img className="item-panel__target-question" src="/question-mark-icon.png" alt="Hidden card" />;
   };
 
   const displayPlayers = useMemo(() => {
@@ -955,6 +983,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         roundScore: game.roundScores?.[player.id] ?? 0,
         totalScore: player.totalScore ?? 0,
         isReady: player.isReady,
+        roundSpiked: Boolean(player.roundSpiked),
       }))
       .sort((a, b) => a.roundScore - b.roundScore);
   }, [game?.roundScores, game?.status, orderedPlayers]);
@@ -1308,6 +1337,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const scores = game?.roundScores ?? {};
     return Object.values(scores).some((score) => score <= -5);
   }, [game?.roundScores, isRoundComplete]);
+  const hasClearingRoundScore = useMemo(() => {
+    if (!isRoundComplete) {
+      return false;
+    }
+    return (game?.roundClearingPlayerIds?.length ?? 0) > 0;
+  }, [game?.roundClearingPlayerIds, isRoundComplete]);
+  const hasSpikedRoundScore = useMemo(() => {
+    if (!isRoundComplete) {
+      return false;
+    }
+    return orderedPlayers.some((player) => player.roundSpiked);
+  }, [isRoundComplete, orderedPlayers]);
   const selectedPlayer = useMemo(
     () => orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
     [orderedPlayers]
@@ -1386,7 +1427,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemCode = pendingItem?.code ?? null;
   const itemName = itemCode ? itemCardDetails[itemCode]?.name ?? itemCode : null;
   const itemTargetsNeeded =
-    itemCode === "E"
+    itemCode === "E" || itemCode === "H"
       ? 2
       : itemCode === "F" || itemCode === "G"
         ? 0
@@ -1405,13 +1446,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showDrawActions = showDrawnCard && !isPendingItem;
   const itemCardSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
   const itemTargetInstruction =
-    itemTargets.length === 0
-      ? itemTargetsNeeded === 1
-        ? "Select a target card."
-        : "Select two target cards."
-      : itemTargets.length < itemTargetsNeeded
-        ? "Select a second target."
-        : "Targets selected.";
+    itemCode === "H"
+      ? itemTargets.length === 0
+        ? "Select the card with the value to copy first."
+        : itemTargets.length === 1
+          ? "Select the card to update second."
+          : "Targets selected."
+      : itemTargets.length === 0
+        ? itemTargetsNeeded === 1
+          ? "Select a target card."
+          : "Select two target cards."
+        : itemTargets.length < itemTargetsNeeded
+          ? "Select a second target."
+          : "Targets selected.";
   const canDiscardItem =
     isResolvingItem &&
     Boolean(itemCode) &&
@@ -1419,11 +1466,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     !isSprinting &&
     !isSubmittingAction;
   const itemDescriptions: Record<string, string> = {
-    A: "Randomize a card on your own board.",
     C: "Set a card on your own board to any value.",
     E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
     G: "Draw three from the draw pile. You may not reveal cards during a push.",
+    H: "Mirror: pick one of your cards, then pick another of your cards to copy that value without revealing it.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
@@ -1626,9 +1673,36 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   useEffect(() => {
     if (!isRoundComplete) {
+      setIsSpikedOverlayOpen(false);
       setIsColdOverlayOpen(false);
+      setIsClearingOverlayOpen(false);
       return;
     }
+
+    if (hasSpikedRoundScore && typeof game?.roundNumber === "number") {
+      setIsColdOverlayOpen(false);
+      setIsClearingOverlayOpen(false);
+      if (dismissedSpikedOverlayRound !== game.roundNumber) {
+        setIsSpikedOverlayOpen(true);
+        return;
+      }
+      setIsSpikedOverlayOpen(false);
+      return;
+    }
+
+    setIsSpikedOverlayOpen(false);
+
+    if (hasClearingRoundScore && typeof game?.roundNumber === "number") {
+      setIsColdOverlayOpen(false);
+      if (dismissedClearingOverlayRound !== game.roundNumber) {
+        setIsClearingOverlayOpen(true);
+        return;
+      }
+      setIsClearingOverlayOpen(false);
+      return;
+    }
+
+    setIsClearingOverlayOpen(false);
 
     if (!hasColdRoundScore || typeof game?.roundNumber !== "number") {
       setIsColdOverlayOpen(false);
@@ -1641,13 +1715,36 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     setIsColdOverlayOpen(false);
-  }, [dismissedColdOverlayRound, game?.roundNumber, hasColdRoundScore, isRoundComplete]);
+  }, [
+    dismissedClearingOverlayRound,
+    dismissedColdOverlayRound,
+    dismissedSpikedOverlayRound,
+    game?.roundNumber,
+    hasClearingRoundScore,
+    hasColdRoundScore,
+    hasSpikedRoundScore,
+    isRoundComplete,
+  ]);
+
+  const handleDismissSpikedOverlay = () => {
+    if (typeof game?.roundNumber === "number") {
+      setDismissedSpikedOverlayRound(game.roundNumber);
+    }
+    setIsSpikedOverlayOpen(false);
+  };
 
   const handleDismissColdOverlay = () => {
     if (typeof game?.roundNumber === "number") {
       setDismissedColdOverlayRound(game.roundNumber);
     }
     setIsColdOverlayOpen(false);
+  };
+
+  const handleDismissClearingOverlay = () => {
+    if (typeof game?.roundNumber === "number") {
+      setDismissedClearingOverlayRound(game.roundNumber);
+    }
+    setIsClearingOverlayOpen(false);
   };
 
   const finalScores = useMemo(() => {
@@ -1682,7 +1779,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         displayName: scoreEntry.displayName,
         totalScore: scoreEntry.totalScore,
         totalTurnLength: formatTurnLength(totalTurnLengthMs),
-        pointsDiscarded: playerSummary?.pointsDiscarded ?? 0,
+        averageDiscardedCardValue: formatAverageValue(
+          playerSummary?.pointsDiscarded ?? 0,
+          playerSummary?.discardedCardCount ?? 0
+        ),
+        averageRevealedCardValue: formatAverageValue(
+          playerSummary?.revealedCardValueTotal ?? 0,
+          playerSummary?.revealedCardCount ?? 0
+        ),
         pointsClearedFromRows: playerSummary?.pointsClearedFromRows ?? 0,
         itemCardsDrawn: playerSummary?.itemCardsDrawn ?? 0,
       };
@@ -2076,9 +2180,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     await runWithActionSubmission(async () => {
       const cardTargets = itemTargets.filter(isCardTarget);
-      if (itemCode === "A") {
-        await useItemCard(gameId, uid, { code: "A", target: cardTargets[0] });
-      } else if (itemCode === "C") {
+      if (itemCode === "C") {
         await useItemCard(gameId, uid, {
           code: "C",
           target: cardTargets[0],
@@ -2091,6 +2193,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       } else if (itemCode === "E") {
         await useItemCard(gameId, uid, {
           code: "E",
+          first: cardTargets[0],
+          second: cardTargets[1],
+        });
+      } else if (itemCode === "H") {
+        await useItemCard(gameId, uid, {
+          code: "H",
           first: cardTargets[0],
           second: cardTargets[1],
         });
@@ -2190,6 +2298,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   const handleCancelMenu = () => {
     setActiveActionIndex(null);
+  };
+
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+    setIsLeaveGameConfirmArmed(false);
+  };
+
+  const handleLeaveGame = async () => {
+    if (!uid) {
+      setError("Sign in to leave the game.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (!isLeaveGameConfirmArmed) {
+      setIsLeaveGameConfirmArmed(true);
+      return;
+    }
+
+    setError(null);
+    try {
+      await leaveGame(gameId, uid);
+      handleCloseSettings();
+      router.push("/");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+      setIsLeaveGameConfirmArmed(false);
+    }
   };
 
   const handleStartNextRound = async () => {
@@ -2315,7 +2454,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           type="button"
           className="settings-button"
           aria-label="Open settings"
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => {
+            setIsSettingsOpen(true);
+            setIsLeaveGameConfirmArmed(false);
+          }}
         >
           <img className="settings-icon" src="/settings-icon.png"/>
         </button>
@@ -2489,15 +2631,57 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           <div className="cold-overlay__message">that's cold</div>
         </div>
       ) : null}
+      {isSpikedOverlayOpen ? (
+        <div
+          className="spiked-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss spiked celebration"
+          onClick={handleDismissSpikedOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissSpikedOverlay();
+            }
+          }}
+        >
+          <div className="spiked-overlay__message">SPIKED</div>
+        </div>
+      ) : null}
+      {isClearingOverlayOpen ? (
+        <div
+          className="clearing-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss clearing celebration"
+          onClick={handleDismissClearingOverlay}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDismissClearingOverlay();
+            }
+          }}
+        >
+          <div className="clearing-overlay__message">Clearing!</div>
+        </div>
+      ) : null}
       {isSettingsOpen ? (
         <div
           className="modal-backdrop"
           role="dialog"
           aria-modal="true"
           aria-labelledby="game-settings-title"
-          onClick={() => setIsSettingsOpen(false)}
+          onClick={handleCloseSettings}
         >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+          <div className="modal modal--game-settings" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="modal__icon-close"
+              onClick={handleCloseSettings}
+              aria-label="Close game menu"
+            >
+              ×
+            </button>
             <h2 id="game-settings-title">Game menu</h2>
             <p>Manage your game settings.</p>
             <div className="modal__option">
@@ -2600,11 +2784,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </div>
             ) : null}
             <div className="modal__actions">
+              {isLocalPlayer ? (
+                <button className="form-button-full-width" type="button" onClick={handleLeaveGame}>
+                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
+                </button>
+              ) : null}
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
                 Main Menu
-              </button>
-              <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
-                Close
               </button>
             </div>
           </div>
@@ -2645,7 +2831,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       <th scope="col">Player</th>
                       <th scope="col">Score</th>
                       <th scope="col">Time</th>
-                      <th scope="col">Discarded</th>
+                      <th scope="col">Avg discarded card</th>
+                      <th scope="col">Avg revealed card</th>
                       <th scope="col">Cleared (rows + columns)</th>
                       <th scope="col">Items</th>
                     </tr>
@@ -2657,7 +2844,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                         <td>{player.displayName}</td>
                         <td>{player.totalScore}</td>
                         <td>{player.totalTurnLength}</td>
-                        <td>{player.pointsDiscarded}</td>
+                        <td>{player.averageDiscardedCardValue}</td>
+                        <td>{player.averageRevealedCardValue}</td>
                         <td>{player.pointsClearedFromRows}</td>
                         <td>{player.itemCardsDrawn}</td>
                       </tr>
@@ -2690,6 +2878,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <li key={player.id} className="round-score-item">
                 <span className="round-score-item__name">
                   {player.displayName}
+                  {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
                   {player.isReady ? <span aria-label="Ready"> ✓</span> : null}
                 </span>
                 <span className="round-score-item__score">
@@ -2699,17 +2888,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             ))}
           </ol>
           <div className="game-results__actions">
-            {isLocalPlayerReady ? (
-              <p className="notice">You are ready for the next round.</p>
-            ) : (
-              <button
-                type="button"
-                className="form-button-full-width mb-20"
-                onClick={handleReadyForNextRound}
-              >
-                Ready up
-              </button>
-            )}
+            {isLocalPlayer ? (
+              <div className="game-results__primary-actions">
+                {isLocalPlayerReady ? (
+                  <p className="notice">You are ready for the next round.</p>
+                ) : (
+                  <button
+                    type="button"
+                    className="form-button-full-width"
+                    onClick={handleReadyForNextRound}
+                  >
+                    Ready up
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="form-button-full-width game-results__leave-button"
+                  onClick={handleLeaveGame}
+                >
+                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
+                </button>
+              </div>
+            ) : null}
             {isHost ? (
               <button
                 type="button"

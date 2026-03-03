@@ -396,6 +396,9 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             totalScore: 0,
             pointsClearedFromRows: 0,
             pointsDiscarded: 0,
+            discardedCardCount: 0,
+            revealedCardValueTotal: 0,
+            revealedCardCount: 0,
             itemCardsDrawn: 0,
             revealed: initialRevealed,
             publicGrid: Array.from({ length: 12 }, () => null),
@@ -409,6 +412,9 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             totalScore: 0,
             pointsClearedFromRows: 0,
             pointsDiscarded: 0,
+            discardedCardCount: 0,
+            revealedCardValueTotal: 0,
+            revealedCardCount: 0,
             itemCardsDrawn: 0,
           });
         });

@@ -35,6 +35,7 @@ type GameDoc = {
   selectedDiscardPlayerId?: string | null;
   status?: string;
   roundScores?: Record<string, number>;
+  roundClearingPlayerIds?: string[];
   lastTurnPlayerId?: string | null;
   lastTurnAction?: string | null;
   lastTurnActionAt?: unknown;
@@ -60,7 +61,11 @@ type PlayerStateDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  discardedCardCount?: number;
+  revealedCardValueTotal?: number;
+  revealedCardCount?: number;
   itemCardsDrawn?: number;
+  hadSpikeThisRound?: boolean;
 };
 
 type PlayerSummaryDoc = {
@@ -77,7 +82,11 @@ type PlayerSummaryDoc = {
   sprintTurnsRemaining?: number | null;
   pointsClearedFromRows?: number;
   pointsDiscarded?: number;
+  discardedCardCount?: number;
+  revealedCardValueTotal?: number;
+  revealedCardCount?: number;
   itemCardsDrawn?: number;
+  roundSpiked?: boolean;
 };
 
 const columns = 4;
@@ -355,6 +364,8 @@ const clearPlayerMatches = (player: PlayerStateDoc, rowClear: boolean) => {
       grid: cleared.grid,
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + totalClearedPoints,
+      hadSpikeThisRound:
+        Boolean(player.hadSpikeThisRound) || Boolean(cleared.clearedRow && cleared.clearedColumn),
     },
     clearedCards: cleared.clearedCards,
     clearedRow: cleared.clearedRow,
@@ -387,20 +398,20 @@ type ItemTarget = {
 };
 
 type ItemUsage =
-  | { code: "A"; target: ItemTarget }
   | { code: "C"; target: ItemTarget; value: number }
   | { code: "E"; first: ItemTarget; second: ItemTarget }
+  | { code: "H"; first: ItemTarget; second: ItemTarget }
   | { code: "F" }
   | { code: "G" };
 
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
-    case "A":
-      return "used Randomize to reroll a card.";
     case "C":
       return `used Wild to set a card to ${usage.value}.`;
     case "E":
       return "used Swap to swap two cards.";
+    case "H":
+      return "used Mirror to copy one card's value onto another.";
     case "F":
       return "used Mist to summon mist.";
     case "G":
@@ -530,11 +541,17 @@ const computeRoundScores = (
   applyEndGameBonuses: boolean
 ) => {
   const roundScores: Record<string, number> = {};
+  const roundClearingPlayerIds: string[] = [];
   const scoresByPlayer = activeOrder.map((playerId) => {
     const player = players[playerId];
     const revealed = player.revealed.map(() => true);
     const cleared = clearMatchedLines(player.grid, revealed, rowClear);
-    const score = calculateScore(cleared.grid);
+    const baseScore = calculateScore(cleared.grid);
+    const clearedEntireBoard = cleared.grid.every((card) => card === null);
+    const score = clearedEntireBoard ? -10 : baseScore;
+    if (clearedEntireBoard) {
+      roundClearingPlayerIds.push(playerId);
+    }
     roundScores[playerId] = score;
     return { playerId, score, cleared };
   });
@@ -555,6 +572,12 @@ const computeRoundScores = (
       roundScores[endingPlayerId] = endingScore * 2;
     }
   }
+
+  activeOrder.forEach((playerId) => {
+    if (players[playerId].hadSpikeThisRound) {
+      roundScores[playerId] -= 5;
+    }
+  });
 
   const stateUpdates: Record<string, Partial<PlayerStateDoc>> = {};
   const summaryUpdates: Record<string, Partial<PlayerSummaryDoc>> = {};
@@ -584,6 +607,7 @@ const computeRoundScores = (
       isReady: false,
       roundScore: roundScores[playerId],
       totalScore,
+      roundSpiked: Boolean(players[playerId].hadSpikeThisRound),
       ...(publicSummaryUpdates ?? {}),
       ...getPendingSummaryUpdates(null, null),
     };
@@ -640,7 +664,14 @@ const computeRoundScores = (
     };
   }
 
-  return { roundScores, stateUpdates, summaryUpdates, isGameComplete, endGameBonusResults };
+  return {
+    roundScores,
+    roundClearingPlayerIds,
+    stateUpdates,
+    summaryUpdates,
+    isGameComplete,
+    endGameBonusResults,
+  };
 };
 
 export const drawFromDiscard = async (
@@ -728,6 +759,9 @@ export const drawFromDiscard = async (
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: (player.pointsDiscarded ?? 0) + getNumberCardPoints(replacedCard),
+      discardedCardCount: (player.discardedCardCount ?? 0) + 1,
+      hadSpikeThisRound:
+        Boolean(player.hadSpikeThisRound) || Boolean(cleared.clearedRow && cleared.clearedColumn),
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -736,6 +770,7 @@ export const drawFromDiscard = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -771,6 +806,7 @@ export const drawFromDiscard = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -788,6 +824,8 @@ export const drawFromDiscard = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      hadSpikeThisRound: Boolean(resolvedPlayer.hadSpikeThisRound),
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -800,6 +838,8 @@ export const drawFromDiscard = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      roundSpiked: Boolean(resolvedPlayer.hadSpikeThisRound),
     });
     transaction.update(gameRef, {
       discard,
@@ -812,6 +852,7 @@ export const drawFromDiscard = async (
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1003,6 +1044,9 @@ export const swapPendingDraw = async (
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: (player.pointsDiscarded ?? 0) + getNumberCardPoints(replacedCard),
+      discardedCardCount: (player.discardedCardCount ?? 0) + 1,
+      hadSpikeThisRound:
+        Boolean(player.hadSpikeThisRound) || Boolean(cleared.clearedRow && cleared.clearedColumn),
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -1011,6 +1055,7 @@ export const swapPendingDraw = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1046,6 +1091,7 @@ export const swapPendingDraw = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1063,6 +1109,8 @@ export const swapPendingDraw = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      hadSpikeThisRound: Boolean(resolvedPlayer.hadSpikeThisRound),
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1075,6 +1123,8 @@ export const swapPendingDraw = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      roundSpiked: Boolean(resolvedPlayer.hadSpikeThisRound),
     });
     transaction.update(gameRef, {
       discard,
@@ -1086,6 +1136,7 @@ export const swapPendingDraw = async (
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1231,28 +1282,6 @@ export const useItemCard = async (
     };
 
     switch (usage.code) {
-      case "A": {
-        assertCondition(
-          usage.target.playerId === playerId,
-          "Item A must target your own grid."
-        );
-        const targetPlayer = await loadPlayer(usage.target.playerId);
-        validateCardSlot(targetPlayer, usage.target.index);
-        const targetCard = targetPlayer.grid[usage.target.index];
-        assertNumberCard(targetCard, "Target card must be a number.");
-
-        nextDeck = shuffleDeck([...nextDeck, targetCard]);
-        const replacement = drawRandomNumberCard(nextDeck);
-
-        const nextGrid = [...targetPlayer.grid];
-        nextGrid[usage.target.index] = replacement;
-        playersToUpdate.set(usage.target.playerId, {
-          ...targetPlayer,
-          grid: nextGrid,
-        });
-        affectedPlayerIds.add(usage.target.playerId);
-        break;
-      }
       case "C": {
         assertCondition(
           usage.target.playerId === playerId,
@@ -1343,6 +1372,31 @@ export const useItemCard = async (
         }
         break;
       }
+      case "H": {
+        assertCondition(
+          usage.first.playerId === playerId,
+          "Item H must target your own grid."
+        );
+        assertCondition(
+          usage.second.playerId === playerId,
+          "Item H must target your own grid."
+        );
+        const targetPlayer = await loadPlayer(usage.first.playerId);
+        validateCardSlot(targetPlayer, usage.first.index);
+        validateCardSlot(targetPlayer, usage.second.index);
+
+        const sourceCard = targetPlayer.grid[usage.first.index];
+        assertNumberCard(sourceCard, "Mirror source card must be a number.");
+
+        const nextGrid = [...targetPlayer.grid];
+        nextGrid[usage.second.index] = sourceCard;
+        playersToUpdate.set(usage.first.playerId, {
+          ...targetPlayer,
+          grid: nextGrid,
+        });
+        affectedPlayerIds.add(usage.first.playerId);
+        break;
+      }
       default:
         throw new Error("Unknown item card.");
     }
@@ -1379,6 +1433,7 @@ export const useItemCard = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1414,6 +1469,7 @@ export const useItemCard = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1431,6 +1487,7 @@ export const useItemCard = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      hadSpikeThisRound: Boolean(resolvedPlayer.hadSpikeThisRound),
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1443,6 +1500,7 @@ export const useItemCard = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      roundSpiked: Boolean(resolvedPlayer.hadSpikeThisRound),
     });
     const updatedDiscard =
       clearedItemDiscards.length > 0 ? [...game.discard, ...clearedItemDiscards] : null;
@@ -1460,6 +1518,7 @@ export const useItemCard = async (
       ...(updatedDiscard ? { discard: updatedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1537,6 +1596,11 @@ export const revealAfterDiscard = async (
       revealed: cleared.revealed,
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded: player.pointsDiscarded ?? 0,
+      hadSpikeThisRound:
+        Boolean(player.hadSpikeThisRound) || Boolean(cleared.clearedRow && cleared.clearedColumn),
+      revealedCardValueTotal:
+        (player.revealedCardValueTotal ?? 0) + getNumberCardPoints(player.grid[targetIndex]),
+      revealedCardCount: (player.revealedCardCount ?? 0) + 1,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -1545,6 +1609,7 @@ export const revealAfterDiscard = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1580,6 +1645,7 @@ export const revealAfterDiscard = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1595,6 +1661,10 @@ export const revealAfterDiscard = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      hadSpikeThisRound: Boolean(resolvedPlayer.hadSpikeThisRound),
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1606,6 +1676,10 @@ export const revealAfterDiscard = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      roundSpiked: Boolean(resolvedPlayer.hadSpikeThisRound),
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     transaction.update(gameRef, {
       lastTurnPlayerId: playerId,
@@ -1617,6 +1691,7 @@ export const revealAfterDiscard = async (
       ...(clearedDiscard ? { discard: clearedDiscard } : {}),
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1680,6 +1755,12 @@ export const discardAndRevealPendingDraw = async (
       pointsClearedFromRows: (player.pointsClearedFromRows ?? 0) + cleared.totalClearedPoints,
       pointsDiscarded:
         (player.pointsDiscarded ?? 0) + getNumberCardPoints(player.pendingDraw),
+      discardedCardCount: (player.discardedCardCount ?? 0) + 1,
+      hadSpikeThisRound:
+        Boolean(player.hadSpikeThisRound) || Boolean(cleared.clearedRow && cleared.clearedColumn),
+      revealedCardValueTotal:
+        (player.revealedCardValueTotal ?? 0) + getNumberCardPoints(player.grid[targetIndex]),
+      revealedCardCount: (player.revealedCardCount ?? 0) + 1,
     };
     const lastClearType = getClearType(cleared.clearedRow, cleared.clearedColumn);
 
@@ -1688,6 +1769,7 @@ export const discardAndRevealPendingDraw = async (
     const resolvedPlayer = resolution.updatedPlayer;
 
     let roundScores: Record<string, number> | null = null;
+    let roundClearingPlayerIds: string[] | null = null;
     let scoreUpdates: {
       stateUpdates: Record<string, Partial<PlayerStateDoc>>;
       summaryUpdates: Record<string, Partial<PlayerSummaryDoc>>;
@@ -1723,6 +1805,7 @@ export const discardAndRevealPendingDraw = async (
         Boolean(game.spikeMode && game.spikeEndGameBonuses !== false)
       );
       roundScores = scoring.roundScores;
+      roundClearingPlayerIds = scoring.roundClearingPlayerIds;
       scoreUpdates = {
         stateUpdates: scoring.stateUpdates,
         summaryUpdates: scoring.summaryUpdates,
@@ -1740,6 +1823,10 @@ export const discardAndRevealPendingDraw = async (
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      hadSpikeThisRound: Boolean(resolvedPlayer.hadSpikeThisRound),
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     const publicSummaryUpdates = getPublicSummaryUpdates(
       player.mistTurnsRemaining,
@@ -1752,6 +1839,10 @@ export const discardAndRevealPendingDraw = async (
       ...getSprintSummaryUpdates(resolvedPlayer.sprintTurnsRemaining),
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
       pointsDiscarded: resolvedPlayer.pointsDiscarded ?? 0,
+      discardedCardCount: resolvedPlayer.discardedCardCount ?? 0,
+      roundSpiked: Boolean(resolvedPlayer.hadSpikeThisRound),
+      revealedCardValueTotal: resolvedPlayer.revealedCardValueTotal ?? 0,
+      revealedCardCount: resolvedPlayer.revealedCardCount ?? 0,
     });
     transaction.update(gameRef, {
       discard,
@@ -1764,6 +1855,7 @@ export const discardAndRevealPendingDraw = async (
       ...resolution.gameUpdates,
       ...(gameStatusOverride ? { status: gameStatusOverride } : {}),
       ...(roundScores ? { roundScores } : {}),
+      ...(roundClearingPlayerIds ? { roundClearingPlayerIds } : {}),
       ...(endGameBonusResults ? { endGameBonusResults } : {}),
     });
 
@@ -1851,6 +1943,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
       lastClearTypeAt: null,
       skipNextTurnPlayerIds: [],
       roundScores: deleteField(),
+      roundClearingPlayerIds: deleteField(),
       readyPlayerIds: [],
     });
 
@@ -1863,6 +1956,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         pendingDrawSource: null,
         mistTurnsRemaining: null,
         sprintTurnsRemaining: null,
+        hadSpikeThisRound: false,
       });
       transaction.update(getPlayerSummaryRef(gameId, targetPlayerId), {
         isReady: false,
@@ -1874,6 +1968,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
         pendingDrawSource: null,
         mistTurnsRemaining: null,
         sprintTurnsRemaining: null,
+        roundSpiked: false,
       });
     });
   });
@@ -1967,5 +2062,93 @@ export const submitEndGameTurnTime = async (
     }
 
     transaction.update(gameRef, gameUpdates);
+  });
+};
+
+export const leaveGame = async (gameId: string, playerId: string) => {
+  const gameRef = doc(db, "games", gameId);
+  const playerStateRef = getPlayerStateRef(gameId, playerId);
+  const playerSummaryRef = getPlayerSummaryRef(gameId, playerId);
+
+  await runTransaction(db, async (transaction) => {
+    const gameSnap = await transaction.get(gameRef);
+    assertCondition(gameSnap.exists(), "Game not found.");
+    const game = gameSnap.data() as GameDoc;
+
+    const activeOrder = game.activePlayerOrder ?? [];
+    assertCondition(activeOrder.includes(playerId), "Player is not active in this game.");
+
+    const playerStateSnap = await transaction.get(playerStateRef);
+    assertCondition(playerStateSnap.exists(), "Player state not found.");
+    const playerState = playerStateSnap.data() as PlayerStateDoc;
+
+    const recycledGridCards = playerState.grid.filter(
+      (card): card is Card => card !== null && card !== undefined
+    );
+    const pendingCard = playerState.pendingDraw;
+    const recycledCards =
+      pendingCard !== null && pendingCard !== undefined
+        ? [...recycledGridCards, pendingCard]
+        : recycledGridCards;
+    const nextDeck = recycledCards.length > 0 ? shuffleDeck([...game.deck, ...recycledCards]) : game.deck;
+
+    const nextActiveOrder = activeOrder.filter((activePlayerId) => activePlayerId !== playerId);
+    const leavingIndex = activeOrder.indexOf(playerId);
+    const fallbackNextPlayerId =
+      nextActiveOrder.length > 0
+        ? nextActiveOrder[leavingIndex % nextActiveOrder.length] ?? nextActiveOrder[0]
+        : null;
+
+    const nextRoundScores = { ...(game.roundScores ?? {}) };
+    delete nextRoundScores[playerId];
+    const nextRoundClearingPlayerIds = (game.roundClearingPlayerIds ?? []).filter(
+      (activePlayerId) => activePlayerId !== playerId
+    );
+
+    const nextTurnTimeSubmissions = { ...(game.turnTimeSubmissionsMs ?? {}) };
+    delete nextTurnTimeSubmissions[playerId];
+
+    const endingPlayerId = game.endingPlayerId === playerId ? null : game.endingPlayerId ?? null;
+    const finalTurnRemainingIds = endingPlayerId
+      ? (game.finalTurnRemainingIds ?? []).filter((activePlayerId) => activePlayerId !== playerId)
+      : null;
+    const shouldCompleteRound = Boolean(endingPlayerId && (finalTurnRemainingIds ?? []).length === 0);
+
+    transaction.delete(playerStateRef);
+    transaction.delete(playerSummaryRef);
+    transaction.update(gameRef, {
+      activePlayerOrder: nextActiveOrder,
+      currentPlayerId:
+        game.currentPlayerId === playerId
+          ? shouldCompleteRound
+            ? endingPlayerId
+            : fallbackNextPlayerId
+          : game.currentPlayerId,
+      hostId:
+        game.hostId === playerId
+          ? nextActiveOrder[0] ?? null
+          : (game.hostId ?? null),
+      deck: nextDeck,
+      endingPlayerId,
+      finalTurnRemainingIds: shouldCompleteRound ? [] : finalTurnRemainingIds,
+      readyPlayerIds: (game.readyPlayerIds ?? []).filter((activePlayerId) => activePlayerId !== playerId),
+      selectedDiscardPlayerId:
+        game.selectedDiscardPlayerId === playerId ? null : (game.selectedDiscardPlayerId ?? null),
+      skipNextTurnPlayerIds: (game.skipNextTurnPlayerIds ?? []).filter(
+        (activePlayerId) => activePlayerId !== playerId
+      ),
+      status:
+        nextActiveOrder.length === 0
+          ? "game-complete"
+          : shouldCompleteRound
+            ? "round-complete"
+            : game.status,
+      roundScores: Object.keys(nextRoundScores).length > 0 ? nextRoundScores : deleteField(),
+      roundClearingPlayerIds:
+        nextRoundClearingPlayerIds.length > 0 ? nextRoundClearingPlayerIds : deleteField(),
+      turnTimeSubmissionsMs:
+        Object.keys(nextTurnTimeSubmissions).length > 0 ? nextTurnTimeSubmissions : deleteField(),
+      ...(nextActiveOrder.length === 0 ? { turnPhase: "choose-draw" } : {}),
+    });
   });
 };
