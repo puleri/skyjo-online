@@ -23,6 +23,7 @@ type InviteLobbyJoinProps = {
 type LobbyMeta = {
   hostId: string | null;
   status: string;
+  gameId: string | null;
 };
 
 const storageKey = "skyjo:username";
@@ -75,6 +76,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         setLobby({
           hostId: (data.hostId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
+          gameId: (data.gameId as string | undefined) ?? null,
         });
         setHostName((data.hostDisplayName as string | undefined) ?? "A player");
       },
@@ -104,6 +106,8 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     () => `${hostName} invited you to their skyjo lobby, please make a username first`,
     [hostName]
   );
+  const isInGame = lobby?.status === "in-game";
+  const canSpectate = isInGame && Boolean(lobby?.gameId);
 
   const handleJoin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -131,6 +135,10 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
         const lobbyData = lobbySnapshot.data();
         if ((lobbyData.status as string | undefined) === "in-game") {
+          const gameId = (lobbyData.gameId as string | undefined) ?? null;
+          if (gameId) {
+            throw new Error("This lobby is already in a game. Spectate instead.");
+          }
           throw new Error("This lobby is already in a game.");
         }
 
@@ -311,28 +319,42 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         <section className="form-card">
           <h2 className="sage-eyebrow-text">Lobby Invite</h2>
           <p>{inviteMessage}</p>
-          <form onSubmit={handleJoin}>
-            <div className="label-input-grid">
-              <label className="form-card-font" htmlFor="invite-username">
-                Name
-              </label>
-              <input
-                id="invite-username"
-                value={username}
-                className="form-card-font remaining-grid"
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="Skye"
-              />
-            </div>
-            <button
-              className="form-button-full-width form-card-font"
-              type="submit"
-              disabled={!username.trim() || isJoining}
-            >
-              {isJoining ? "Joining..." : "Join Lobby"}
-            </button>
-            {error ? <p className="notice">{error}</p> : null}
-          </form>
+          {canSpectate ? (
+            <>
+              <p>This lobby&apos;s game has already started.</p>
+              <button
+                className="form-button-full-width form-card-font"
+                type="button"
+                onClick={() => router.push(`/game/${lobby.gameId}`)}
+              >
+                Spectate
+              </button>
+              {error ? <p className="notice">{error}</p> : null}
+            </>
+          ) : (
+            <form onSubmit={handleJoin}>
+              <div className="label-input-grid">
+                <label className="form-card-font" htmlFor="invite-username">
+                  Name
+                </label>
+                <input
+                  id="invite-username"
+                  value={username}
+                  className="form-card-font remaining-grid"
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="Skye"
+                />
+              </div>
+              <button
+                className="form-button-full-width form-card-font"
+                type="submit"
+                disabled={!username.trim() || isJoining}
+              >
+                {isJoining ? "Joining..." : "Join Lobby"}
+              </button>
+              {error ? <p className="notice">{error}</p> : null}
+            </form>
+          )}
         </section>
       </div>
     </>
