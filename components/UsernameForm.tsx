@@ -40,7 +40,7 @@ export default function UsernameForm() {
   };
 
   const isSignedIn = Boolean(uid);
-  const isGoogleSignedIn = isSignedIn && authMode === "google" && !isAnonymousUser;
+  const isGoogleSignedIn = isSignedIn && !isAnonymousUser;
   const shouldShowAnonymousForm = isSignedIn && authMode === "anonymous";
 
   if (isGoogleSignedIn) {

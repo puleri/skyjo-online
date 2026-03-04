@@ -2,6 +2,7 @@
 
 import {
   GoogleAuthProvider,
+  getRedirectResult,
   getAuth,
   onAuthStateChanged,
   signInAnonymously,
@@ -78,13 +79,36 @@ export function useAnonymousAuth(): AuthState {
         return;
       }
 
+      const resolvedAuthMode = user
+        ? user.isAnonymous
+          ? "anonymous"
+          : "google"
+        : null;
+
       setUid(user?.uid ?? null);
       setEmail(user?.email ?? null);
       setDisplayName(user?.displayName ?? null);
       setIsAnonymousUser(user?.isAnonymous ?? false);
+      setAuthMode(resolvedAuthMode);
+
+      if (resolvedAuthMode) {
+        saveAuthMode(resolvedAuthMode);
+      } else {
+        clearAuthMode();
+      }
+
       if (user) {
         setError(null);
       }
+    });
+
+    void getRedirectResult(auth).catch((err) => {
+      if (!isMounted) {
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
     });
 
     return () => {
@@ -137,6 +161,10 @@ export function useAnonymousAuth(): AuthState {
     saveAuthMode("google");
 
     try {
+      if (auth.currentUser?.isAnonymous) {
+        await signOut(auth);
+      }
+
       await signInWithRedirect(auth, new GoogleAuthProvider());
       setError(null);
     } catch (err) {
