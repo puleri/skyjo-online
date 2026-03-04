@@ -29,6 +29,9 @@ const storageKey = "skyjo:username";
 
 export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [lobby, setLobby] = useState<LobbyMeta | null>(null);
+  const [lobbyState, setLobbyState] = useState<"loading" | "exists" | "missing" | "error">(
+    "loading"
+  );
   const [hostName, setHostName] = useState("A player");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +50,11 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   }, []);
 
   useEffect(() => {
+    setLobbyState("loading");
+    setLobby(null);
+    setHostName("A player");
+    setError(null);
+
     if (!firebaseReady || !lobbyId) {
       return;
     }
@@ -55,12 +63,15 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     const unsubscribe = onSnapshot(
       lobbyRef,
       (snapshot) => {
+        setError(null);
         if (!snapshot.exists()) {
+          setLobbyState("missing");
           setLobby(null);
           setHostName("A player");
           return;
         }
         const data = snapshot.data();
+        setLobbyState("exists");
         setLobby({
           hostId: (data.hostId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
@@ -68,6 +79,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         setHostName((data.hostDisplayName as string | undefined) ?? "A player");
       },
       (err) => {
+        setLobbyState("error");
         setError(err.message);
       }
     );
@@ -253,7 +265,18 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     );
   }
 
-  if (!lobby) {
+  if (lobbyState === "loading") {
+    return (
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Loading lobby...</strong>
+        </div>
+      </>
+    );
+  }
+
+  if (lobbyState === "missing") {
     return (
       <>
         <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
@@ -263,6 +286,22 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         </div>
       </>
     );
+  }
+
+  if (lobbyState === "error") {
+    return (
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Unable to load lobby.</strong>
+          {error ? <p>{error}</p> : null}
+        </div>
+      </>
+    );
+  }
+
+  if (!lobby) {
+    return null;
   }
 
   return (
