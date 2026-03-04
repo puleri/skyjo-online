@@ -7,7 +7,6 @@ import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
-import PhoneAuthSettings from "./PhoneAuthSettings";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 const heroBannerLight = "/images/skyjo-hero-banner.png";
@@ -214,7 +213,6 @@ export default function LobbyScreen() {
                   Show the quick hints about revealing, replacing, and swapping cards.
                 </p>
               </div>
-              <PhoneAuthSettings />
               <h3 className="modal__section-title">UI Preferences</h3>
               <div className="modal__option">
                 <label className="modal__option-label modal__option-toggle">

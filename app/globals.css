@@ -720,10 +720,6 @@ section {
   color: var(--color-text-muted);
 }
 
-.recaptcha-container {
-  margin-top: 12px;
-}
-
 .modal__actions {
   display: flex;
   justify-content: flex-end;
