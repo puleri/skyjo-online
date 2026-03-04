@@ -9,6 +9,7 @@ import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase
 import type { SpikeItemCount } from "../lib/game/deck";
 
 const storageKey = "skyjo:username";
+const usernameUpdatedEvent = "skyjo:username-updated";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
@@ -39,8 +40,19 @@ export default function CreateLobbyForm() {
   const hasSavedDisplayName = Boolean(savedDisplayName?.trim());
 
   useEffect(() => {
-    const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
-    setSavedDisplayName(storedName || null);
+    const syncSavedDisplayName = () => {
+      const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
+      setSavedDisplayName(storedName || null);
+    };
+
+    syncSavedDisplayName();
+    window.addEventListener("storage", syncSavedDisplayName);
+    window.addEventListener(usernameUpdatedEvent, syncSavedDisplayName);
+
+    return () => {
+      window.removeEventListener("storage", syncSavedDisplayName);
+      window.removeEventListener(usernameUpdatedEvent, syncSavedDisplayName);
+    };
   }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
