@@ -49,7 +49,7 @@ export default function UsernameForm() {
   if (isGoogleSignedIn) {
     return (
       <div className="form-card">
-        <h3 className="charcoal-eyebrow-text">Signed in with Google</h3>
+        <h3 className="signin-eyebrow-text">Signed in with Google</h3>
         <p>{`Hello, ${firstName}!`}</p>
         <p>{displayName ?? "Google user"}</p>
         <p className="notice">{email ?? "No email available"}</p>
@@ -60,22 +60,27 @@ export default function UsernameForm() {
   if (!shouldShowAnonymousForm) {
     return (
       <div className="form-card">
-        <h3 className="charcoal-eyebrow-text">Sign In to get started</h3>
+        <h3 className="signin-eyebrow-text">Sign In to get started</h3>
         <p>Choose how you want to sign in before creating or joining a lobby.</p>
-        <button
-          className="form-button-full-width form-card-font mb-10"
-          type="button"
-          onClick={() => void signInAsAnonymous()}
-        >
-          Anon auth
-        </button>
-        <button
-          className="form-button-full-width form-card-font"
-          type="button"
-          onClick={() => void signInWithGoogleSso()}
-        >
-          Sign in with Google
-        </button>
+        <div className="row">
+          <button
+            className="form-button-full-width form-card-font mb-10"
+            type="button"
+            
+            onClick={() => void signInAsAnonymous()}
+          >
+            Continue without signing in
+          </button>
+          <button
+            className="form-button-full-width form-card-font"
+            type="button"
+            disabled
+            onClick={() => void signInWithGoogleSso()}
+          >
+            Google (not working yet)
+          </button>
+
+        </div>
         {authError ? <p className="notice">Auth error: {authError}</p> : null}
       </div>
     );
@@ -103,7 +108,7 @@ export default function UsernameForm() {
         Save Name
       </button>
       <button
-        className="form-button-full-width form-card-font"
+        className="form-button-full-width form-card-font mt-20"
         type="button"
         onClick={() => void goBackToSignInMethods()}
       >

@@ -2048,6 +2048,19 @@ small {
   margin: 60px 0 14px;
 }
 
+.signin-eyebrow-text {
+  color: var(--color-dark);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1em;
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+}
+
 .label-input-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
