@@ -13,6 +13,20 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { app, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 const recaptchaContainerId = "phone-auth-recaptcha";
+const e164PhoneNumberRegex = /^\+[1-9]\d{6,14}$/;
+
+function normalizePhoneNumber(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const compact = trimmed.replace(/[\s()\-.]/g, "");
+  const normalized = compact.startsWith("00") ? `+${compact.slice(2)}` : compact;
+
+  return normalized;
+}
 
 export default function PhoneAuthSettings() {
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -76,9 +90,17 @@ export default function PhoneAuthSettings() {
     setStatusMessage(null);
     setErrorMessage(null);
 
+    const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
+    if (!e164PhoneNumberRegex.test(normalizedPhoneNumber)) {
+      setErrorMessage("Please enter a valid phone number in international format (example: +16505553434).");
+      setIsSubmittingPhone(false);
+      return;
+    }
+
     try {
-      const result = await signInWithPhoneNumber(auth, phoneNumber.trim(), recaptchaVerifierRef.current);
+      const result = await signInWithPhoneNumber(auth, normalizedPhoneNumber, recaptchaVerifierRef.current);
       setConfirmationResult(result);
+      setPhoneNumber(normalizedPhoneNumber);
       setStatusMessage("Verification code sent. Check your SMS and enter the 6-digit code.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not send verification code.";
