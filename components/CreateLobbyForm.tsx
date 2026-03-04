@@ -13,7 +13,7 @@ const storageKey = "skyjo:username";
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
   const [spikeMode, setSpikeMode] = useState(true);
-  const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("medium");
+  const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("high");
   const [spikeRowClear, setSpikeRowClear] = useState(true);
   const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function CreateLobbyForm() {
     0,
     spikeItemCountOptions.findIndex((option) => option.value === spikeItemCount)
   );
-  const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "Low";
+  const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "High";
   const modeTagLabel = spikeMode ? "spike" : "classic";
   const hasSavedDisplayName = Boolean(savedDisplayName?.trim());
 
