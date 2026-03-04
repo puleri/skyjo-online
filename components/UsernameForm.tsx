@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 
 const storageKey = "skyjo:username";
+const usernameUpdatedEvent = "skyjo:username-updated";
 
 export default function UsernameForm() {
   const [username, setUsername] = useState("");
@@ -36,6 +37,7 @@ export default function UsernameForm() {
     }
 
     window.localStorage.setItem(storageKey, trimmed);
+    window.dispatchEvent(new Event(usernameUpdatedEvent));
     setSavedName(trimmed);
   };
 
