@@ -76,6 +76,8 @@ export function useAnonymousAuth(): AuthState {
     let isMounted = true;
     setAuthMode(loadStoredAuthMode());
 
+    console.log("[auth] Current user on load:", auth.currentUser);
+
     void setPersistence(auth, browserLocalPersistence).catch((err) => {
       if (!isMounted) {
         return;
@@ -89,6 +91,8 @@ export function useAnonymousAuth(): AuthState {
       if (!isMounted) {
         return;
       }
+
+      console.log("[auth] Auth state changed:", user);
 
       const resolvedAuthMode = user
         ? user.isAnonymous
@@ -184,14 +188,21 @@ export function useAnonymousAuth(): AuthState {
     setAuthMode("google");
     saveAuthMode("google");
 
+    console.log("[auth] Starting Google sign-in", {
+      currentUser: auth.currentUser,
+    });
+
     try {
       if (auth.currentUser?.isAnonymous) {
         await signOut(auth);
+        console.log("[auth] Signed out anonymous user before Google sign-in");
       }
 
       await signInWithRedirect(auth, new GoogleAuthProvider());
+      console.log("[auth] Triggered Google sign-in redirect");
       setError(null);
     } catch (err) {
+      console.error("[auth] Google sign-in failed", err);
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
     }
