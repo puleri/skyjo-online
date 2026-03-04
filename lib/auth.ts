@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   signInAnonymously,
   signInWithRedirect,
+  signOut,
 } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { app, isFirebaseConfigured } from "./firebase";
@@ -16,10 +17,14 @@ const authModeStorageKey = "skyjo:auth-mode";
 
 type AuthState = {
   uid: string | null;
+  email: string | null;
+  displayName: string | null;
+  isAnonymousUser: boolean;
   error: string | null;
   authMode: AuthMode;
   signInAsAnonymous: () => Promise<void>;
   signInWithGoogleSso: () => Promise<void>;
+  goBackToSignInMethods: () => Promise<void>;
 };
 
 function loadStoredAuthMode(): AuthMode {
@@ -43,8 +48,19 @@ function saveAuthMode(authMode: Exclude<AuthMode, null>) {
   window.localStorage.setItem(authModeStorageKey, authMode);
 }
 
+function clearAuthMode() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(authModeStorageKey);
+}
+
 export function useAnonymousAuth(): AuthState {
   const [uid, setUid] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isAnonymousUser, setIsAnonymousUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>(null);
 
@@ -63,6 +79,9 @@ export function useAnonymousAuth(): AuthState {
       }
 
       setUid(user?.uid ?? null);
+      setEmail(user?.email ?? null);
+      setDisplayName(user?.displayName ?? null);
+      setIsAnonymousUser(user?.isAnonymous ?? false);
       if (user) {
         setError(null);
       }
@@ -126,6 +145,20 @@ export function useAnonymousAuth(): AuthState {
     }
   }, []);
 
+  const goBackToSignInMethods = useCallback(async () => {
+    setAuthMode(null);
+    clearAuthMode();
+
+    if (!isFirebaseConfigured) {
+      return;
+    }
+
+    const auth = getAuth(app);
+    if (auth.currentUser?.isAnonymous) {
+      await signOut(auth);
+    }
+  }, []);
+
   useEffect(() => {
     if (authMode !== "anonymous") {
       return;
@@ -139,5 +172,15 @@ export function useAnonymousAuth(): AuthState {
     void signInAsAnonymous();
   }, [authMode, signInAsAnonymous]);
 
-  return { uid, error, authMode, signInAsAnonymous, signInWithGoogleSso };
+  return {
+    uid,
+    email,
+    displayName,
+    isAnonymousUser,
+    error,
+    authMode,
+    signInAsAnonymous,
+    signInWithGoogleSso,
+    goBackToSignInMethods,
+  };
 }
