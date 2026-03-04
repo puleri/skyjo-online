@@ -23,8 +23,7 @@ export default function RootLayout({
       <SpeedInsights />
 
       <body>
-        <ThemeSync />
-        {children}
+        <ThemeSync>{children}</ThemeSync>
       </body>
     </html>
   );
