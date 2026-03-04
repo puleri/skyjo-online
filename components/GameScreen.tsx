@@ -35,6 +35,7 @@ import { useAnonymousAuth } from "../lib/auth";
 import type { Card, ItemCard, ItemCode, SpikeItemCount } from "../lib/game/deck";
 import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import { usePreferences } from "../lib/preferences";
 
 type GameScreenProps = {
   gameId: string;
@@ -144,11 +145,6 @@ const formatAverageValue = (total: number, count: number) => {
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
-  const firstTimeTipsStorageKey = "skyjo-first-time-tips";
-  const darkModeStorageKey = "skyjo-dark-mode";
-  const cardSoundsStorageKey = "skyjo-card-sounds";
-  const backgroundMusicStorageKey = "skyjo-background-music";
-  const snowStorageKey = "skyjo-snow";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
@@ -168,31 +164,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLeaveGameConfirmArmed, setIsLeaveGameConfirmArmed] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
-  const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(darkModeStorageKey) === "true";
-  });
-  const [isCardSoundsEnabled, setIsCardSoundsEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(cardSoundsStorageKey) === "true";
-  });
-  const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(backgroundMusicStorageKey) === "true";
-  });
-  const [isSnowEnabled, setIsSnowEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(snowStorageKey) === "true";
-  });
+  const { preferences, setPreference } = usePreferences();
+  const {
+    firstTimeTips: showFirstTimeTips,
+    darkMode: isDarkMode,
+    cardSounds: isCardSoundsEnabled,
+    backgroundMusic: isBackgroundMusicEnabled,
+    snow: isSnowEnabled,
+  } = preferences;
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
@@ -775,38 +754,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return () => unsubscribe();
   }, [firebaseReady, isLeaderboardOpen]);
 
-  useEffect(() => {
-    const storedPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
-    if (storedPreference === null) {
-      return;
-    }
-    setShowFirstTimeTips(storedPreference === "true");
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
-  }, [showFirstTimeTips]);
-
-  useEffect(() => {
-    window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
-    if (isDarkMode) {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
-  }, [isDarkMode]);
-
-  useEffect(() => {
-    window.localStorage.setItem(cardSoundsStorageKey, String(isCardSoundsEnabled));
-  }, [isCardSoundsEnabled]);
-
-  useEffect(() => {
-    window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
-  }, [isBackgroundMusicEnabled]);
-
-  useEffect(() => {
-    window.localStorage.setItem(snowStorageKey, String(isSnowEnabled));
-  }, [isSnowEnabled]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -2692,7 +2639,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={showFirstTimeTips}
-                    onChange={(event) => setShowFirstTimeTips(event.target.checked)}
+                    onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2710,7 +2657,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isDarkMode}
-                    onChange={(event) => setIsDarkMode(event.target.checked)}
+                    onChange={(event) => setPreference("darkMode", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2725,7 +2672,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isSnowEnabled}
-                    onChange={(event) => setIsSnowEnabled(event.target.checked)}
+                    onChange={(event) => setPreference("snow", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2742,7 +2689,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isCardSoundsEnabled}
-                    onChange={(event) => setIsCardSoundsEnabled(event.target.checked)}
+                    onChange={(event) => setPreference("cardSounds", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2759,7 +2706,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isBackgroundMusicEnabled}
-                    onChange={(event) => setIsBackgroundMusicEnabled(event.target.checked)}
+                    onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
