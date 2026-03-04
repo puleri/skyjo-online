@@ -7,6 +7,7 @@ import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
+import PhoneAuthSettings from "./PhoneAuthSettings";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 const heroBannerLight = "/images/skyjo-hero-banner.png";
@@ -166,11 +167,11 @@ export default function LobbyScreen() {
             <button
               type="button"
               className="menu-action-button"
-              aria-label="Open game settings"
+              aria-label="Open account and game settings"
               ref={settingsTriggerRef}
               onClick={() => setIsSettingsOpen(true)}
             >
-              <img className="settings-icon" src="/settings-icon.png" alt="Settings icon" />
+              <img className="settings-icon" src="/person-icon.svg" alt="Account settings icon" />
             </button>
             <Link
               href="/rules"
@@ -213,6 +214,7 @@ export default function LobbyScreen() {
                   Show the quick hints about revealing, replacing, and swapping cards.
                 </p>
               </div>
+              <PhoneAuthSettings />
               <h3 className="modal__section-title">UI Preferences</h3>
               <div className="modal__option">
                 <label className="modal__option-label modal__option-toggle">
