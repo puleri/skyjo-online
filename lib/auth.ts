@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  browserLocalPersistence,
   GoogleAuthProvider,
   getRedirectResult,
   getAuth,
   onAuthStateChanged,
+  setPersistence,
   signInAnonymously,
   signInWithRedirect,
   signOut,
@@ -74,6 +76,15 @@ export function useAnonymousAuth(): AuthState {
     let isMounted = true;
     setAuthMode(loadStoredAuthMode());
 
+    void setPersistence(auth, browserLocalPersistence).catch((err) => {
+      if (!isMounted) {
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!isMounted) {
         return;
@@ -102,14 +113,27 @@ export function useAnonymousAuth(): AuthState {
       }
     });
 
-    void getRedirectResult(auth).catch((err) => {
-      if (!isMounted) {
-        return;
-      }
+    void getRedirectResult(auth)
+      .then((result) => {
+        if (!isMounted || !result?.user) {
+          return;
+        }
 
-      const message = err instanceof Error ? err.message : "Unknown error.";
-      setError(message);
-    });
+        setUid(result.user.uid);
+        setEmail(result.user.email ?? null);
+        setDisplayName(result.user.displayName ?? null);
+        setIsAnonymousUser(result.user.isAnonymous);
+        setAuthMode(result.user.isAnonymous ? "anonymous" : "google");
+        setError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = err instanceof Error ? err.message : "Unknown error.";
+        setError(message);
+      });
 
     return () => {
       isMounted = false;
