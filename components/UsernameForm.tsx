@@ -1,12 +1,15 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useAnonymousAuth } from "../lib/auth";
 
 const storageKey = "skyjo:username";
 
 export default function UsernameForm() {
   const [username, setUsername] = useState("");
   const [savedName, setSavedName] = useState<string | null>(null);
+  const { uid, error: authError, authMode, signInAsAnonymous, signInWithGoogleSso } =
+    useAnonymousAuth();
 
   useEffect(() => {
     const storedName = window.localStorage.getItem(storageKey);
@@ -27,8 +30,27 @@ export default function UsernameForm() {
     setSavedName(trimmed);
   };
 
+  const isSignedIn = Boolean(uid);
+  const shouldShowUsernameForm = isSignedIn || authMode === "anonymous";
+
+  if (!shouldShowUsernameForm) {
+    return (
+      <div className="form-card">
+        <h3 className="charcoal-eyebrow-text">Sign In to get started</h3>
+        <p>Choose how you want to sign in before creating or joining a lobby.</p>
+        <button className="form-button-full-width form-card-font mb-10" type="button" onClick={() => void signInAsAnonymous()}>
+          Anon auth
+        </button>
+        <button className="form-button-full-width form-card-font" type="button" onClick={() => void signInWithGoogleSso()}>
+          Sign in with Google
+        </button>
+        {authError ? <p className="notice">Auth error: {authError}</p> : null}
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="form-card">
       <div className="label-input-grid">
         <label className="form-card-font" htmlFor="username">Name</label>
         <input
@@ -48,6 +70,7 @@ export default function UsernameForm() {
       ) : (
         <p>Pick a display name so other players can recognize you.</p>
       )}
+      {authError ? <p className="notice">Auth error: {authError}</p> : null}
     </form>
   );
 }
