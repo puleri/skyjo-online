@@ -464,7 +464,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     betweenRoundsSourceRef.current = null;
   };
 
-  const getDrawSoundPath = (value: number) => {
+  const getDrawSoundPath = (value: Card) => {
+    if (isItemCard(value)) {
+      if (value.code === "C") {
+        return "/sounds/card-draw/wild-item.wav";
+      }
+      if (value.code === "F") {
+        return "/sounds/card-draw/mist-item.wav";
+      }
+      return null;
+    }
+
     if (value === -1) {
       return "/sounds/card-draw/minus-one.wav";
     }
@@ -486,12 +496,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return null;
   };
 
-  const playDrawSound = (value: number) => {
+  const playDrawSound = (value: Card) => {
     const soundPath = getDrawSoundPath(value);
     if (!soundPath || typeof window === "undefined") {
       return;
     }
     playSound(soundPath);
+  };
+
+  const areCardsEqual = (first: Card | null | undefined, second: Card | null | undefined) => {
+    if (first == null || second == null) {
+      return first === second;
+    }
+    if (typeof first === "number" || typeof second === "number") {
+      return first === second;
+    }
+    return first.kind === second.kind && first.code === second.code;
   };
 
   const playRevealTradeSound = () => {
@@ -616,8 +636,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       if (
         hasInitializedDrawSoundRef.current &&
         player.pendingDrawSource === "deck" &&
-        typeof nextPending === "number" &&
-        nextPending !== previousPending
+        nextPending != null &&
+        !areCardsEqual(nextPending, previousPending)
       ) {
         playDrawSound(nextPending);
       }
