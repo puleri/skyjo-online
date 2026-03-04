@@ -42,11 +42,13 @@ export default function UsernameForm() {
   const isSignedIn = Boolean(uid);
   const isGoogleSignedIn = isSignedIn && !isAnonymousUser;
   const shouldShowAnonymousForm = isSignedIn && authMode === "anonymous";
+  const firstName = displayName?.trim().split(/\s+/)[0] ?? "there";
 
   if (isGoogleSignedIn) {
     return (
       <div className="form-card">
         <h3 className="charcoal-eyebrow-text">Signed in with Google</h3>
+        <p>{`Hello, ${firstName}!`}</p>
         <p>{displayName ?? "Google user"}</p>
         <p className="notice">{email ?? "No email available"}</p>
       </div>
