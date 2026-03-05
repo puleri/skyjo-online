@@ -21,11 +21,11 @@ export const preferenceDefaults = {
 export type PreferenceName = keyof typeof preferenceDefaults;
 
 export const preferenceStorageKeys: Record<PreferenceName, string> = {
-  darkMode: "skyjo-dark-mode",
-  cardSounds: "skyjo-card-sounds",
-  backgroundMusic: "skyjo-background-music",
-  snow: "skyjo-snow",
-  firstTimeTips: "skyjo-first-time-tips",
+  darkMode: "misty-dark-mode",
+  cardSounds: "misty-card-sounds",
+  backgroundMusic: "misty-background-music",
+  snow: "misty-snow",
+  firstTimeTips: "misty-first-time-tips",
 };
 
 export type Preferences = {

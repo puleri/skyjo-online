@@ -236,7 +236,7 @@ export default function LobbyList() {
     setJoiningLobbyId(lobbyId);
     setError(null);
     try {
-      const storedName = window.localStorage.getItem("skyjo:username");
+      const storedName = window.localStorage.getItem("misty:username");
       const resolvedName = storedName?.trim();
       const lobbyRef = doc(db, "lobbies", lobbyId);
       const playerRef = doc(db, "lobbies", lobbyId, "players", uid);

@@ -26,7 +26,7 @@ type LobbyMeta = {
   gameId: string | null;
 };
 
-const storageKey = "skyjo:username";
+const storageKey = "misty:username";
 
 export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [lobby, setLobby] = useState<LobbyMeta | null>(null);

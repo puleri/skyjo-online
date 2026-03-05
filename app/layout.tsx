@@ -8,8 +8,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
 export const metadata: Metadata = {
-  title: "Skyjo Online",
-  description: "Play Skyjo online with friends!",
+  title: "Misty",
+  description: "A simple and mildly fun game for the whole family",
 };
 
 export default function RootLayout({
@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <meta name="apple-mobile-web-app-title" content="Skyjo" />
+      <meta name="apple-mobile-web-app-title" content="Misty" />
       <SpeedInsights />
 
       <body>

@@ -16,7 +16,7 @@ import { app, isFirebaseConfigured } from "./firebase";
 
 type AuthMode = "anonymous" | "google" | null;
 
-const authModeStorageKey = "skyjo:auth-mode";
+const authModeStorageKey = "misty:auth-mode";
 
 type AuthState = {
   uid: string | null;

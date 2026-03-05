@@ -8,7 +8,7 @@ export default function GamePage() {
         <Link className="back-button" href="/">
           ← Back to main menu
         </Link>
-        <h1>Skyjo Match</h1>
+        <h1>Misty Match</h1>
       </header>
 
       <section className="game-screen__players">
@@ -20,7 +20,7 @@ export default function GamePage() {
       <section className="game-screen__table">
         <div className="pile">
           <span>Deck</span>
-          <div className="card-back-image" role="img" aria-label="Skyjo card back" />
+          <div className="card-back-image" role="img" aria-label="Misty card back" />
         </div>
         <PlayerGrid playerId="you" label="You" size="main" />
         <div className="pile">

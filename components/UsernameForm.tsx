@@ -3,8 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 
-const storageKey = "skyjo:username";
-const usernameUpdatedEvent = "skyjo:username-updated";
+const storageKey = "misty:username";
+const usernameUpdatedEvent = "misty:username-updated";
 
 export default function UsernameForm() {
   const [username, setUsername] = useState("");

@@ -8,8 +8,8 @@ import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import type { SpikeItemCount } from "../lib/game/deck";
 
-const storageKey = "skyjo:username";
-const usernameUpdatedEvent = "skyjo:username-updated";
+const storageKey = "misty:username";
+const usernameUpdatedEvent = "misty:username-updated";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
@@ -157,7 +157,7 @@ export default function CreateLobbyForm() {
           value={name}
           className="form-card-font remaining-grid"
           onChange={(event) => setName(event.target.value)}
-          placeholder="Friday Night Skyjo"
+          placeholder="Friday Night Misty"
         />
       </div>
       <button

@@ -146,7 +146,7 @@ export default function LobbyScreen() {
   return (
     <main>
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
-      <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
+      <img className="welcome-div" src={heroBannerSrc} alt="Misty Hero Banner" />
 
       <div className="container">
         <div className="flex-space-between">
@@ -180,7 +180,7 @@ export default function LobbyScreen() {
               <img
                 className="question-mark-icon"
                 src="/question-mark-icon.png"
-                alt="Skyjo Instructions Menu Icon"
+                alt="Misty Instructions Menu Icon"
               />
             </Link>
           </div>

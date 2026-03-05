@@ -44,10 +44,10 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
   const message = `${hostName} invited you to join their lobby`;
   return {
     title: message,
-    description: "Skyjo online",
+    description: "Misty",
     openGraph: {
       title: message,
-      description: "Skyjo online",
+      description: "Misty",
     },
   };
 }
