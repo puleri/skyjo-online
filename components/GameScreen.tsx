@@ -472,6 +472,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       if (value.code === "F") {
         return "/sounds/card-draw/mist-item.wav";
       }
+      if (value.code === "H") {
+        return "/sounds/card-draw/mirror-item.wav";
+      }
       return null;
     }
 
