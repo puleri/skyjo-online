@@ -103,7 +103,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   }, []);
 
   const inviteMessage = useMemo(
-    () => `${hostName} invited you to their skyjo lobby, please make a username first`,
+    () => `${hostName} invited you to their misty lobby, please make a username first`,
     [hostName]
   );
   const isInGame = lobby?.status === "in-game";

@@ -74,7 +74,6 @@ export default function UsernameForm() {
           <button
             className="form-button-full-width form-card-font"
             type="button"
-            disabled
             onClick={() => void signInWithGoogleSso()}
           >
             Google (not working yet)

@@ -9,8 +9,8 @@ import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
-const heroBannerLight = "/images/skyjo-hero-banner.png";
-const heroBannerDark = "/images/skyjo-hero-banner-darkmode.png";
+const heroBannerLight = "/images/misty-hero-banner.png";
+const heroBannerDark = "/images/misty-hero-banner-darkmode.png";
 
 type LeaderboardEntry = {
   id: string;

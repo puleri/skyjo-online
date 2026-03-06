@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Name Bracket Voting',
     description: 'Help pick the final name. Vote head-to-head in a tournament bracket.',
-    images: ['/images/skyjo-lobby-bg.png'],
+    images: ['/images/misty-lobby-bg.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Name Bracket Voting',
     description: 'Help pick the final name. Vote head-to-head in a tournament bracket.',
-    images: ['/images/skyjo-lobby-bg.png'],
+    images: ['/images/misty-lobby-bg.png'],
   },
 };
 

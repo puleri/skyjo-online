@@ -49,8 +49,8 @@ const darkModeStorageKey = "misty-dark-mode";
 const snowStorageKey = "misty-snow";
 const THEME_FADE_IN_SECONDS = 1.5;
 const THEME_TARGET_VOLUME = 1;
-const lobbyBgSnowLight = "/images/skyjo-lobby-bg-snow.png";
-const lobbyBgSnowDark = "/images/skyjo-lobby-bg-snow-dark.png";
+const lobbyBgSnowLight = "/images/misty-lobby-bg-snow.png";
+const lobbyBgSnowDark = "/images/misty-lobby-bg-snow-dark.png";
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
