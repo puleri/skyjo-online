@@ -162,7 +162,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLeaveGameConfirmArmed, setIsLeaveGameConfirmArmed] = useState(false);
+  const [isLeaveGameModalOpen, setIsLeaveGameModalOpen] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
   const {
@@ -2269,10 +2269,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   const handleCloseSettings = () => {
     setIsSettingsOpen(false);
-    setIsLeaveGameConfirmArmed(false);
   };
 
-  const handleLeaveGame = async () => {
+  const handleOpenLeaveGameModal = () => {
+    setIsLeaveGameModalOpen(true);
+  };
+
+  const handleCloseLeaveGameModal = () => {
+    setIsLeaveGameModalOpen(false);
+  };
+
+  const handleConfirmLeaveGame = async () => {
     if (!uid) {
       setError("Sign in to leave the game.");
       return;
@@ -2281,20 +2288,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setError("Missing game ID.");
       return;
     }
-    if (!isLeaveGameConfirmArmed) {
-      setIsLeaveGameConfirmArmed(true);
-      return;
-    }
 
     setError(null);
     try {
       await leaveGame(gameId, uid);
+      handleCloseLeaveGameModal();
       handleCloseSettings();
       router.push("/");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
-      setIsLeaveGameConfirmArmed(false);
     }
   };
 
@@ -2423,7 +2426,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-label="Open settings"
           onClick={() => {
             setIsSettingsOpen(true);
-            setIsLeaveGameConfirmArmed(false);
           }}
         >
           <img className="settings-icon" src="/settings-icon.png"/>
@@ -2750,11 +2752,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </p>
               </div>
             ) : null}
-            <div className="modal__actions">
-              {isLocalPlayer ? (
-                <button className="form-button-full-width" type="button" onClick={handleLeaveGame}>
-                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
-                </button>
+              <div className="modal__actions">
+                {isLocalPlayer ? (
+                  <button
+                    className="form-button-full-width"
+                    type="button"
+                    onClick={handleOpenLeaveGameModal}
+                  >
+                    Leave game
+                  </button>
               ) : null}
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
                 Main Menu
@@ -2858,11 +2864,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {isLocalPlayer ? (
               <div className="game-results__primary-actions">
                 {isLocalPlayerReady ? (
-                  <p className="notice">You are ready for the next round.</p>
+                  <p className="notice game-results__ready-slot">You are ready for the next round.</p>
                 ) : (
                   <button
                     type="button"
-                    className="form-button-full-width"
+                    className="form-button-full-width game-results__ready-slot"
                     onClick={handleReadyForNextRound}
                   >
                     Ready up
@@ -2871,9 +2877,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <button
                   type="button"
                   className="form-button-full-width game-results__leave-button"
-                  onClick={handleLeaveGame}
+                  onClick={handleOpenLeaveGameModal}
                 >
-                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
+                  Leave game
                 </button>
               </div>
             ) : null}
@@ -2895,6 +2901,40 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             )}
           </div>
         </section>
+      ) : null}
+
+      {isLeaveGameModalOpen ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-game-modal-title"
+          onClick={handleCloseLeaveGameModal}
+        >
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="modal__icon-close"
+              onClick={handleCloseLeaveGameModal}
+              aria-label="Close leave game confirmation"
+            >
+              ×
+            </button>
+            <h2 id="leave-game-modal-title">Leave game</h2>
+            <p>
+              Are you sure you want to leave the game? Once you leave you cannot rejoin.
+            </p>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="form-button-full-width game-results__leave-button"
+                onClick={handleConfirmLeaveGame}
+              >
+                Confirm leave
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {showDockedPiles && game?.status !== "round-complete" ? (
