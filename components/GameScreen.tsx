@@ -1440,7 +1440,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
     G: "Draw three from the draw pile. You may not reveal cards during a push.",
-    H: "Mirror: pick one of your cards, then pick another of your cards to copy that value without revealing it.",
+    H: "Pick one of your cards, then set another card to its' value.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
