@@ -9,11 +9,12 @@ import {
   type DocumentData,
   type UpdateData,
 } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
-import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import { app, db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
 type InviteLobbyJoinProps = {
@@ -38,7 +39,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
-  const { uid, error: authError } = useAnonymousAuth();
+  const { uid, error: authError, signInAsAnonymous } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
 
@@ -111,10 +112,6 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
   const handleJoin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!uid) {
-      setError("Sign in to join the lobby.");
-      return;
-    }
 
     const trimmedName = username.trim();
     if (!trimmedName) {
@@ -125,8 +122,19 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     setIsJoining(true);
     setError(null);
     try {
+      let resolvedUid = uid;
+      if (!resolvedUid) {
+        await signInAsAnonymous();
+        resolvedUid = getAuth(app).currentUser?.uid ?? null;
+      }
+
+      if (!resolvedUid) {
+        setError("Unable to sign in anonymously. Please try again.");
+        return;
+      }
+
       const lobbyRef = doc(db, "lobbies", lobbyId);
-      const playerRef = doc(db, "lobbies", lobbyId, "players", uid);
+      const playerRef = doc(db, "lobbies", lobbyId, "players", resolvedUid);
       await runTransaction(db, async (transaction) => {
         const lobbySnapshot = await transaction.get(lobbyRef);
         if (!lobbySnapshot.exists()) {
@@ -143,7 +151,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         }
 
         const playerSnapshot = await transaction.get(playerRef);
-        const isHost = (lobbyData.hostId as string | undefined) === uid;
+        const isHost = (lobbyData.hostId as string | undefined) === resolvedUid;
         if (playerSnapshot.exists()) {
           transaction.update(playerRef, { displayName: trimmedName });
           const currentPlayerIds = Array.isArray(lobbyData.playerIds)
@@ -160,10 +168,10 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
               typeof existingName === "string" ? existingName : "Anonymous player"
             );
           });
-          if (!playerNameMap.has(uid)) {
-            currentPlayerIds.push(uid);
+          if (!playerNameMap.has(resolvedUid)) {
+            currentPlayerIds.push(resolvedUid);
           }
-          playerNameMap.set(uid, trimmedName);
+          playerNameMap.set(resolvedUid, trimmedName);
           const nextPlayerIds = currentPlayerIds.filter(
             (playerId, index) => currentPlayerIds.indexOf(playerId) === index
           );
@@ -211,8 +219,8 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
             typeof existingName === "string" ? existingName : "Anonymous player"
           );
         });
-        currentPlayerIds.push(uid);
-        playerNameMap.set(uid, trimmedName);
+        currentPlayerIds.push(resolvedUid);
+        playerNameMap.set(resolvedUid, trimmedName);
         const nextPlayerIds = currentPlayerIds.filter(
           (playerId, index) => currentPlayerIds.indexOf(playerId) === index
         );
