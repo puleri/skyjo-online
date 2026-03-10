@@ -330,7 +330,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (value <= 9) {
       return " card--value-high";
     }
-    return " card--value-max";
+    if (value <= 12) {
+      return " card--value-max";
+    }
+    return " card--value-legend";
   };
 
   const isItemCard = (value: Card | null | undefined): value is ItemCard =>
