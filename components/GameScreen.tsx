@@ -165,6 +165,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUxSettingsOpen, setIsUxSettingsOpen] = useState(true);
+  const [isAccessibilitySettingsOpen, setIsAccessibilitySettingsOpen] = useState(true);
   const [isLeaveGameModalOpen, setIsLeaveGameModalOpen] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
@@ -3002,22 +3003,40 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </div>
               </div>
             </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>First time tips</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={showFirstTimeTips}
-                    onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Show the quick hints about revealing, replacing, and swapping cards.
-              </p>
+            <button
+              type="button"
+              className="modal__section-dropdown"
+              onClick={() => setIsAccessibilitySettingsOpen((current) => !current)}
+              aria-expanded={isAccessibilitySettingsOpen}
+              aria-controls="game-menu-accessibility-settings"
+            >
+              <span className="modal__section-dropdown-label">Accessibility</span>
+              <span aria-hidden="true">{isAccessibilitySettingsOpen ? "▾" : "▸"}</span>
+            </button>
+            <div
+              id="game-menu-accessibility-settings"
+              className={`modal__collapsible ${isAccessibilitySettingsOpen ? "modal__collapsible--open" : ""}`}
+              aria-hidden={!isAccessibilitySettingsOpen}
+            >
+              <div className="modal__collapsible-content">
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>First time tips</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={showFirstTimeTips}
+                        onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Show the quick hints about revealing, replacing, and swapping cards.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {isCurrentTurn && isGameActive ? (
