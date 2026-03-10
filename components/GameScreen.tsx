@@ -164,6 +164,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUxSettingsOpen, setIsUxSettingsOpen] = useState(true);
   const [isLeaveGameModalOpen, setIsLeaveGameModalOpen] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
@@ -2934,73 +2935,86 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 Show the quick hints about revealing, replacing, and swapping cards.
               </p>
             </div>
-            <h3 className="modal__section-title">UI Preferences</h3>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Dark mode</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isDarkMode}
-                    onChange={(event) => setPreference("darkMode", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">Switch the interface to the dark theme.</p>
-            </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Let it snow</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isSnowEnabled}
-                    onChange={(event) => setPreference("snow", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Sprinkle a light snowfall across the screen.
-              </p>
-            </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Card sounds</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isCardSoundsEnabled}
-                    onChange={(event) => setPreference("cardSounds", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Mute card draws, turn alerts, reveal sounds, and swap effects.
-              </p>
-            </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Background music</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isBackgroundMusicEnabled}
-                    onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Play theme music during round breaks and in the lobby.
-              </p>
-            </div>
+            <button
+              type="button"
+              className="modal__section-dropdown"
+              onClick={() => setIsUxSettingsOpen((current) => !current)}
+              aria-expanded={isUxSettingsOpen}
+              aria-controls="game-menu-ux-settings"
+            >
+              <span>UX settings</span>
+              <span aria-hidden="true">{isUxSettingsOpen ? "▾" : "▸"}</span>
+            </button>
+            {isUxSettingsOpen ? (
+              <div id="game-menu-ux-settings">
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Dark mode</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isDarkMode}
+                        onChange={(event) => setPreference("darkMode", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Switch the interface to the dark theme.</p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Let it snow</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isSnowEnabled}
+                        onChange={(event) => setPreference("snow", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Sprinkle a light snowfall across the screen.
+                  </p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Card sounds</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isCardSoundsEnabled}
+                        onChange={(event) => setPreference("cardSounds", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Mute card draws, turn alerts, reveal sounds, and swap effects.
+                  </p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Background music</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isBackgroundMusicEnabled}
+                        onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Play theme music during round breaks and in the lobby.
+                  </p>
+                </div>
+              </div>
+            ) : null}
             {isCurrentTurn && isGameActive ? (
               <div className="modal__option">
                 <button
