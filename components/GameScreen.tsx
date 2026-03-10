@@ -448,9 +448,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     });
 
     const preloadCritical = Promise.all(
-      PRELOAD_PRIORITY_GROUPS.filter((group) => CRITICAL_PRELOAD_GROUP_LABELS.has(group.label)).map((group) =>
-        preloadGroup(group.label)
-      )
+      CRITICAL_PRELOAD_GROUP_LABELS.map((label) => preloadGroup(label))
     );
 
     Promise.allSettled([
