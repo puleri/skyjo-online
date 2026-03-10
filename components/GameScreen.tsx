@@ -2945,8 +2945,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <span>UX settings</span>
               <span aria-hidden="true">{isUxSettingsOpen ? "▾" : "▸"}</span>
             </button>
-            {isUxSettingsOpen ? (
-              <div id="game-menu-ux-settings">
+            <div
+              id="game-menu-ux-settings"
+              className={`modal__collapsible ${isUxSettingsOpen ? "modal__collapsible--open" : ""}`}
+              aria-hidden={!isUxSettingsOpen}
+            >
+              <div className="modal__collapsible-content">
                 <div className="modal__option">
                   <label className="modal__option-label modal__option-toggle">
                     <span>Dark mode</span>
@@ -3014,7 +3018,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   </p>
                 </div>
               </div>
-            ) : null}
+            </div>
             {isCurrentTurn && isGameActive ? (
               <div className="modal__option">
                 <button
