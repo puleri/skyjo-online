@@ -2006,6 +2006,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     });
   }, [finalScores, game?.turnTimeSubmissionsMs, isGameComplete, players]);
 
+  const finalRoundScores = useMemo(() => {
+    if (!isGameComplete || !game?.roundScores) {
+      return [];
+    }
+
+    return [...orderedPlayers]
+      .map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        roundScore: game.roundScores?.[player.id] ?? 0,
+        totalScore: player.totalScore ?? 0,
+        roundSpiked: Boolean(player.roundSpiked),
+      }))
+      .sort((a, b) => a.roundScore - b.roundScore);
+  }, [game?.roundScores, isGameComplete, orderedPlayers]);
+
   const endGameBonuses = useMemo(() => {
     if (!isGameComplete || !game?.spikeMode || game?.spikeEndGameBonuses === false) {
       return [];
@@ -3044,35 +3060,57 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </ol>
             </div>
             {revealedBonusCount >= endGameBonuses.length ? (
-              <div className="game-complete-table-wrap">
-                <table className="game-complete-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Rank</th>
-                      <th scope="col">Player</th>
-                      <th scope="col">Score</th>
-                      <th scope="col">Time</th>
-                      <th scope="col">Avg discarded card</th>
-                      <th scope="col">Avg revealed card</th>
-                      <th scope="col">Cleared (rows + columns)</th>
-                      <th scope="col">Items</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {finalStatsRows.map((player) => (
-                      <tr key={player.id}>
-                        <td>{player.rank}</td>
-                        <td>{player.displayName}</td>
-                        <td>{player.totalScore}</td>
-                        <td>{player.totalTurnLength}</td>
-                        <td>{player.averageDiscardedCardValue}</td>
-                        <td>{player.averageRevealedCardValue}</td>
-                        <td>{player.pointsClearedFromRows}</td>
-                        <td>{player.itemCardsDrawn}</td>
+              <div>
+                <div className="game-complete-table-wrap">
+                  <table className="game-complete-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Rank</th>
+                        <th scope="col">Player</th>
+                        <th scope="col">Score</th>
+                        <th scope="col">Time</th>
+                        <th scope="col">Avg discarded card</th>
+                        <th scope="col">Avg revealed card</th>
+                        <th scope="col">Cleared (rows + columns)</th>
+                        <th scope="col">Items</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {finalStatsRows.map((player) => (
+                        <tr key={player.id}>
+                          <td>{player.rank}</td>
+                          <td>{player.displayName}</td>
+                          <td>{player.totalScore}</td>
+                          <td>{player.totalTurnLength}</td>
+                          <td>{player.averageDiscardedCardValue}</td>
+                          <td>{player.averageRevealedCardValue}</td>
+                          <td>{player.pointsClearedFromRows}</td>
+                          <td>{player.itemCardsDrawn}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {finalRoundScores.length ? (
+                  <section className="game-results">
+                    <h2 className="sage-eyebrow-text">Final round scores</h2>
+                    <ol className="round-score-list">
+                      {finalRoundScores.map((player) => (
+                        <li key={player.id} className="round-score-item">
+                          <span className="round-score-item__name">
+                            {player.displayName}
+                            {player.roundSpiked ? (
+                              <span className="round-score-item__tag">spiked</span>
+                            ) : null}
+                          </span>
+                          <span className="round-score-item__score">
+                            {player.roundScore} ({player.totalScore})
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                ) : null}
               </div>
             ) : null}
             <div className="modal__actions">
