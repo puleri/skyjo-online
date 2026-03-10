@@ -2916,33 +2916,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             >
               ×
             </button>
-            <h2 id="game-settings-title">Game menu</h2>
-            <p>Manage your game settings.</p>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>First time tips</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={showFirstTimeTips}
-                    onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Show the quick hints about revealing, replacing, and swapping cards.
-              </p>
-            </div>
-            <button
+            <h2 id="game-settings-title">Settings</h2>
+                        <button
               type="button"
               className="modal__section-dropdown"
               onClick={() => setIsUxSettingsOpen((current) => !current)}
               aria-expanded={isUxSettingsOpen}
               aria-controls="game-menu-ux-settings"
             >
-              <span>UX settings</span>
+              <span className="modal__section-dropdown-label">Sounds & Display</span>
               <span aria-hidden="true">{isUxSettingsOpen ? "▾" : "▸"}</span>
             </button>
             <div
@@ -2966,7 +2948,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   </label>
                   <p className="modal__option-help">Switch the interface to the dark theme.</p>
                 </div>
-                <div className="modal__option">
+                {/* DO NOT REMOVE LET IT SNOW BUTTON IS TO BE COMMENTED OUT UNTIL WINTER */}
+                {/* <div className="modal__option">
                   <label className="modal__option-label modal__option-toggle">
                     <span>Let it snow</span>
                     <span className="toggle">
@@ -2982,7 +2965,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   <p className="modal__option-help">
                     Sprinkle a light snowfall across the screen.
                   </p>
-                </div>
+                </div> */}
                 <div className="modal__option">
                   <label className="modal__option-label modal__option-toggle">
                     <span>Card sounds</span>
@@ -3019,6 +3002,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </div>
               </div>
             </div>
+            <div className="modal__option">
+              <label className="modal__option-label modal__option-toggle">
+                <span>First time tips</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={showFirstTimeTips}
+                    onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help">
+                Show the quick hints about revealing, replacing, and swapping cards.
+              </p>
+            </div>
+
             {isCurrentTurn && isGameActive ? (
               <div className="modal__option">
                 <button

@@ -592,6 +592,12 @@ section {
   margin-top: 16px;
 }
 
+.modal__section-dropdown-label {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  font-family: "Merriweather", "sans-serif";
+  font-weight: 600;
+}
 
 .modal__section-dropdown {
   margin-top: 20px;
@@ -599,19 +605,21 @@ section {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 0;
+  border: none;
+  border-radius: 5px;
   background: transparent;
-  padding: 0;
+  box-shadow: 1px 1px 3px rgba(31, 41, 51, 0.1);
+  padding: 10px 5px;
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .modal__section-dropdown:hover {
-  color: var(--color-text);
+  background-color: var(--color-surface-bright);
+  box-shadow: none;
 }
 
 
