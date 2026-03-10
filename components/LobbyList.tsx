@@ -94,12 +94,14 @@ export default function LobbyList() {
     const unsubscribe = onSnapshot(
       lobbyQuery,
       async (snapshot) => {
-        const nextLobbies = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: doc.data().name ?? "Untitled lobby",
-          status: doc.data().status ?? "open",
-          players: doc.data().playerCount ?? doc.data().players ?? 0,
-        }));
+        const nextLobbies = snapshot.docs
+          .filter((doc) => !Boolean(doc.data().isPrivate))
+          .map((doc) => ({
+            id: doc.id,
+            name: doc.data().name ?? "Untitled lobby",
+            status: doc.data().status ?? "open",
+            players: doc.data().playerCount ?? doc.data().players ?? 0,
+          }));
         if (isCancelled) {
           return;
         }

@@ -16,6 +16,7 @@ export default function CreateLobbyForm() {
   const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("high");
   const [spikeRowClear, setSpikeRowClear] = useState(true);
   const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
+  const [isPrivateLobby, setIsPrivateLobby] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isJoiningLobby, setIsJoiningLobby] = useState(false);
@@ -93,6 +94,7 @@ export default function CreateLobbyForm() {
         spikeItemCount,
         spikeRowClear,
         spikeEndGameBonuses,
+        isPrivate: isPrivateLobby,
       });
       setIsJoiningLobby(true);
       await new Promise<void>((resolve) => {
@@ -260,6 +262,24 @@ export default function CreateLobbyForm() {
                     Award three end-game bonuses worth -5 points each, including Fastest player.
                   </p>
                 </div>
+            </div>
+            <div className="modal__option">
+              <label className="modal__subsettings-option">
+                <span>Private lobby</span>
+                <span className="toggle">
+                  <input
+                    className="toggle__input"
+                    type="checkbox"
+                    checked={isPrivateLobby}
+                    onChange={(event) => setIsPrivateLobby(event.target.checked)}
+                    aria-describedby="private-lobby-helper"
+                  />
+                  <span className="toggle__track" aria-hidden="true" />
+                </span>
+              </label>
+              <p className="modal__option-help" id="private-lobby-helper">
+                Private lobbies won&apos;t appear in the public lobby list.
+              </p>
             </div>
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
