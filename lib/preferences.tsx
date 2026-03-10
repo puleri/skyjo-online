@@ -12,7 +12,7 @@ import {
 
 export const preferenceDefaults = {
   darkMode: false,
-  cardSounds: false,
+  cardSounds: true,
   backgroundMusic: false,
   snow: false,
   firstTimeTips: false,
