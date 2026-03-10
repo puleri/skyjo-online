@@ -3171,7 +3171,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
       {isGameComplete && finalRoundScores.length ? (
         <section className="game-results">
-          <h2 className="sage-eyebrow-text">Final round scores</h2>
+          <h2 className="sage-eyebrow-text">Final round totals</h2>
           <ol className="round-score-list">
             {finalRoundScores.map((player) => (
               <li key={player.id} className="round-score-item">
@@ -3180,7 +3180,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
                 </span>
                 <span className="round-score-item__score">
-                  {player.roundScore} ({player.totalScore})
+                  {player.roundScore}
                 </span>
               </li>
             ))}
