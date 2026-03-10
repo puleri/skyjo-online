@@ -3332,7 +3332,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </div>
               </div>
             ) : (
-              <p className="item-panel__instruction">Ready to use this item.</p>
+              <p className="item-panel__instruction">Ready.</p>
             )}
             {itemCode === "C" ? (
               <div className="item-panel__values">
@@ -3385,7 +3385,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   onClick={handleDiscardItem}
                   disabled={isSubmittingAction}
                 >
-                  Discard item to reveal
+                  Discard spike to reveal
                 </button>
               ) : null}
             </div>

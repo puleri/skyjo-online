@@ -1,10 +1,10 @@
 import type { SpikeItemCount } from "./deck";
 
 export const spikeItemCountLabels: Record<SpikeItemCount, string> = {
-  none: "No items",
-  low: "Low items",
-  medium: "Medium items",
-  high: "High items",
+  none: "None",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
 };
 
 export const rowClearLabel = "Row clears";
