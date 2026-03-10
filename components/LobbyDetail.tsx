@@ -16,7 +16,11 @@ import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
-import { createItemCards, createMistyDeck, shuffleDeck } from "../lib/game/deck";
+import {
+  createMistyDeck,
+  shuffleDeck,
+  shuffleDeckWithDelayedSwapCards,
+} from "../lib/game/deck";
 import type { SpikeItemCount } from "../lib/game/deck";
 import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
@@ -356,7 +360,11 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
         });
 
         if (spikeMode) {
-          shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards(spikeItemCount)]);
+          shuffledDeck = shuffleDeckWithDelayedSwapCards(
+            shuffledDeck,
+            spikeItemCount,
+            playerOrder.length
+          );
         }
 
         const discardCard = shuffledDeck.pop();

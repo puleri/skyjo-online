@@ -42,6 +42,28 @@ export const createItemCards = (count: SpikeItemCount = "low"): ItemCard[] => {
   );
 };
 
+export const shuffleDeckWithDelayedSwapCards = (
+  baseDeck: Card[],
+  itemCount: SpikeItemCount,
+  playerCount: number,
+  rng: () => number = Math.random
+) => {
+  const itemCards = createItemCards(itemCount);
+  const swapCards = itemCards.filter((card) => card.code === "E");
+  const nonSwapItems = itemCards.filter((card) => card.code !== "E");
+  const delayedDepth = playerCount * 5 + 1;
+  const deck = shuffleDeck([...baseDeck, ...nonSwapItems], rng);
+  const shuffledSwapCards = shuffleDeck(swapCards, rng);
+
+  shuffledSwapCards.forEach((swapCard) => {
+    const maxInsertIndex = Math.max(0, deck.length - delayedDepth);
+    const insertIndex = Math.floor(rng() * (maxInsertIndex + 1));
+    deck.splice(insertIndex, 0, swapCard);
+  });
+
+  return deck;
+};
+
 export const shuffleDeck = <T>(cards: T[], rng: () => number = Math.random) => {
   const deck = [...cards];
   for (let i = deck.length - 1; i > 0; i -= 1) {

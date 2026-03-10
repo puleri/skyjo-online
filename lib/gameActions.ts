@@ -5,9 +5,9 @@ import {
   ItemCard,
   ItemCode,
   SpikeItemCount,
-  createItemCards,
   createMistyDeck,
   shuffleDeck,
+  shuffleDeckWithDelayedSwapCards,
 } from "./game/deck";
 
 export type TurnPhase =
@@ -1911,7 +1911,11 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     });
 
     if (spikeMode) {
-      shuffledDeck = shuffleDeck([...shuffledDeck, ...createItemCards(spikeItemCount)]);
+      shuffledDeck = shuffleDeckWithDelayedSwapCards(
+        shuffledDeck,
+        spikeItemCount,
+        playerOrder.length
+      );
     }
 
     const discardCard = shuffledDeck.pop();
