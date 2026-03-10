@@ -6,7 +6,7 @@ import {
   ItemCode,
   SpikeItemCount,
   createItemCards,
-  createSkyjoDeck,
+  createMistyDeck,
   shuffleDeck,
 } from "./game/deck";
 
@@ -1892,7 +1892,7 @@ export const startNextRound = async (gameId: string, playerId: string) => {
     const spikeItemCount = game.spikeItemCount ?? "low";
     const spikeRowClear = Boolean(game.spikeRowClear);
     const spikeEndGameBonuses = game.spikeEndGameBonuses !== false;
-    let shuffledDeck: Card[] = shuffleDeck(createSkyjoDeck());
+    let shuffledDeck: Card[] = shuffleDeck(createMistyDeck());
     const playerGrids = new Map<string, number[]>();
 
     playerOrder.forEach((targetPlayerId) => {

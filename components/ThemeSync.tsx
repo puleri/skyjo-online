@@ -1,32 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
+import { PreferencesProvider, usePreferences } from "../lib/preferences";
 
-const darkModeStorageKey = "skyjo-dark-mode";
+function ThemePreferenceSync() {
+  const {
+    preferences: { darkMode },
+  } = usePreferences();
 
-export default function ThemeSync() {
   useEffect(() => {
-    const storedPreference = window.localStorage.getItem(darkModeStorageKey);
-    if (storedPreference === "true") {
+    if (darkMode) {
       document.documentElement.setAttribute("data-theme", "dark");
     } else {
       document.documentElement.removeAttribute("data-theme");
     }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== darkModeStorageKey) {
-        return;
-      }
-      if (event.newValue === "true") {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  }, [darkMode]);
 
   return null;
+}
+
+export default function ThemeSync({ children }: { children: ReactNode }) {
+  return (
+    <PreferencesProvider>
+      <ThemePreferenceSync />
+      {children}
+    </PreferencesProvider>
+  );
 }

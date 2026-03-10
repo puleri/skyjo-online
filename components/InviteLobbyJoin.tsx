@@ -9,11 +9,12 @@ import {
   type DocumentData,
   type UpdateData,
 } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
-import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import { app, db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
 type InviteLobbyJoinProps = {
@@ -23,18 +24,22 @@ type InviteLobbyJoinProps = {
 type LobbyMeta = {
   hostId: string | null;
   status: string;
+  gameId: string | null;
 };
 
-const storageKey = "skyjo:username";
+const storageKey = "misty:username";
 
 export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [lobby, setLobby] = useState<LobbyMeta | null>(null);
+  const [lobbyState, setLobbyState] = useState<"loading" | "exists" | "missing" | "error">(
+    "loading"
+  );
   const [hostName, setHostName] = useState("A player");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
-  const { uid, error: authError } = useAnonymousAuth();
+  const { uid, error: authError, signInAsAnonymous } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
 
@@ -47,6 +52,11 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   }, []);
 
   useEffect(() => {
+    setLobbyState("loading");
+    setLobby(null);
+    setHostName("A player");
+    setError(null);
+
     if (!firebaseReady || !lobbyId) {
       return;
     }
@@ -55,19 +65,24 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     const unsubscribe = onSnapshot(
       lobbyRef,
       (snapshot) => {
+        setError(null);
         if (!snapshot.exists()) {
+          setLobbyState("missing");
           setLobby(null);
           setHostName("A player");
           return;
         }
         const data = snapshot.data();
+        setLobbyState("exists");
         setLobby({
           hostId: (data.hostId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
+          gameId: (data.gameId as string | undefined) ?? null,
         });
         setHostName((data.hostDisplayName as string | undefined) ?? "A player");
       },
       (err) => {
+        setLobbyState("error");
         setError(err.message);
       }
     );
@@ -89,16 +104,14 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   }, []);
 
   const inviteMessage = useMemo(
-    () => `${hostName} invited you to their skyjo lobby, please make a username first`,
+    () => `${hostName} invited you to their misty lobby, please make a username first`,
     [hostName]
   );
+  const isInGame = lobby?.status === "in-game";
+  const canSpectate = isInGame && Boolean(lobby?.gameId);
 
   const handleJoin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!uid) {
-      setError("Sign in to join the lobby.");
-      return;
-    }
 
     const trimmedName = username.trim();
     if (!trimmedName) {
@@ -109,8 +122,19 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     setIsJoining(true);
     setError(null);
     try {
+      let resolvedUid = uid;
+      if (!resolvedUid) {
+        await signInAsAnonymous();
+        resolvedUid = getAuth(app).currentUser?.uid ?? null;
+      }
+
+      if (!resolvedUid) {
+        setError("Unable to sign in anonymously. Please try again.");
+        return;
+      }
+
       const lobbyRef = doc(db, "lobbies", lobbyId);
-      const playerRef = doc(db, "lobbies", lobbyId, "players", uid);
+      const playerRef = doc(db, "lobbies", lobbyId, "players", resolvedUid);
       await runTransaction(db, async (transaction) => {
         const lobbySnapshot = await transaction.get(lobbyRef);
         if (!lobbySnapshot.exists()) {
@@ -119,11 +143,15 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
         const lobbyData = lobbySnapshot.data();
         if ((lobbyData.status as string | undefined) === "in-game") {
+          const gameId = (lobbyData.gameId as string | undefined) ?? null;
+          if (gameId) {
+            throw new Error("This lobby is already in a game. Spectate instead.");
+          }
           throw new Error("This lobby is already in a game.");
         }
 
         const playerSnapshot = await transaction.get(playerRef);
-        const isHost = (lobbyData.hostId as string | undefined) === uid;
+        const isHost = (lobbyData.hostId as string | undefined) === resolvedUid;
         if (playerSnapshot.exists()) {
           transaction.update(playerRef, { displayName: trimmedName });
           const currentPlayerIds = Array.isArray(lobbyData.playerIds)
@@ -140,10 +168,10 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
               typeof existingName === "string" ? existingName : "Anonymous player"
             );
           });
-          if (!playerNameMap.has(uid)) {
-            currentPlayerIds.push(uid);
+          if (!playerNameMap.has(resolvedUid)) {
+            currentPlayerIds.push(resolvedUid);
           }
-          playerNameMap.set(uid, trimmedName);
+          playerNameMap.set(resolvedUid, trimmedName);
           const nextPlayerIds = currentPlayerIds.filter(
             (playerId, index) => currentPlayerIds.indexOf(playerId) === index
           );
@@ -191,8 +219,8 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
             typeof existingName === "string" ? existingName : "Anonymous player"
           );
         });
-        currentPlayerIds.push(uid);
-        playerNameMap.set(uid, trimmedName);
+        currentPlayerIds.push(resolvedUid);
+        playerNameMap.set(resolvedUid, trimmedName);
         const nextPlayerIds = currentPlayerIds.filter(
           (playerId, index) => currentPlayerIds.indexOf(playerId) === index
         );
@@ -253,7 +281,18 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     );
   }
 
-  if (!lobby) {
+  if (lobbyState === "loading") {
+    return (
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Loading lobby...</strong>
+        </div>
+      </>
+    );
+  }
+
+  if (lobbyState === "missing") {
     return (
       <>
         <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
@@ -265,6 +304,22 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     );
   }
 
+  if (lobbyState === "error") {
+    return (
+      <>
+        <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+        <div className="notice">
+          <strong>Unable to load lobby.</strong>
+          {error ? <p>{error}</p> : null}
+        </div>
+      </>
+    );
+  }
+
+  if (!lobby) {
+    return null;
+  }
+
   return (
     <>
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
@@ -272,28 +327,42 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         <section className="form-card">
           <h2 className="sage-eyebrow-text">Lobby Invite</h2>
           <p>{inviteMessage}</p>
-          <form onSubmit={handleJoin}>
-            <div className="label-input-grid">
-              <label className="form-card-font" htmlFor="invite-username">
-                Name
-              </label>
-              <input
-                id="invite-username"
-                value={username}
-                className="form-card-font remaining-grid"
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="Skye"
-              />
-            </div>
-            <button
-              className="form-button-full-width form-card-font"
-              type="submit"
-              disabled={!username.trim() || isJoining}
-            >
-              {isJoining ? "Joining..." : "Join Lobby"}
-            </button>
-            {error ? <p className="notice">{error}</p> : null}
-          </form>
+          {canSpectate ? (
+            <>
+              <p>This lobby&apos;s game has already started.</p>
+              <button
+                className="form-button-full-width form-card-font"
+                type="button"
+                onClick={() => router.push(`/game/${lobby.gameId}`)}
+              >
+                Spectate
+              </button>
+              {error ? <p className="notice">{error}</p> : null}
+            </>
+          ) : (
+            <form onSubmit={handleJoin}>
+              <div className="label-input-grid">
+                <label className="form-card-font" htmlFor="invite-username">
+                  Name
+                </label>
+                <input
+                  id="invite-username"
+                  value={username}
+                  className="form-card-font remaining-grid"
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="Skye"
+                />
+              </div>
+              <button
+                className="form-button-full-width form-card-font"
+                type="submit"
+                disabled={!username.trim() || isJoining}
+              >
+                {isJoining ? "Joining..." : "Join Lobby"}
+              </button>
+              {error ? <p className="notice">{error}</p> : null}
+            </form>
+          )}
         </section>
       </div>
     </>

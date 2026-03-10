@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import type { Card, ItemCard, ItemCode } from "../lib/game/deck";
 
 type PlayerGridProps = {
@@ -129,6 +131,19 @@ export default function PlayerGrid({
     typeof activeActionIndex === "number" &&
     typeof onReplace === "function" &&
     typeof onCancel === "function";
+  const itemTargetOrderLookup = useMemo(() => {
+    const lookup = new Map<string, number>();
+
+    if (!itemSelection?.targets) {
+      return lookup;
+    }
+
+    itemSelection.targets.forEach((target, targetOrderIndex) => {
+      lookup.set(`${target.playerId}:${target.index}`, targetOrderIndex);
+    });
+
+    return lookup;
+  }, [itemSelection?.targets]);
 
   return (
     <section
@@ -174,10 +189,8 @@ export default function PlayerGrid({
             !isRevealed &&
             value !== null &&
             value !== undefined;
-          const targetOrderIndex = itemSelection?.targets.findIndex(
-            (target) => target.playerId === playerId && target.index === index
-          );
-          const isTargetSelected = typeof targetOrderIndex === "number" && targetOrderIndex >= 0;
+          const targetOrderIndex = itemTargetOrderLookup.get(`${playerId}:${index}`);
+          const isTargetSelected = typeof targetOrderIndex === "number";
           return (
             <div
               key={`${label}-${index}`}

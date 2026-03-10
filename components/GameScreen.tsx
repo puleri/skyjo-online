@@ -35,6 +35,7 @@ import { useAnonymousAuth } from "../lib/auth";
 import type { Card, ItemCard, ItemCode, SpikeItemCount } from "../lib/game/deck";
 import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import { usePreferences } from "../lib/preferences";
 
 type GameScreenProps = {
   gameId: string;
@@ -144,11 +145,6 @@ const formatAverageValue = (total: number, count: number) => {
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
-  const firstTimeTipsStorageKey = "skyjo-first-time-tips";
-  const darkModeStorageKey = "skyjo-dark-mode";
-  const cardSoundsStorageKey = "skyjo-card-sounds";
-  const backgroundMusicStorageKey = "skyjo-background-music";
-  const snowStorageKey = "skyjo-snow";
   const drawTipMessage = "Click a card on your grid to either reveal or replace!";
   const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
@@ -166,33 +162,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLeaveGameConfirmArmed, setIsLeaveGameConfirmArmed] = useState(false);
+  const [isLeaveGameModalOpen, setIsLeaveGameModalOpen] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
-  const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(darkModeStorageKey) === "true";
-  });
-  const [isCardSoundsEnabled, setIsCardSoundsEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(cardSoundsStorageKey) === "true";
-  });
-  const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(backgroundMusicStorageKey) === "true";
-  });
-  const [isSnowEnabled, setIsSnowEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.localStorage.getItem(snowStorageKey) === "true";
-  });
+  const { preferences, setPreference } = usePreferences();
+  const {
+    firstTimeTips: showFirstTimeTips,
+    darkMode: isDarkMode,
+    cardSounds: isCardSoundsEnabled,
+    backgroundMusic: isBackgroundMusicEnabled,
+    snow: isSnowEnabled,
+  } = preferences;
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
@@ -485,7 +464,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     betweenRoundsSourceRef.current = null;
   };
 
-  const getDrawSoundPath = (value: number) => {
+  const getDrawSoundPath = (value: Card) => {
+    if (isItemCard(value)) {
+      if (value.code === "C") {
+        return "/sounds/card-draw/wild-item.wav";
+      }
+      if (value.code === "F") {
+        return "/sounds/card-draw/mist-item.wav";
+      }
+      if (value.code === "H") {
+        return "/sounds/card-draw/mirror-item.wav";
+      }
+      return null;
+    }
+
     if (value === -1) {
       return "/sounds/card-draw/minus-one.wav";
     }
@@ -507,12 +499,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return null;
   };
 
-  const playDrawSound = (value: number) => {
+  const playDrawSound = (value: Card) => {
     const soundPath = getDrawSoundPath(value);
     if (!soundPath || typeof window === "undefined") {
       return;
     }
     playSound(soundPath);
+  };
+
+  const areCardsEqual = (first: Card | null | undefined, second: Card | null | undefined) => {
+    if (first == null || second == null) {
+      return first === second;
+    }
+    if (typeof first === "number" || typeof second === "number") {
+      return first === second;
+    }
+    return first.kind === second.kind && first.code === second.code;
   };
 
   const playRevealTradeSound = () => {
@@ -637,8 +639,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       if (
         hasInitializedDrawSoundRef.current &&
         player.pendingDrawSource === "deck" &&
-        typeof nextPending === "number" &&
-        nextPending !== previousPending
+        nextPending != null &&
+        !areCardsEqual(nextPending, previousPending)
       ) {
         playDrawSound(nextPending);
       }
@@ -775,38 +777,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return () => unsubscribe();
   }, [firebaseReady, isLeaderboardOpen]);
 
-  useEffect(() => {
-    const storedPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
-    if (storedPreference === null) {
-      return;
-    }
-    setShowFirstTimeTips(storedPreference === "true");
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
-  }, [showFirstTimeTips]);
-
-  useEffect(() => {
-    window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
-    if (isDarkMode) {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
-  }, [isDarkMode]);
-
-  useEffect(() => {
-    window.localStorage.setItem(cardSoundsStorageKey, String(isCardSoundsEnabled));
-  }, [isCardSoundsEnabled]);
-
-  useEffect(() => {
-    window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
-  }, [isBackgroundMusicEnabled]);
-
-  useEffect(() => {
-    window.localStorage.setItem(snowStorageKey, String(isSnowEnabled));
-  }, [isSnowEnabled]);
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -1470,7 +1440,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     E: "Swap two cards on your own board.",
     F: "Summon a mist that hides your grid from prying eyes. Lasts 5 turns.",
     G: "Draw three from the draw pile. You may not reveal cards during a push.",
-    H: "Mirror: pick one of your cards, then pick another of your cards to copy that value without revealing it.",
+    H: "Pick one of your cards, then set another card to its' value.",
   };
   const isItemDrawnByOtherPlayer =
     isGameActive &&
@@ -1961,7 +1931,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const resolvedName = window.localStorage.getItem("skyjo:username")?.trim();
+    const resolvedName = window.localStorage.getItem("misty:username")?.trim();
     setDoc(
       spectatorRef,
       {
@@ -2302,10 +2272,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
   const handleCloseSettings = () => {
     setIsSettingsOpen(false);
-    setIsLeaveGameConfirmArmed(false);
   };
 
-  const handleLeaveGame = async () => {
+  const handleOpenLeaveGameModal = () => {
+    setIsLeaveGameModalOpen(true);
+  };
+
+  const handleCloseLeaveGameModal = () => {
+    setIsLeaveGameModalOpen(false);
+  };
+
+  const handleConfirmLeaveGame = async () => {
     if (!uid) {
       setError("Sign in to leave the game.");
       return;
@@ -2314,20 +2291,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       setError("Missing game ID.");
       return;
     }
-    if (!isLeaveGameConfirmArmed) {
-      setIsLeaveGameConfirmArmed(true);
-      return;
-    }
 
     setError(null);
     try {
       await leaveGame(gameId, uid);
+      handleCloseLeaveGameModal();
       handleCloseSettings();
       router.push("/");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
-      setIsLeaveGameConfirmArmed(false);
     }
   };
 
@@ -2456,7 +2429,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           aria-label="Open settings"
           onClick={() => {
             setIsSettingsOpen(true);
-            setIsLeaveGameConfirmArmed(false);
           }}
         >
           <img className="settings-icon" src="/settings-icon.png"/>
@@ -2692,7 +2664,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={showFirstTimeTips}
-                    onChange={(event) => setShowFirstTimeTips(event.target.checked)}
+                    onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2710,7 +2682,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isDarkMode}
-                    onChange={(event) => setIsDarkMode(event.target.checked)}
+                    onChange={(event) => setPreference("darkMode", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2725,7 +2697,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isSnowEnabled}
-                    onChange={(event) => setIsSnowEnabled(event.target.checked)}
+                    onChange={(event) => setPreference("snow", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2742,7 +2714,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isCardSoundsEnabled}
-                    onChange={(event) => setIsCardSoundsEnabled(event.target.checked)}
+                    onChange={(event) => setPreference("cardSounds", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2759,7 +2731,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     className="toggle__input"
                     type="checkbox"
                     checked={isBackgroundMusicEnabled}
-                    onChange={(event) => setIsBackgroundMusicEnabled(event.target.checked)}
+                    onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
                   />
                   <span className="toggle__track" aria-hidden="true" />
                 </span>
@@ -2783,11 +2755,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </p>
               </div>
             ) : null}
-            <div className="modal__actions">
-              {isLocalPlayer ? (
-                <button className="form-button-full-width" type="button" onClick={handleLeaveGame}>
-                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
-                </button>
+              <div className="modal__actions">
+                {isLocalPlayer ? (
+                  <button
+                    className="form-button-full-width"
+                    type="button"
+                    onClick={handleOpenLeaveGameModal}
+                  >
+                    Leave game
+                  </button>
               ) : null}
               <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
                 Main Menu
@@ -2891,11 +2867,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             {isLocalPlayer ? (
               <div className="game-results__primary-actions">
                 {isLocalPlayerReady ? (
-                  <p className="notice">You are ready for the next round.</p>
+                  <p className="notice game-results__ready-slot">You are ready for the next round.</p>
                 ) : (
                   <button
                     type="button"
-                    className="form-button-full-width"
+                    className="form-button-full-width game-results__ready-slot"
                     onClick={handleReadyForNextRound}
                   >
                     Ready up
@@ -2904,9 +2880,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <button
                   type="button"
                   className="form-button-full-width game-results__leave-button"
-                  onClick={handleLeaveGame}
+                  onClick={handleOpenLeaveGameModal}
                 >
-                  {isLeaveGameConfirmArmed ? "Confirm leave game" : "Leave game"}
+                  Leave game
                 </button>
               </div>
             ) : null}
@@ -2928,6 +2904,40 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             )}
           </div>
         </section>
+      ) : null}
+
+      {isLeaveGameModalOpen ? (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-game-modal-title"
+          onClick={handleCloseLeaveGameModal}
+        >
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="modal__icon-close"
+              onClick={handleCloseLeaveGameModal}
+              aria-label="Close leave game confirmation"
+            >
+              ×
+            </button>
+            <h2 id="leave-game-modal-title">Leave game</h2>
+            <p>
+              Are you sure you want to leave the game? Once you leave you cannot rejoin.
+            </p>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="form-button-full-width game-results__leave-button"
+                onClick={handleConfirmLeaveGame}
+              >
+                Confirm leave
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {showDockedPiles && game?.status !== "round-complete" ? (
@@ -3184,9 +3194,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               
 
       </section>
-        <p className="legal-tiny">I do not own the rights to Skyjo; this is just a
-          fan project made for learning purposes. If you enjoy this project, please
-          consider buying the physical game online or from a game store near you</p>
     </main>
 
     </>

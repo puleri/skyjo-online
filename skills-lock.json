@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "firebase-app-hosting-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "dec34a68bb14bdf14137938fe946309c44630216060bcd1e20a1ed1ff51496a1"
+    },
+    "firebase-auth-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "6e5d03858be7f2a55ceef29d2b74100db1813393c262562960e39f1f7fae5f3b"
+    },
+    "firebase-firestore-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "e7e21f72b693e8eba6797e0799e1f9d96ec9f73669cb741a7ca2e541fa460b55"
+    }
+  }
+}

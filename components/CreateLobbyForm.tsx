@@ -8,11 +8,11 @@ import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import type { SpikeItemCount } from "../lib/game/deck";
 
-const storageKey = "skyjo:username";
+const storageKey = "misty:username";
+const usernameUpdatedEvent = "misty:username-updated";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
-  const [spikeMode, setSpikeMode] = useState(true);
   const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("high");
   const [spikeRowClear, setSpikeRowClear] = useState(true);
   const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
@@ -35,12 +35,22 @@ export default function CreateLobbyForm() {
     spikeItemCountOptions.findIndex((option) => option.value === spikeItemCount)
   );
   const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "High";
-  const modeTagLabel = spikeMode ? "spike" : "classic";
   const hasSavedDisplayName = Boolean(savedDisplayName?.trim());
 
   useEffect(() => {
-    const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
-    setSavedDisplayName(storedName || null);
+    const syncSavedDisplayName = () => {
+      const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
+      setSavedDisplayName(storedName || null);
+    };
+
+    syncSavedDisplayName();
+    window.addEventListener("storage", syncSavedDisplayName);
+    window.addEventListener(usernameUpdatedEvent, syncSavedDisplayName);
+
+    return () => {
+      window.removeEventListener("storage", syncSavedDisplayName);
+      window.removeEventListener(usernameUpdatedEvent, syncSavedDisplayName);
+    };
   }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -79,8 +89,10 @@ export default function CreateLobbyForm() {
         hostDisplayName: resolvedName,
         assignedGlyphs: [hostGlyph],
         availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
-        spikeMode,
-        ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
+        spikeMode: true,
+        spikeItemCount,
+        spikeRowClear,
+        spikeEndGameBonuses,
       });
       setIsJoiningLobby(true);
       await new Promise<void>((resolve) => {
@@ -124,8 +136,8 @@ export default function CreateLobbyForm() {
   return (
     <form onSubmit={handleSubmit}>
 
-      <span className="lobby-mode-tag" aria-label={`Mode: ${modeTagLabel}`}>
-        {modeTagLabel}
+      <span className="lobby-mode-tag" aria-label="Mode: spike">
+        spike
       </span>
       <button
               type="button"
@@ -145,7 +157,7 @@ export default function CreateLobbyForm() {
           value={name}
           className="form-card-font remaining-grid"
           onChange={(event) => setName(event.target.value)}
-          placeholder="Friday Night Skyjo"
+          placeholder="Friday Night Misty"
         />
       </div>
       <button
@@ -179,34 +191,14 @@ export default function CreateLobbyForm() {
             <h2 className="leaderboard-title" id="lobby-settings-title">Game settings</h2>
             <p className="leaderboard-sub">Customize how your lobby plays.</p>
             <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
+              <p className="modal__option-label">
                 <span className="flex-full-center">
                   <img className="spike-icon" src="/spike-icon.png" alt="" aria-hidden="true" />
                   Spike mode
                 </span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={spikeMode}
-                    onChange={(event) => {
-                      const nextValue = event.target.checked;
-                      setSpikeMode(nextValue);
-                      if (!nextValue) {
-                        setSpikeRowClear(false);
-                        setSpikeEndGameBonuses(true);
-                      }
-                    }}
-                    aria-describedby="spike-mode-helper"
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help" id="spike-mode-helper">
-                Special rules for a more challenging game.
               </p>
-              {spikeMode ? (
-                <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
+              <p className="modal__option-help">Special rules for a more challenging game.</p>
+              <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
                   <div className="modal__slider">
                     <div className="modal__slider-header">
                       <span className="modal__subsettings-option">Item frequency</span>
@@ -268,7 +260,6 @@ export default function CreateLobbyForm() {
                     Award three end-game bonuses worth -5 points each, including Fastest player.
                   </p>
                 </div>
-              ) : null}
             </div>
             <div className="modal__actions">
               <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>

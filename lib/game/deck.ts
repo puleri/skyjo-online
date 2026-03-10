@@ -9,7 +9,7 @@ const addCopies = (deck: number[], value: number, count: number) => {
   }
 };
 
-export const createSkyjoDeck = () => {
+export const createMistyDeck = () => {
   const deck: number[] = [];
   addCopies(deck, -2, 5);
   addCopies(deck, 0, 15);

@@ -2,19 +2,15 @@
 import { collection, deleteDoc, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
-const darkModeStorageKey = "skyjo-dark-mode";
-const firstTimeTipsStorageKey = "skyjo-first-time-tips";
-const cardSoundsStorageKey = "skyjo-card-sounds";
-const backgroundMusicStorageKey = "skyjo-background-music";
-const snowStorageKey = "skyjo-snow";
-const heroBannerLight = "/images/skyjo-hero-banner.png";
-const heroBannerDark = "/images/skyjo-hero-banner-darkmode.png";
+const heroBannerLight = "/images/misty-hero-banner.png";
+const heroBannerDark = "/images/misty-hero-banner-darkmode.png";
 
 type LeaderboardEntry = {
   id: string;
@@ -28,33 +24,16 @@ function isLeaderboardEntryActive(expiresAt: unknown) {
   return expiresAt instanceof Timestamp && expiresAt.toMillis() > Date.now();
 }
 
-function getInitialDarkModePreference() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return window.localStorage.getItem(darkModeStorageKey) === "true";
-}
-
-function getInitialSoundPreference(storageKey: string) {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return window.localStorage.getItem(storageKey) === "true";
-}
-
 export default function LobbyScreen() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showFirstTimeTips, setShowFirstTimeTips] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(getInitialDarkModePreference);
-  const [isCardSoundsEnabled, setIsCardSoundsEnabled] = useState(() =>
-    getInitialSoundPreference(cardSoundsStorageKey)
-  );
-  const [isBackgroundMusicEnabled, setIsBackgroundMusicEnabled] = useState(() =>
-    getInitialSoundPreference(backgroundMusicStorageKey)
-  );
-  const [isSnowEnabled, setIsSnowEnabled] = useState(() =>
-    getInitialSoundPreference(snowStorageKey)
-  );
+  const { preferences, setPreference } = usePreferences();
+  const {
+    firstTimeTips: showFirstTimeTips,
+    darkMode: isDarkMode,
+    cardSounds: isCardSoundsEnabled,
+    backgroundMusic: isBackgroundMusicEnabled,
+    snow: isSnowEnabled,
+  } = preferences;
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -67,12 +46,6 @@ export default function LobbyScreen() {
   const wasSettingsOpen = useRef(false);
   const wasLeaderboardOpen = useRef(false);
 
-  useEffect(() => {
-    const storedTipsPreference = window.localStorage.getItem(firstTimeTipsStorageKey);
-    if (storedTipsPreference !== null) {
-      setShowFirstTimeTips(storedTipsPreference === "true");
-    }
-  }, []);
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -123,30 +96,6 @@ export default function LobbyScreen() {
     return () => unsubscribe();
   }, [firebaseReady, isLeaderboardOpen]);
 
-  useEffect(() => {
-    window.localStorage.setItem(firstTimeTipsStorageKey, String(showFirstTimeTips));
-  }, [showFirstTimeTips]);
-
-  useEffect(() => {
-    window.localStorage.setItem(darkModeStorageKey, String(isDarkMode));
-    if (isDarkMode) {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
-  }, [isDarkMode]);
-
-  useEffect(() => {
-    window.localStorage.setItem(cardSoundsStorageKey, String(isCardSoundsEnabled));
-  }, [isCardSoundsEnabled]);
-
-  useEffect(() => {
-    window.localStorage.setItem(backgroundMusicStorageKey, String(isBackgroundMusicEnabled));
-  }, [isBackgroundMusicEnabled]);
-
-  useEffect(() => {
-    window.localStorage.setItem(snowStorageKey, String(isSnowEnabled));
-  }, [isSnowEnabled]);
 
   useEffect(() => {
     if (isSettingsOpen) {
@@ -197,7 +146,7 @@ export default function LobbyScreen() {
   return (
     <main>
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
-      <img className="welcome-div" src={heroBannerSrc} alt="Skyjo Hero Banner" />
+      <img className="welcome-div" src={heroBannerSrc} alt="Misty Hero Banner" />
 
       <div className="container">
         <div className="flex-space-between">
@@ -217,11 +166,11 @@ export default function LobbyScreen() {
             <button
               type="button"
               className="menu-action-button"
-              aria-label="Open game settings"
+              aria-label="Open account and game settings"
               ref={settingsTriggerRef}
               onClick={() => setIsSettingsOpen(true)}
             >
-              <img className="settings-icon" src="/settings-icon.png" alt="Settings icon" />
+              <img className="settings-icon" src="/person-icon.svg" alt="Account settings icon" />
             </button>
             <Link
               href="/rules"
@@ -231,7 +180,7 @@ export default function LobbyScreen() {
               <img
                 className="question-mark-icon"
                 src="/question-mark-icon.png"
-                alt="Skyjo Instructions Menu Icon"
+                alt="Misty Instructions Menu Icon"
               />
             </Link>
           </div>
@@ -255,7 +204,7 @@ export default function LobbyScreen() {
                       className="toggle__input"
                       type="checkbox"
                       checked={showFirstTimeTips}
-                      onChange={(event) => setShowFirstTimeTips(event.target.checked)}
+                      onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
                     />
                     <span className="toggle__track" aria-hidden="true" />
                   </span>
@@ -273,7 +222,7 @@ export default function LobbyScreen() {
                       className="toggle__input"
                       type="checkbox"
                       checked={isDarkMode}
-                      onChange={(event) => setIsDarkMode(event.target.checked)}
+                      onChange={(event) => setPreference("darkMode", event.target.checked)}
                     />
                     <span className="toggle__track" aria-hidden="true" />
                   </span>
@@ -288,7 +237,7 @@ export default function LobbyScreen() {
                       className="toggle__input"
                       type="checkbox"
                       checked={isSnowEnabled}
-                      onChange={(event) => setIsSnowEnabled(event.target.checked)}
+                      onChange={(event) => setPreference("snow", event.target.checked)}
                     />
                     <span className="toggle__track" aria-hidden="true" />
                   </span>
@@ -305,7 +254,7 @@ export default function LobbyScreen() {
                       className="toggle__input"
                       type="checkbox"
                       checked={isCardSoundsEnabled}
-                      onChange={(event) => setIsCardSoundsEnabled(event.target.checked)}
+                      onChange={(event) => setPreference("cardSounds", event.target.checked)}
                     />
                     <span className="toggle__track" aria-hidden="true" />
                   </span>
@@ -322,7 +271,7 @@ export default function LobbyScreen() {
                       className="toggle__input"
                       type="checkbox"
                       checked={isBackgroundMusicEnabled}
-                      onChange={(event) => setIsBackgroundMusicEnabled(event.target.checked)}
+                      onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
                     />
                     <span className="toggle__track" aria-hidden="true" />
                   </span>
