@@ -269,8 +269,8 @@ export default function PlayerGrid({
                       onClick={() => onReveal(index)}
                       disabled={disableActionControls || isRevealed}
                     >
-                      <span className="player-grid__action-icon invert" aria-hidden="true">
-                        <img className="action-menu-icon" src="/keep-icon.svg" alt="" />
+                      <span className="player-grid__action-icon" aria-hidden="true">
+                        <img className="action-menu-icon" src="/eye-icon.svg" alt="" />
                       </span>
                       Reveal
                     </button>
