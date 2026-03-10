@@ -711,6 +711,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (value === 12) {
       return "/sounds/card-draw/twelve.wav";
     }
+    if (value === 13) {
+      return "/sounds/card-draw/thirteen.wav";
+    }
     return null;
   };
 
