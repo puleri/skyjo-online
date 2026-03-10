@@ -213,6 +213,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const betweenRoundsBufferRef = useRef<AudioBuffer | null>(null);
   const betweenRoundsSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const betweenRoundsGainRef = useRef<GainNode | null>(null);
+  const itemImpactSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const itemLoopSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const activeItemSoundRef = useRef<{ playerId: string; itemCode: ItemCode } | null>(null);
   const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
@@ -257,6 +260,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     window.addEventListener("touchstart", handleResume, { once: true });
 
     return () => {
+      stopItemDrawAudio();
       audioBufferCacheRef.current.clear();
       audioContext.close().catch(() => undefined);
       audioContextRef.current = null;
@@ -464,17 +468,101 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     betweenRoundsSourceRef.current = null;
   };
 
+  const stopItemDrawAudio = () => {
+    if (itemImpactSourceRef.current) {
+      itemImpactSourceRef.current.stop();
+      itemImpactSourceRef.current.disconnect();
+      itemImpactSourceRef.current = null;
+    }
+    if (itemLoopSourceRef.current) {
+      itemLoopSourceRef.current.stop();
+      itemLoopSourceRef.current.disconnect();
+      itemLoopSourceRef.current = null;
+    }
+  };
+
+  const getItemDrawSoundPaths = (code: ItemCode) => {
+    const itemNameByCode: Record<ItemCode, string> = {
+      C: "WILD",
+      E: "SWAP",
+      F: "MIST",
+      G: "PUSH",
+      H: "MIRROR",
+    };
+    const itemFolderByCode: Record<ItemCode, string> = {
+      C: "Wild",
+      E: "Swap",
+      F: "Mist",
+      G: "Push",
+      H: "Mirror",
+    };
+    const itemName = itemNameByCode[code];
+    const folder = itemFolderByCode[code];
+    return {
+      impact: `/sounds/card-draw/items/${folder}/${itemName}-Impact.wav`,
+      loop: `/sounds/card-draw/items/${folder}/${itemName}-Loop.wav`,
+      finish: `/sounds/card-draw/items/${folder}/${itemName}-Finish.wav`,
+    };
+  };
+
+  const playItemDrawSoundSequence = async (playerId: string, code: ItemCode) => {
+    if (!isCardSoundsEnabled) {
+      return;
+    }
+
+    const audioContext = audioContextRef.current;
+    if (!audioContext || typeof window === "undefined") {
+      return;
+    }
+
+    const { impact, loop } = getItemDrawSoundPaths(code);
+    const [impactBuffer, loopBuffer] = await Promise.all([
+      loadAudioBuffer(impact),
+      loadAudioBuffer(loop),
+    ]);
+
+    if (!impactBuffer || !loopBuffer || audioContextRef.current !== audioContext) {
+      return;
+    }
+
+    stopItemDrawAudio();
+
+    const state = { playerId, itemCode: code };
+    activeItemSoundRef.current = state;
+
+    const impactSource = audioContext.createBufferSource();
+    impactSource.buffer = impactBuffer;
+    impactSource.connect(audioContext.destination);
+    impactSource.onended = () => {
+      if (itemImpactSourceRef.current === impactSource) {
+        itemImpactSourceRef.current = null;
+      }
+      if (activeItemSoundRef.current !== state || itemLoopSourceRef.current) {
+        return;
+      }
+      const loopSource = audioContext.createBufferSource();
+      loopSource.buffer = loopBuffer;
+      loopSource.loop = true;
+      loopSource.connect(audioContext.destination);
+      loopSource.onended = () => {
+        if (itemLoopSourceRef.current === loopSource) {
+          itemLoopSourceRef.current = null;
+        }
+      };
+      loopSource.start(0);
+      itemLoopSourceRef.current = loopSource;
+    };
+    impactSource.start(0);
+    itemImpactSourceRef.current = impactSource;
+  };
+
+  const playItemDrawFinishSound = (code: ItemCode) => {
+    const { finish } = getItemDrawSoundPaths(code);
+    playSound(finish);
+  };
+
   const getDrawSoundPath = (value: Card) => {
     if (isItemCard(value)) {
-      if (value.code === "C") {
-        return "/sounds/card-draw/wild-item.wav";
-      }
-      if (value.code === "F") {
-        return "/sounds/card-draw/mist-item.wav";
-      }
-      if (value.code === "H") {
-        return "/sounds/card-draw/mirror-item.wav";
-      }
       return null;
     }
 
@@ -500,6 +588,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const playDrawSound = (value: Card) => {
+    if (isItemCard(value)) {
+      return;
+    }
+
     const soundPath = getDrawSoundPath(value);
     if (!soundPath || typeof window === "undefined") {
       return;
@@ -642,7 +734,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         nextPending != null &&
         !areCardsEqual(nextPending, previousPending)
       ) {
-        playDrawSound(nextPending);
+        if (isItemCard(nextPending)) {
+          void playItemDrawSoundSequence(player.id, nextPending.code);
+        } else {
+          playDrawSound(nextPending);
+        }
       }
     });
 
@@ -651,6 +747,31 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       hasInitializedDrawSoundRef.current = true;
     }
   }, [firebaseReady, players]);
+
+  useEffect(() => {
+    if (!firebaseReady) {
+      return;
+    }
+
+    if (!isCardSoundsEnabled) {
+      activeItemSoundRef.current = null;
+      stopItemDrawAudio();
+      return;
+    }
+
+    const activeItemSound = activeItemSoundRef.current;
+    if (!activeItemSound) {
+      return;
+    }
+
+    if (game?.currentPlayerId === activeItemSound.playerId) {
+      return;
+    }
+
+    stopItemDrawAudio();
+    playItemDrawFinishSound(activeItemSound.itemCode);
+    activeItemSoundRef.current = null;
+  }, [firebaseReady, game?.currentPlayerId, isCardSoundsEnabled]);
 
   useEffect(() => {
     if (!firebaseReady) {
