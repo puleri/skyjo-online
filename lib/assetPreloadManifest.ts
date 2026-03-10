@@ -34,6 +34,16 @@ export const PRELOAD_PRIORITY_GROUPS: Array<{ label: string; assets: PreloadAsse
     ],
   },
   {
+    label: "item-artwork",
+    assets: [
+      { path: "/cards/wild.png", type: "image" },
+      { path: "/cards/swap.png", type: "image" },
+      { path: "/cards/mist.png", type: "image" },
+      { path: "/cards/push.png", type: "image" },
+      { path: "/cards/mirror.png", type: "image" },
+    ],
+  },
+  {
     label: "game-icons",
     assets: [
       { path: "/eye-icon.png", type: "image" },
@@ -53,12 +63,6 @@ export const PRELOAD_PRIORITY_GROUPS: Array<{ label: string; assets: PreloadAsse
   {
     label: "everything-else",
     assets: [
-      { path: "/cards/wild.png", type: "image" },
-      { path: "/cards/swap.png", type: "image" },
-      { path: "/cards/mist.png", type: "image" },
-      { path: "/cards/push.png", type: "image" },
-      { path: "/cards/mirror.png", type: "image" },
-      { path: "/sounds/theme/main-theme-loop.wav", type: "audio" },
       { path: "/sounds/theme/theme-reprised-quiet.wav", type: "audio" },
     ],
   },

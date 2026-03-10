@@ -481,6 +481,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     const warmNonCriticalAssets = () => {
       void preloadGroup("game-icons");
+      void preloadGroup("item-artwork");
       idleTimer = window.setTimeout(() => {
         void preloadGroup("notification-sounds");
       }, 450);
