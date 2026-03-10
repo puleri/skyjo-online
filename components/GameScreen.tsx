@@ -3091,26 +3091,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     </tbody>
                   </table>
                 </div>
-                {finalRoundScores.length ? (
-                  <section className="game-results">
-                    <h2 className="sage-eyebrow-text">Final round scores</h2>
-                    <ol className="round-score-list">
-                      {finalRoundScores.map((player) => (
-                        <li key={player.id} className="round-score-item">
-                          <span className="round-score-item__name">
-                            {player.displayName}
-                            {player.roundSpiked ? (
-                              <span className="round-score-item__tag">spiked</span>
-                            ) : null}
-                          </span>
-                          <span className="round-score-item__score">
-                            {player.roundScore} ({player.totalScore})
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  </section>
-                ) : null}
               </div>
             ) : null}
             <div className="modal__actions">
@@ -3186,6 +3166,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </p>
             )}
           </div>
+        </section>
+      ) : null}
+
+      {isGameComplete && finalRoundScores.length ? (
+        <section className="game-results">
+          <h2 className="sage-eyebrow-text">Final round scores</h2>
+          <ol className="round-score-list">
+            {finalRoundScores.map((player) => (
+              <li key={player.id} className="round-score-item">
+                <span className="round-score-item__name">
+                  {player.displayName}
+                  {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
+                </span>
+                <span className="round-score-item__score">
+                  {player.roundScore} ({player.totalScore})
+                </span>
+              </li>
+            ))}
+          </ol>
         </section>
       ) : null}
 
