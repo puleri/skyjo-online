@@ -14,7 +14,7 @@ export const createMistyDeck = () => {
   addCopies(deck, -2, 5);
   addCopies(deck, 0, 15);
   addCopies(deck, -1, 10);
-  for (let value = 1; value <= 12; value += 1) {
+  for (let value = 1; value <= 13; value += 1) {
     addCopies(deck, value, 10);
   }
   return deck;

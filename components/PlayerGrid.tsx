@@ -58,7 +58,10 @@ const getCardValueClass = (value: Card | null | undefined) => {
     if (value <= 9) {
       return " card--value-high";
     }
-    return " card--value-max";
+    if (value <= 12) {
+      return " card--value-max";
+    }
+    return " card--value-legend";
 };
 
 const getCardItemClass = (value: Card | null | undefined) => {
