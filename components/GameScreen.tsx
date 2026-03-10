@@ -36,6 +36,8 @@ import type { Card, ItemCard, ItemCode, SpikeItemCount } from "../lib/game/deck"
 import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import { usePreferences } from "../lib/preferences";
+import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
+import { CRITICAL_PRELOAD_GROUP_LABELS, PRELOAD_PRIORITY_GROUPS } from "../lib/assetPreloadManifest";
 
 type GameScreenProps = {
   gameId: string;
@@ -221,6 +223,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
   const actionWatchdogTimerRef = useRef<number | null>(null);
+  const hasStartedProgressivePreloadRef = useRef(false);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -389,6 +393,125 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return null;
     }
   };
+
+  const preloadImageAsset = (path: string) =>
+    new Promise<void>((resolve) => {
+      if (typeof window === "undefined") {
+        resolve();
+        return;
+      }
+      const image = new window.Image();
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+      image.src = path;
+      if (image.complete) {
+        resolve();
+      }
+    });
+
+  const preloadAsset = async (path: string, type: "image" | "audio" | "fetch") => {
+    if (type === "audio") {
+      await loadAudioBuffer(path);
+      return;
+    }
+    if (type === "image") {
+      await preloadImageAsset(path);
+      return;
+    }
+    await fetch(path).catch(() => undefined);
+  };
+
+  const preloadGroup = async (label: string) => {
+    const group = PRELOAD_PRIORITY_GROUPS.find((candidate) => candidate.label === label);
+    if (!group) {
+      return;
+    }
+
+    const shouldSkipAudio = !isCardSoundsEnabled && group.assets.some((asset) => asset.type === "audio");
+    if (shouldSkipAudio) {
+      return;
+    }
+
+    await Promise.allSettled(group.assets.map((asset) => preloadAsset(asset.path, asset.type)));
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    let isActive = true;
+    const minimumOverlayDurationMs = 2000;
+    let minimumOverlayTimer: number | null = null;
+    const minimumDelayPromise = new Promise((resolve) => {
+      minimumOverlayTimer = window.setTimeout(resolve, minimumOverlayDurationMs);
+    });
+
+    const preloadCritical = Promise.all(
+      PRELOAD_PRIORITY_GROUPS.filter((group) => CRITICAL_PRELOAD_GROUP_LABELS.has(group.label)).map((group) =>
+        preloadGroup(group.label)
+      )
+    );
+
+    Promise.allSettled([
+      preloadCritical,
+      minimumDelayPromise,
+    ]).then(() => {
+      if (isActive) {
+        setShowLoadingOverlay(false);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      if (minimumOverlayTimer) {
+        window.clearTimeout(minimumOverlayTimer);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || hasStartedProgressivePreloadRef.current) {
+      return;
+    }
+
+    let idleTimer: number | null = null;
+    let laterTimer: number | null = null;
+    hasStartedProgressivePreloadRef.current = true;
+
+    const warmNonCriticalAssets = () => {
+      void preloadGroup("game-icons");
+      idleTimer = window.setTimeout(() => {
+        void preloadGroup("notification-sounds");
+      }, 450);
+      laterTimer = window.setTimeout(() => {
+        void preloadGroup("everything-else");
+      }, 1500);
+    };
+
+    const handleFirstInteraction = () => {
+      warmNonCriticalAssets();
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+    };
+
+    window.addEventListener("click", handleFirstInteraction, { once: true });
+    window.addEventListener("keydown", handleFirstInteraction, { once: true });
+    window.addEventListener("touchstart", handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+      if (idleTimer) {
+        window.clearTimeout(idleTimer);
+      }
+      if (laterTimer) {
+        window.clearTimeout(laterTimer);
+      }
+    };
+  }, []);
 
   const playSound = (soundPath: string) => {
     if (!isCardSoundsEnabled) {
@@ -2505,7 +2628,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }
 
   return (
-    <>          {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
+    <>
+      <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+      {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
 
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
       <div className="game-screen__tags">
