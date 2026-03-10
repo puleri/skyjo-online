@@ -36,6 +36,8 @@ import type { Card, ItemCard, ItemCode, SpikeItemCount } from "../lib/game/deck"
 import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import { usePreferences } from "../lib/preferences";
+import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
+import { CRITICAL_PRELOAD_GROUP_LABELS, PRELOAD_PRIORITY_GROUPS } from "../lib/assetPreloadManifest";
 
 type GameScreenProps = {
   gameId: string;
@@ -162,6 +164,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUxSettingsOpen, setIsUxSettingsOpen] = useState(true);
+  const [isAccessibilitySettingsOpen, setIsAccessibilitySettingsOpen] = useState(true);
   const [isLeaveGameModalOpen, setIsLeaveGameModalOpen] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
@@ -213,11 +217,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const betweenRoundsBufferRef = useRef<AudioBuffer | null>(null);
   const betweenRoundsSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const betweenRoundsGainRef = useRef<GainNode | null>(null);
+  const itemImpactSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const itemLoopSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const activeItemSoundRef = useRef<{ playerId: string; itemCode: ItemCode } | null>(null);
   const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
   const actionWatchdogTimerRef = useRef<number | null>(null);
+  const hasStartedProgressivePreloadRef = useRef(false);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -257,6 +266,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     window.addEventListener("touchstart", handleResume, { once: true });
 
     return () => {
+      stopItemDrawAudio();
       audioBufferCacheRef.current.clear();
       audioContext.close().catch(() => undefined);
       audioContextRef.current = null;
@@ -386,6 +396,124 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
   };
 
+  const preloadImageAsset = (path: string) =>
+    new Promise<void>((resolve) => {
+      if (typeof window === "undefined") {
+        resolve();
+        return;
+      }
+      const image = new window.Image();
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+      image.src = path;
+      if (image.complete) {
+        resolve();
+      }
+    });
+
+  const preloadAsset = async (path: string, type: "image" | "audio" | "fetch") => {
+    if (type === "audio") {
+      await loadAudioBuffer(path);
+      return;
+    }
+    if (type === "image") {
+      await preloadImageAsset(path);
+      return;
+    }
+    await fetch(path).catch(() => undefined);
+  };
+
+  const preloadGroup = async (label: string) => {
+    const group = PRELOAD_PRIORITY_GROUPS.find((candidate) => candidate.label === label);
+    if (!group) {
+      return;
+    }
+
+    const shouldSkipAudio = !isCardSoundsEnabled && group.assets.some((asset) => asset.type === "audio");
+    if (shouldSkipAudio) {
+      return;
+    }
+
+    await Promise.allSettled(group.assets.map((asset) => preloadAsset(asset.path, asset.type)));
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    let isActive = true;
+    const minimumOverlayDurationMs = 2000;
+    let minimumOverlayTimer: number | null = null;
+    const minimumDelayPromise = new Promise((resolve) => {
+      minimumOverlayTimer = window.setTimeout(resolve, minimumOverlayDurationMs);
+    });
+
+    const preloadCritical = Promise.all(
+      CRITICAL_PRELOAD_GROUP_LABELS.map((label) => preloadGroup(label))
+    );
+
+    Promise.allSettled([
+      preloadCritical,
+      minimumDelayPromise,
+    ]).then(() => {
+      if (isActive) {
+        setShowLoadingOverlay(false);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      if (minimumOverlayTimer) {
+        window.clearTimeout(minimumOverlayTimer);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || hasStartedProgressivePreloadRef.current) {
+      return;
+    }
+
+    let idleTimer: number | null = null;
+    let laterTimer: number | null = null;
+    hasStartedProgressivePreloadRef.current = true;
+
+    const warmNonCriticalAssets = () => {
+      void preloadGroup("game-icons");
+      void preloadGroup("item-artwork");
+      idleTimer = window.setTimeout(() => {
+        void preloadGroup("notification-sounds");
+      }, 450);
+      laterTimer = window.setTimeout(() => {
+        void preloadGroup("everything-else");
+      }, 1500);
+    };
+
+    const handleFirstInteraction = () => {
+      warmNonCriticalAssets();
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+    };
+
+    window.addEventListener("click", handleFirstInteraction, { once: true });
+    window.addEventListener("keydown", handleFirstInteraction, { once: true });
+    window.addEventListener("touchstart", handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+      if (idleTimer) {
+        window.clearTimeout(idleTimer);
+      }
+      if (laterTimer) {
+        window.clearTimeout(laterTimer);
+      }
+    };
+  }, []);
+
   const playSound = (soundPath: string) => {
     if (!isCardSoundsEnabled) {
       return;
@@ -464,17 +592,101 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     betweenRoundsSourceRef.current = null;
   };
 
+  const stopItemDrawAudio = () => {
+    if (itemImpactSourceRef.current) {
+      itemImpactSourceRef.current.stop();
+      itemImpactSourceRef.current.disconnect();
+      itemImpactSourceRef.current = null;
+    }
+    if (itemLoopSourceRef.current) {
+      itemLoopSourceRef.current.stop();
+      itemLoopSourceRef.current.disconnect();
+      itemLoopSourceRef.current = null;
+    }
+  };
+
+  const getItemDrawSoundPaths = (code: ItemCode) => {
+    const itemNameByCode: Record<ItemCode, string> = {
+      C: "WILD",
+      E: "SWAP",
+      F: "MIST",
+      G: "PUSH",
+      H: "MIRROR",
+    };
+    const itemFolderByCode: Record<ItemCode, string> = {
+      C: "WILD",
+      E: "SWAP",
+      F: "MIST",
+      G: "PUSH",
+      H: "MIRROR",
+    };
+    const itemName = itemNameByCode[code];
+    const folder = itemFolderByCode[code];
+    return {
+      impact: `/sounds/card-draw/items/${folder}/${itemName}-Impact.wav`,
+      loop: `/sounds/card-draw/items/${folder}/${itemName}-Loop.wav`,
+      finish: `/sounds/card-draw/items/${folder}/${itemName}-Finish.wav`,
+    };
+  };
+
+  const playItemDrawSoundSequence = async (playerId: string, code: ItemCode) => {
+    if (!isCardSoundsEnabled) {
+      return;
+    }
+
+    const audioContext = audioContextRef.current;
+    if (!audioContext || typeof window === "undefined") {
+      return;
+    }
+
+    const { impact, loop } = getItemDrawSoundPaths(code);
+    const [impactBuffer, loopBuffer] = await Promise.all([
+      loadAudioBuffer(impact),
+      loadAudioBuffer(loop),
+    ]);
+
+    if (!impactBuffer || !loopBuffer || audioContextRef.current !== audioContext) {
+      return;
+    }
+
+    stopItemDrawAudio();
+
+    const state = { playerId, itemCode: code };
+    activeItemSoundRef.current = state;
+
+    const impactSource = audioContext.createBufferSource();
+    impactSource.buffer = impactBuffer;
+    impactSource.connect(audioContext.destination);
+    impactSource.onended = () => {
+      if (itemImpactSourceRef.current === impactSource) {
+        itemImpactSourceRef.current = null;
+      }
+      if (activeItemSoundRef.current !== state || itemLoopSourceRef.current) {
+        return;
+      }
+      const loopSource = audioContext.createBufferSource();
+      loopSource.buffer = loopBuffer;
+      loopSource.loop = true;
+      loopSource.connect(audioContext.destination);
+      loopSource.onended = () => {
+        if (itemLoopSourceRef.current === loopSource) {
+          itemLoopSourceRef.current = null;
+        }
+      };
+      loopSource.start(0);
+      itemLoopSourceRef.current = loopSource;
+    };
+    impactSource.start(0);
+    itemImpactSourceRef.current = impactSource;
+  };
+
+  const playItemDrawFinishSound = (code: ItemCode) => {
+    const { finish } = getItemDrawSoundPaths(code);
+    playSound(finish);
+  };
+
   const getDrawSoundPath = (value: Card) => {
     if (isItemCard(value)) {
-      if (value.code === "C") {
-        return "/sounds/card-draw/wild-item.wav";
-      }
-      if (value.code === "F") {
-        return "/sounds/card-draw/mist-item.wav";
-      }
-      if (value.code === "H") {
-        return "/sounds/card-draw/mirror-item.wav";
-      }
       return null;
     }
 
@@ -500,6 +712,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const playDrawSound = (value: Card) => {
+    if (isItemCard(value)) {
+      return;
+    }
+
     const soundPath = getDrawSoundPath(value);
     if (!soundPath || typeof window === "undefined") {
       return;
@@ -642,7 +858,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         nextPending != null &&
         !areCardsEqual(nextPending, previousPending)
       ) {
-        playDrawSound(nextPending);
+        if (isItemCard(nextPending)) {
+          void playItemDrawSoundSequence(player.id, nextPending.code);
+        } else {
+          playDrawSound(nextPending);
+        }
       }
     });
 
@@ -651,6 +871,31 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       hasInitializedDrawSoundRef.current = true;
     }
   }, [firebaseReady, players]);
+
+  useEffect(() => {
+    if (!firebaseReady) {
+      return;
+    }
+
+    if (!isCardSoundsEnabled) {
+      activeItemSoundRef.current = null;
+      stopItemDrawAudio();
+      return;
+    }
+
+    const activeItemSound = activeItemSoundRef.current;
+    if (!activeItemSound) {
+      return;
+    }
+
+    if (game?.currentPlayerId === activeItemSound.playerId) {
+      return;
+    }
+
+    stopItemDrawAudio();
+    playItemDrawFinishSound(activeItemSound.itemCode);
+    activeItemSoundRef.current = null;
+  }, [firebaseReady, game?.currentPlayerId, isCardSoundsEnabled]);
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -1763,6 +2008,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     });
   }, [finalScores, game?.turnTimeSubmissionsMs, isGameComplete, players]);
 
+  const finalRoundScores = useMemo(() => {
+    if (!isGameComplete || !game?.roundScores) {
+      return [];
+    }
+
+    return [...orderedPlayers]
+      .map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        roundScore: game.roundScores?.[player.id] ?? 0,
+        totalScore: player.totalScore ?? 0,
+        roundSpiked: Boolean(player.roundSpiked),
+      }))
+      .sort((a, b) => a.roundScore - b.roundScore);
+  }, [game?.roundScores, isGameComplete, orderedPlayers]);
+
   const endGameBonuses = useMemo(() => {
     if (!isGameComplete || !game?.spikeMode || game?.spikeEndGameBonuses === false) {
       return [];
@@ -2384,7 +2645,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }
 
   return (
-    <>          {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
+    <>
+      <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
+      {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
 
     <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
       <div className="game-screen__tags">
@@ -2654,92 +2917,128 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             >
               ×
             </button>
-            <h2 id="game-settings-title">Game menu</h2>
-            <p>Manage your game settings.</p>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>First time tips</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={showFirstTimeTips}
-                    onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Show the quick hints about revealing, replacing, and swapping cards.
-              </p>
+            <h2 id="game-settings-title">Settings</h2>
+                        <button
+              type="button"
+              className="modal__section-dropdown"
+              onClick={() => setIsUxSettingsOpen((current) => !current)}
+              aria-expanded={isUxSettingsOpen}
+              aria-controls="game-menu-ux-settings"
+            >
+              <span className="modal__section-dropdown-label">Sounds & Display</span>
+              <span aria-hidden="true">{isUxSettingsOpen ? "▾" : "▸"}</span>
+            </button>
+            <div
+              id="game-menu-ux-settings"
+              className={`modal__collapsible ${isUxSettingsOpen ? "modal__collapsible--open" : ""}`}
+              aria-hidden={!isUxSettingsOpen}
+            >
+              <div className="modal__collapsible-content">
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Dark mode</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isDarkMode}
+                        onChange={(event) => setPreference("darkMode", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Switch the interface to the dark theme.</p>
+                </div>
+                {/* DO NOT REMOVE LET IT SNOW BUTTON IS TO BE COMMENTED OUT UNTIL WINTER */}
+                {/* <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Let it snow</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isSnowEnabled}
+                        onChange={(event) => setPreference("snow", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Sprinkle a light snowfall across the screen.
+                  </p>
+                </div> */}
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Card sounds</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isCardSoundsEnabled}
+                        onChange={(event) => setPreference("cardSounds", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Mute card draws, turn alerts, reveal sounds, and swap effects.
+                  </p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Background music</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isBackgroundMusicEnabled}
+                        onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Play theme music during round breaks and in the lobby.
+                  </p>
+                </div>
+              </div>
             </div>
-            <h3 className="modal__section-title">UI Preferences</h3>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Dark mode</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isDarkMode}
-                    onChange={(event) => setPreference("darkMode", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">Switch the interface to the dark theme.</p>
+            <button
+              type="button"
+              className="modal__section-dropdown"
+              onClick={() => setIsAccessibilitySettingsOpen((current) => !current)}
+              aria-expanded={isAccessibilitySettingsOpen}
+              aria-controls="game-menu-accessibility-settings"
+            >
+              <span className="modal__section-dropdown-label">Accessibility</span>
+              <span aria-hidden="true">{isAccessibilitySettingsOpen ? "▾" : "▸"}</span>
+            </button>
+            <div
+              id="game-menu-accessibility-settings"
+              className={`modal__collapsible ${isAccessibilitySettingsOpen ? "modal__collapsible--open" : ""}`}
+              aria-hidden={!isAccessibilitySettingsOpen}
+            >
+              <div className="modal__collapsible-content">
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>First time tips</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={showFirstTimeTips}
+                        onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Show the quick hints about revealing, replacing, and swapping cards.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Let it snow</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isSnowEnabled}
-                    onChange={(event) => setPreference("snow", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Sprinkle a light snowfall across the screen.
-              </p>
-            </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Card sounds</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isCardSoundsEnabled}
-                    onChange={(event) => setPreference("cardSounds", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Mute card draws, turn alerts, reveal sounds, and swap effects.
-              </p>
-            </div>
-            <div className="modal__option">
-              <label className="modal__option-label modal__option-toggle">
-                <span>Background music</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isBackgroundMusicEnabled}
-                    onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help">
-                Play theme music during round breaks and in the lobby.
-              </p>
-            </div>
+
             {isCurrentTurn && isGameActive ? (
               <div className="modal__option">
                 <button
@@ -2799,35 +3098,37 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </ol>
             </div>
             {revealedBonusCount >= endGameBonuses.length ? (
-              <div className="game-complete-table-wrap">
-                <table className="game-complete-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Rank</th>
-                      <th scope="col">Player</th>
-                      <th scope="col">Score</th>
-                      <th scope="col">Time</th>
-                      <th scope="col">Avg discarded card</th>
-                      <th scope="col">Avg revealed card</th>
-                      <th scope="col">Cleared (rows + columns)</th>
-                      <th scope="col">Items</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {finalStatsRows.map((player) => (
-                      <tr key={player.id}>
-                        <td>{player.rank}</td>
-                        <td>{player.displayName}</td>
-                        <td>{player.totalScore}</td>
-                        <td>{player.totalTurnLength}</td>
-                        <td>{player.averageDiscardedCardValue}</td>
-                        <td>{player.averageRevealedCardValue}</td>
-                        <td>{player.pointsClearedFromRows}</td>
-                        <td>{player.itemCardsDrawn}</td>
+              <div>
+                <div className="game-complete-table-wrap">
+                  <table className="game-complete-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Rank</th>
+                        <th scope="col">Player</th>
+                        <th scope="col">Score</th>
+                        <th scope="col">Time</th>
+                        <th scope="col">Avg discarded card</th>
+                        <th scope="col">Avg revealed card</th>
+                        <th scope="col">Cleared (rows + columns)</th>
+                        <th scope="col">Items</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {finalStatsRows.map((player) => (
+                        <tr key={player.id}>
+                          <td>{player.rank}</td>
+                          <td>{player.displayName}</td>
+                          <td>{player.totalScore}</td>
+                          <td>{player.totalTurnLength}</td>
+                          <td>{player.averageDiscardedCardValue}</td>
+                          <td>{player.averageRevealedCardValue}</td>
+                          <td>{player.pointsClearedFromRows}</td>
+                          <td>{player.itemCardsDrawn}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : null}
             <div className="modal__actions">
@@ -2903,6 +3204,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               </p>
             )}
           </div>
+        </section>
+      ) : null}
+
+      {isGameComplete && finalRoundScores.length ? (
+        <section className="game-results">
+          <h2 className="sage-eyebrow-text">Final round totals</h2>
+          <ol className="round-score-list">
+            {finalRoundScores.map((player) => (
+              <li key={player.id} className="round-score-item">
+                <span className="round-score-item__name">
+                  {player.displayName}
+                  {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
+                </span>
+                <span className="round-score-item__score">
+                  {player.roundScore}
+                </span>
+              </li>
+            ))}
+          </ol>
         </section>
       ) : null}
 
@@ -3050,7 +3370,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 </div>
               </div>
             ) : (
-              <p className="item-panel__instruction">Ready to use this item.</p>
+              <p className="item-panel__instruction">Ready.</p>
             )}
             {itemCode === "C" ? (
               <div className="item-panel__values">
@@ -3103,7 +3423,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   onClick={handleDiscardItem}
                   disabled={isSubmittingAction}
                 >
-                  Discard item to reveal
+                  Discard spike to reveal
                 </button>
               ) : null}
             </div>
