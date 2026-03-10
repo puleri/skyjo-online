@@ -490,11 +490,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       H: "MIRROR",
     };
     const itemFolderByCode: Record<ItemCode, string> = {
-      C: "Wild",
-      E: "Swap",
-      F: "Mist",
-      G: "Push",
-      H: "Mirror",
+      C: "WILD",
+      E: "SWAP",
+      F: "MIST",
+      G: "PUSH",
+      H: "MIRROR",
     };
     const itemName = itemNameByCode[code];
     const folder = itemFolderByCode[code];
