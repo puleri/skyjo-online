@@ -40,8 +40,8 @@
 
   --color-on-sage: #f1e8e1;
   --color-on-muted: #7a7a75;
-  --card-back-image: url("/images/skyjo-cardback.png");
-  --card-back-image-wide: url("/images/skyjo-cardback-wide.png");
+  --card-back-image: url("/images/misty-cardback.png");
+  --card-back-image-wide: url("/images/wide.png");
   --lobby-bg-image: url("/images/misty-lobby-bg.png");
 }
 
@@ -63,8 +63,8 @@
   --color-dark: #f6f4ef;
   --color-on-dark: #2a2421;
   --color-on-muted: #bdb4a7;
-  --card-back-image: url("/images/skyjo-cardback-darkmode.png");
-  --card-back-image-wide: url("/images/skyjo-cardback-wide-darkmode.png");
+  --card-back-image: url("/images/misty-cardback-dark.png");
+  --card-back-image-wide: url("/images/wide-dark.png");
   --lobby-bg-image: url("/images/misty-lobby-bg-darkmode.png");
 }
 
