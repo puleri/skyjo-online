@@ -7,14 +7,23 @@ export type PreloadAsset = {
 
 export const PRELOAD_PRIORITY_GROUPS: Array<{ label: string; assets: PreloadAsset[] }> = [
   {
-    label: "cardbacks",
+    label: "item-draw-sounds",
     assets: [
-      { path: "/images/misty-cardback.png", type: "image" },
-      { path: "/images/misty-cardback-dark.png", type: "image" },
-      { path: "/images/wide.png", type: "image" },
-      { path: "/images/wide-dark.png", type: "image" },
-      { path: "/images/cardback.png", type: "image" },
-      { path: "/images/cardback-dark.png", type: "image" },
+      { path: "/sounds/card-draw/items/WILD/WILD-Impact.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/WILD/WILD-Loop.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/WILD/WILD-Finish.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/SWAP/SWAP-Impact.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/SWAP/SWAP-Loop.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/SWAP/SWAP-Finish.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/MIST/MIST-Impact.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/MIST/MIST-Loop.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/MIST/MIST-Finish.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/PUSH/PUSH-Impact.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/PUSH/PUSH-Loop.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/PUSH/Push-Finish.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/MIRROR/MIRROR-Impact.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/MIRROR/MIRROR-Loop.wav", type: "audio" },
+      { path: "/sounds/card-draw/items/MIRROR/MIRROR-Finish.wav", type: "audio" },
     ],
   },
   {
@@ -31,6 +40,17 @@ export const PRELOAD_PRIORITY_GROUPS: Array<{ label: string; assets: PreloadAsse
       { path: "/sounds/card-draw/mist-item.wav", type: "audio" },
       { path: "/sounds/card-draw/wild-item.wav", type: "audio" },
       { path: "/sounds/card-draw/mirror-item.wav", type: "audio" },
+    ],
+  },
+  {
+    label: "cardbacks",
+    assets: [
+      { path: "/images/misty-cardback.png", type: "image" },
+      { path: "/images/misty-cardback-dark.png", type: "image" },
+      { path: "/images/wide.png", type: "image" },
+      { path: "/images/wide-dark.png", type: "image" },
+      { path: "/images/cardback.png", type: "image" },
+      { path: "/images/cardback-dark.png", type: "image" },
     ],
   },
   {
@@ -68,4 +88,4 @@ export const PRELOAD_PRIORITY_GROUPS: Array<{ label: string; assets: PreloadAsse
   },
 ];
 
-export const CRITICAL_PRELOAD_GROUP_LABELS = new Set(["cardbacks", "card-draw-sounds"]);
+export const CRITICAL_PRELOAD_GROUP_LABELS = ["item-draw-sounds", "card-draw-sounds", "cardbacks"] as const;
