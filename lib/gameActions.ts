@@ -1339,10 +1339,9 @@ export const useItemCard = async (
         break;
       }
       case "F": {
-        const currentMist = player.mistTurnsRemaining ?? 0;
         playersToUpdate.set(playerId, {
           ...player,
-          mistTurnsRemaining: currentMist + 6,
+          mistTurnsRemaining: player.mistTurnsRemaining ?? null,
           pendingMistBaseline: null,
         });
         break;
