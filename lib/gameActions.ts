@@ -56,6 +56,7 @@ type PlayerStateDoc = {
   revealed: boolean[];
   pendingDraw?: Card | null;
   pendingDrawSource?: "deck" | "discard" | null;
+  pendingMistBaseline?: number | null;
   totalScore?: number;
   mistTurnsRemaining?: number | null;
   sprintTurnsRemaining?: number | null;
@@ -717,7 +718,14 @@ export const drawFromDiscard = async (
 
     if (isItemCard(drawn)) {
       const isMistItem = drawn.code === "F";
-      const updatedPlayer = isMistItem ? applyMistEffect(player) : player;
+      const mistBaseline = player.mistTurnsRemaining ?? 0;
+      const updatedPlayer = isMistItem
+        ? {
+            ...player,
+            mistTurnsRemaining: mistBaseline + 6,
+            pendingMistBaseline: mistBaseline,
+          }
+        : player;
       const publicSummaryUpdates = isMistItem
         ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
         : null;
@@ -725,7 +733,12 @@ export const drawFromDiscard = async (
         pendingDraw: drawn,
         pendingDrawSource: "discard",
         itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
-        ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+        ...(isMistItem
+          ? {
+              mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null,
+              pendingMistBaseline: updatedPlayer.pendingMistBaseline ?? null,
+            }
+          : {}),
       });
       transaction.update(playerSummaryRef, {
         ...(publicSummaryUpdates ?? {}),
@@ -895,7 +908,14 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
     const drawn = drawnCard as Card;
 
     const isMistItem = isItemCard(drawn) && drawn.code === "F";
-    const updatedPlayer = isMistItem ? applyMistEffect(player) : player;
+    const mistBaseline = player.mistTurnsRemaining ?? 0;
+    const updatedPlayer = isMistItem
+      ? {
+          ...player,
+          mistTurnsRemaining: mistBaseline + 6,
+          pendingMistBaseline: mistBaseline,
+        }
+      : player;
     const publicSummaryUpdates = isMistItem
       ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
       : null;
@@ -903,7 +923,12 @@ export const drawFromDeck = async (gameId: string, playerId: string) => {
       pendingDraw: drawn,
       pendingDrawSource: "deck",
       itemCardsDrawn: isItemCard(drawn) ? (player.itemCardsDrawn ?? 0) + 1 : player.itemCardsDrawn ?? 0,
-      ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+      ...(isMistItem
+        ? {
+            mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null,
+            pendingMistBaseline: updatedPlayer.pendingMistBaseline ?? null,
+          }
+        : {}),
     });
     transaction.update(playerSummaryRef, {
       ...(publicSummaryUpdates ?? {}),
@@ -949,7 +974,14 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
       const discard = game.discard.slice(0, -1);
 
       const isMistItem = topDiscard.code === "F";
-      const updatedPlayer = isMistItem ? applyMistEffect(player) : player;
+      const mistBaseline = player.mistTurnsRemaining ?? 0;
+      const updatedPlayer = isMistItem
+        ? {
+            ...player,
+            mistTurnsRemaining: mistBaseline + 6,
+            pendingMistBaseline: mistBaseline,
+          }
+        : player;
       const publicSummaryUpdates = isMistItem
         ? getPublicSummaryUpdates(player.mistTurnsRemaining, updatedPlayer)
         : null;
@@ -957,7 +989,12 @@ export const selectDiscard = async (gameId: string, playerId: string) => {
         pendingDraw: topDiscard,
         pendingDrawSource: "discard",
         itemCardsDrawn: (player.itemCardsDrawn ?? 0) + 1,
-        ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+        ...(isMistItem
+          ? {
+              mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null,
+              pendingMistBaseline: updatedPlayer.pendingMistBaseline ?? null,
+            }
+          : {}),
       });
       transaction.update(playerSummaryRef, {
         ...(publicSummaryUpdates ?? {}),
@@ -1204,13 +1241,12 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
 
     const discard = [...game.discard, pendingDraw];
     const isMistItem = pendingDraw.code === "F";
+    const mistBaseline = player.pendingMistBaseline ?? player.mistTurnsRemaining ?? 0;
     const updatedPlayer = isMistItem
       ? {
           ...player,
-          mistTurnsRemaining: (() => {
-            const previousMist = (player.mistTurnsRemaining ?? 0) - 6;
-            return previousMist > 0 ? previousMist : null;
-          })(),
+          mistTurnsRemaining: mistBaseline,
+          pendingMistBaseline: null,
         }
       : player;
     const publicSummaryUpdates = isMistItem
@@ -1220,7 +1256,12 @@ export const discardItemForReveal = async (gameId: string, playerId: string) => 
     transaction.update(playerStateRef, {
       pendingDraw: null,
       pendingDrawSource: null,
-      ...(isMistItem ? { mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null } : {}),
+      ...(isMistItem
+        ? {
+            mistTurnsRemaining: updatedPlayer.mistTurnsRemaining ?? null,
+            pendingMistBaseline: null,
+          }
+        : {}),
     });
     transaction.update(playerSummaryRef, {
       ...(publicSummaryUpdates ?? {}),
@@ -1298,7 +1339,12 @@ export const useItemCard = async (
         break;
       }
       case "F": {
-        playersToUpdate.set(playerId, applyMistEffect(player));
+        const currentMist = player.mistTurnsRemaining ?? 0;
+        playersToUpdate.set(playerId, {
+          ...player,
+          mistTurnsRemaining: currentMist + 6,
+          pendingMistBaseline: null,
+        });
         break;
       }
       case "G": {
@@ -1476,6 +1522,7 @@ export const useItemCard = async (
       revealed: resolvedPlayer.revealed,
       pendingDraw: null,
       pendingDrawSource: null,
+      pendingMistBaseline: null,
       mistTurnsRemaining: resolvedPlayer.mistTurnsRemaining ?? null,
       sprintTurnsRemaining: resolvedPlayer.sprintTurnsRemaining ?? null,
       pointsClearedFromRows: resolvedPlayer.pointsClearedFromRows ?? 0,
