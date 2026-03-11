@@ -1643,7 +1643,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     (showDrawnCard || discardSelectionActive || isItemRevealPending || isRevealRecoveryActive) &&
     !isResolvingItem &&
     !isSubmittingAction;
-  const itemValueOptions = useMemo(() => Array.from({ length: 15 }, (_, index) => index - 2), []);
+  const itemValueOptions = useMemo(() => Array.from({ length: 16 }, (_, index) => index - 2), []);
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
   const itemName = itemCode ? itemCardDetails[itemCode]?.name ?? itemCode : null;
