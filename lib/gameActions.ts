@@ -1290,7 +1290,7 @@ export const useItemCard = async (
         const targetPlayer = await loadPlayer(usage.target.playerId);
         validateCardSlot(targetPlayer, usage.target.index);
         assertCondition(Number.isInteger(usage.value), "Item value must be an integer.");
-        assertCondition(usage.value >= -2 && usage.value <= 12, "Item value is out of range.");
+        assertCondition(usage.value >= -2 && usage.value <= 13, "Item value is out of range.");
 
         const nextGrid = [...targetPlayer.grid];
         nextGrid[usage.target.index] = usage.value;
