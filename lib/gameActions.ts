@@ -462,17 +462,25 @@ const resolveTurn = (
   let endingPlayerId = game.endingPlayerId ?? null;
   let finalTurnRemainingIds = game.finalTurnRemainingIds ?? null;
   const skipNextTurnPlayerIds = new Set(game.skipNextTurnPlayerIds ?? []);
+  const isEndingPlayerTurn = endingPlayerId === updatedPlayerId;
+  const wasInFinalTurnQueue = Boolean(finalTurnRemainingIds?.includes(updatedPlayerId));
 
   if (!endingPlayerId && allCardsRevealed(updatedPlayer.revealed)) {
     endingPlayerId = updatedPlayerId;
     finalTurnRemainingIds = activeOrder.filter((playerId) => playerId !== updatedPlayerId);
   }
 
-  if (endingPlayerId && finalTurnRemainingIds?.includes(updatedPlayerId)) {
+  const isStillSprintingAfterTurn = (resolvedPlayer.sprintTurnsRemaining ?? 0) > 0;
+  if (
+    endingPlayerId &&
+    finalTurnRemainingIds?.includes(updatedPlayerId) &&
+    !isStillSprintingAfterTurn
+  ) {
     finalTurnRemainingIds = finalTurnRemainingIds.filter((playerId) => playerId !== updatedPlayerId);
   }
 
-  const roundComplete = Boolean(endingPlayerId && finalTurnRemainingIds?.length === 0);
+  const hasCompletedFinalTurn = isEndingPlayerTurn || !wasInFinalTurnQueue || !isStillSprintingAfterTurn;
+  const roundComplete = Boolean(endingPlayerId && finalTurnRemainingIds?.length === 0 && hasCompletedFinalTurn);
 
   let refreshedDeck: Card[] | null = null;
   if (game.deck.length === 0) {
@@ -483,7 +491,7 @@ const resolveTurn = (
     }
   }
 
-  if ((resolvedPlayer.sprintTurnsRemaining ?? 0) > 0) {
+  if (isStillSprintingAfterTurn) {
     return {
       gameUpdates: {
         currentPlayerId: updatedPlayerId,
