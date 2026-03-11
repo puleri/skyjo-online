@@ -168,6 +168,14 @@ const decrementSprintAfterTurn = (player: PlayerStateDoc) => {
   };
 };
 
+const applyMistEffect = (player: PlayerStateDoc) => {
+  const currentMist = player.mistTurnsRemaining ?? 0;
+  return {
+    ...player,
+    mistTurnsRemaining: currentMist + 6,
+  };
+};
+
 const assertCondition = (condition: boolean, message: string) => {
   if (!condition) {
     throw new Error(message);
@@ -466,23 +474,6 @@ const resolveTurn = (
 
   const roundComplete = Boolean(endingPlayerId && finalTurnRemainingIds?.length === 0);
 
-  if (roundComplete) {
-    return {
-      gameUpdates: {
-        currentPlayerId: endingPlayerId ?? game.currentPlayerId,
-        status: "round-complete",
-        endingPlayerId,
-        finalTurnRemainingIds: [],
-        turnPhase: "choose-draw",
-        skipNextTurnPlayerIds: [],
-      },
-      roundComplete,
-      endingPlayerId,
-      finalTurnRemainingIds: [],
-      updatedPlayer: resolvedPlayer,
-    };
-  }
-
   let refreshedDeck: Card[] | null = null;
   if (game.deck.length === 0) {
     const discardPile = game.discard;
@@ -505,6 +496,23 @@ const resolveTurn = (
       roundComplete,
       endingPlayerId,
       finalTurnRemainingIds,
+      updatedPlayer: resolvedPlayer,
+    };
+  }
+
+  if (roundComplete) {
+    return {
+      gameUpdates: {
+        currentPlayerId: endingPlayerId ?? game.currentPlayerId,
+        status: "round-complete",
+        endingPlayerId,
+        finalTurnRemainingIds: [],
+        turnPhase: "choose-draw",
+        skipNextTurnPlayerIds: [],
+      },
+      roundComplete,
+      endingPlayerId,
+      finalTurnRemainingIds: [],
       updatedPlayer: resolvedPlayer,
     };
   }
