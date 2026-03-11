@@ -611,14 +611,12 @@ const computeRoundScores = (
       grid: cleared.grid,
       revealed: cleared.revealed,
     };
-    const publicSummaryUpdates = getPublicSummaryUpdates(
-      players[playerId].mistTurnsRemaining,
-      clearedPlayer
-    );
+    const publicSummaryUpdates = getPublicSummary(clearedPlayer);
     stateUpdates[playerId] = {
       grid: cleared.grid,
       revealed: cleared.revealed,
       totalScore,
+      mistTurnsRemaining: null,
     };
     summaryUpdates[playerId] = {
       isReady: false,
@@ -626,6 +624,7 @@ const computeRoundScores = (
       totalScore,
       roundSpiked: Boolean(players[playerId].hadSpikeThisRound),
       ...(publicSummaryUpdates ?? {}),
+      ...getMistSummaryUpdates(null),
       ...getPendingSummaryUpdates(null, null),
     };
   });
