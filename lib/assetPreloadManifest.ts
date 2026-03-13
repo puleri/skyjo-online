@@ -35,6 +35,7 @@ export const PRELOAD_PRIORITY_GROUPS: Array<{ label: string; assets: PreloadAsse
       { path: "/sounds/card-draw/one-nine.wav", type: "audio" },
       { path: "/sounds/card-draw/ten-eleven.wav", type: "audio" },
       { path: "/sounds/card-draw/twelve.wav", type: "audio" },
+      { path: "/sounds/card-draw/thirteen.wav", type: "audio" },
       { path: "/sounds/card-draw/reveal-trade.wav", type: "audio" },
       { path: "/sounds/card-draw/discard-to-select.wav", type: "audio" },
       { path: "/sounds/card-draw/mist-item.wav", type: "audio" },

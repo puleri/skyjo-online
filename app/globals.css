@@ -1099,6 +1099,7 @@ button.player-grid__name:hover {
 .card--value-mid::before,
 .card--value-high::before,
 .card--value-max::before,
+.card--value-legend::before,
 .card--item::before {
   content: "";
   position: absolute;
@@ -1177,6 +1178,18 @@ button.player-grid__name:hover {
 .card--value-max {
   background: #F5BFBB;
   color: #7D3C37;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  border: 7px solid var(--color-card-edge);
+  outline: 2px solid var(--color-border);
+
+}
+
+
+.card--value-legend {
+  background: #D9BBE2;
+  color: #653C73;
   box-sizing: border-box;
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -2991,6 +3004,7 @@ border: 1px solid #ffedef;
   .card--value-mid,
   .card--value-high,
   .card--value-max,
+  .card--value-legend,
   .card--item,
   .card,
   .card--back {
