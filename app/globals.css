@@ -1371,10 +1371,12 @@ button.card.card--discard-top:hover {
   .game-pile--actionable-discard .card--discard-top.card--discard-actionable {
     animation: pile-ready-breathe 1.5s cubic-bezier(0.4, 0, 0.25, 1) infinite;
   }
-}
 
-.game-pile--selected-live .card--discard-pile {
-  animation: selected-card-settle var(--motion-duration-slow) var(--motion-ease-emphasis) 1;
+  .game-pile--selected-live .card--discard-pile {
+    animation:
+      selected-card-settle var(--motion-duration-slow) var(--motion-ease-emphasis) 1 both,
+      selected-card-idle-breathe 2.8s ease-in-out var(--motion-duration-slow) infinite;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1579,6 +1581,24 @@ button.card.card--discard-top:active:not(:disabled) {
   100% {
     transform: translate3d(0, 0, 0) scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes selected-card-idle-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.14));
+  }
+  50% {
+    transform: translate3d(0, -1px, 0) scale(1.01);
+    filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.18));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-pile--selected-live .card--discard-pile {
+    animation: none;
   }
 }
 
