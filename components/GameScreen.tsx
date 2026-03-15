@@ -3268,14 +3268,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
       {showDockedPiles && game?.status !== "round-complete" ? (
         <div className="game-piles game-piles--dock">
-          <div className={`game-pile${canDrawFromDeck ? " game-pile--actionable" : ""}`}>
+          <div
+            className={`game-pile${canDrawFromDeck ? " game-pile--actionable game-pile--actionable-deck" : ""}`}
+          >
             <h6>Deck</h6>
             {renderDrawPile()}
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
           </div>
-          <div className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable" : ""}`}>
+          <div
+            className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable game-pile--actionable-discard" : ""}`}
+          >
             <h6>Discard</h6>
             {renderDiscardPile()}
           </div>
@@ -3315,14 +3319,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         )}
         <div className="game-piles" ref={gamePilesRef}>
-          <div className={`game-pile${canDrawFromDeck ? " game-pile--actionable" : ""}`}>
+          <div
+            className={`game-pile${canDrawFromDeck ? " game-pile--actionable game-pile--actionable-deck" : ""}`}
+          >
             <h6>Deck</h6>
             {renderDrawPile()}
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
           </div>
-          <div className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable" : ""}`}>
+          <div
+            className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable game-pile--actionable-discard" : ""}`}
+          >
             <h6>Discard</h6>
             {renderDiscardPile()}
           </div>
