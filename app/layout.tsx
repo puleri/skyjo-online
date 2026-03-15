@@ -1,8 +1,10 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import ThemeSync from "../components/ThemeSync";
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { cardTravelMs, drawPilePopMs, hoverLiftMs, standardEase } from "../lib/motion";
 
 
 
@@ -22,7 +24,14 @@ export default function RootLayout({
       <meta name="apple-mobile-web-app-title" content="Misty" />
       <SpeedInsights />
 
-      <body>
+      <body
+        style={{
+          "--motion-draw-pop-ms": `${drawPilePopMs}ms`,
+          "--motion-card-travel-ms": `${cardTravelMs}ms`,
+          "--motion-ease-standard": standardEase,
+          "--motion-hover-lift-ms": `${hoverLiftMs}ms`,
+        } as CSSProperties}
+      >
         <ThemeSync>{children}</ThemeSync>
       </body>
     </html>
