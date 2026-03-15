@@ -68,6 +68,14 @@
   --lobby-bg-image: url("/images/misty-lobby-bg-darkmode.png");
 }
 
+:root {
+  --motion-duration-fast: 150ms;
+  --motion-duration-medium: 240ms;
+  --motion-duration-slow: 420ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --motion-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 
 * {
   box-sizing: border-box;
@@ -970,8 +978,19 @@ button.player-grid__name:hover {
   .player-grid--active,
   .player-grid--active::before,
   .player-grid--misted .player-grid__cards::before,
-  .player-grid--misted .player-grid__cards::after {
+  .player-grid--misted .player-grid__cards::after,
+  .game-pile--actionable .draw-stack,
+  .game-pile--actionable .discard-stack,
+  .game-pile--selected-live .card--discard-pile {
     animation: none;
+  }
+
+  .card--interactive,
+  .card--discard-actionable,
+  .card-back-button--actionable,
+  .card--discard-pile-stack,
+  .card-back-button--stack {
+    transition-duration: 0ms;
   }
 }
 
@@ -1275,6 +1294,25 @@ button.card:hover:not(:disabled) {
   box-shadow: 0 4px 12px rgba(31, 41, 51, 0.24);
 }
 
+.card--interactive,
+.card--discard-actionable,
+.card-back-button--actionable {
+  will-change: transform, box-shadow, filter;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    filter var(--motion-duration-fast) ease;
+}
+
+.card--interactive:hover:not(:disabled),
+.card--interactive:focus-visible:not(:disabled) {
+  transform: translate3d(0, -4px, 0) scale(1.02);
+}
+
+.card--interactive:active:not(:disabled) {
+  transform: translate3d(0, -1px, 0) scale(0.995);
+}
+
 button.card:disabled {
   cursor: not-allowed;
 }
@@ -1315,6 +1353,23 @@ button.card.card--discard-top:hover {
   font-weight: 900;
   width: 100%;
   font-size: 80px;
+}
+
+.game-pile h6 {
+  transition: color var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.game-pile--actionable h6 {
+  color: var(--color-accent-secondary-strong);
+}
+
+.game-pile--actionable .draw-stack,
+.game-pile--actionable .discard-stack {
+  animation: pile-ready-breathe 1.7s ease-in-out infinite;
+}
+
+.game-pile--selected-live .card--discard-pile {
+  animation: selected-card-settle var(--motion-duration-slow) var(--motion-ease-emphasis) 1;
 }
 
 @media (max-width: 640px) {
@@ -1429,7 +1484,10 @@ button.card.card--discard-top:hover {
     rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
     translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
   transform-origin: center;
-  transition: scale 0.4s ease-in-out 0.1s, transform 0.4s ease-in-out 0.1s, background-color 0.1s ease-in-out;
+  transition:
+    transform var(--motion-duration-slow) var(--motion-ease-emphasis),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-fast) ease;
 
 }
 
@@ -1491,7 +1549,32 @@ button.card.card--discard-top:active:not(:disabled) {
     rotate(var(--draw-rotate, 0deg)) skewX(var(--draw-skew, 0deg))
     translate(var(--draw-offset-x, 0px), var(--draw-offset-y, 0px));
   transform-origin: center;
-  transition: scale 0.4s ease-in-out 0.1s, transform 0.4s ease-in-out 0.1s;
+  transition:
+    transform var(--motion-duration-slow) var(--motion-ease-emphasis),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+@keyframes pile-ready-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.16));
+  }
+  50% {
+    transform: translate3d(0, -2px, 0);
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.2));
+  }
+}
+
+@keyframes selected-card-settle {
+  0% {
+    transform: translate3d(0, -10px, 0) scale(0.96);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
 }
 
 .card-back-button--top:hover:not(:disabled),
@@ -1767,6 +1850,19 @@ button.card.card--discard-top:active:not(:disabled) {
   border: 1px solid var(--color-border);
   filter: drop-shadow(0 2px 4px rgba(31, 41, 51, 0.32));
   z-index: 1010;
+  transform-origin: top center;
+  animation: action-menu-pop var(--motion-duration-medium) var(--motion-ease-emphasis) 1;
+}
+
+@keyframes action-menu-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 
 .player-grid__action {

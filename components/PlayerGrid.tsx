@@ -194,6 +194,9 @@ export default function PlayerGrid({
             value !== undefined;
           const targetOrderIndex = itemTargetOrderLookup.get(`${playerId}:${index}`);
           const isTargetSelected = typeof targetOrderIndex === "number";
+          const isCardInteractive =
+            (isSelectable && !(isRevealSelectionActive && isRevealed) && !disableActionControls) ||
+            isItemSelectable;
           return (
             <div
               key={`${label}-${index}`}
@@ -207,7 +210,7 @@ export default function PlayerGrid({
               {isSelectable || isItemSelectable ? (
                 <button
                   type="button"
-                  className={cardClassName}
+                  className={`${cardClassName}${isCardInteractive ? " card--interactive" : ""}`}
                   aria-haspopup={showActionMenu ? "menu" : undefined}
                   onClick={() => {
                     if (isItemSelectable && itemSelection?.onSelect) {

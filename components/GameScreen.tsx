@@ -1348,7 +1348,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <button
               key={`draw-top-${drawIndex}`}
               type="button"
-              className="card-back-button card-back-button--stack card-back-button--top"
+              className="card-back-button card-back-button--stack card-back-button--top card-back-button--actionable"
               aria-label="Draw pile (face down)"
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
@@ -1382,7 +1382,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <button
               key={`discard-top-${discardIndex}`}
               type="button"
-              className={`card card--discard-pile card--discard-pile-stack card--discard-top${getCardStyleClass(card)}`}
+              className={`card card--discard-pile card--discard-pile-stack card--discard-top card--discard-actionable${getCardStyleClass(card)}`}
               aria-label="Discard pile"
               onClick={handleSelectDiscard}
               disabled={!canSelectDiscardTarget}
@@ -3268,18 +3268,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
       {showDockedPiles && game?.status !== "round-complete" ? (
         <div className="game-piles game-piles--dock">
-          <div className="game-pile">
+          <div className={`game-pile${canDrawFromDeck ? " game-pile--actionable" : ""}`}>
             <h6>Deck</h6>
             {renderDrawPile()}
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
           </div>
-          <div className="game-pile">
+          <div className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable" : ""}`}>
             <h6>Discard</h6>
             {renderDiscardPile()}
           </div>
-          <div className="game-pile">
+          <div className={`game-pile${showSelectedCard ? " game-pile--selected-live" : ""}`}>
             <h6>Selected card</h6>
             <div>
               {showSelectedCard ? (
@@ -3315,18 +3315,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         )}
         <div className="game-piles" ref={gamePilesRef}>
-          <div className="game-pile">
+          <div className={`game-pile${canDrawFromDeck ? " game-pile--actionable" : ""}`}>
             <h6>Deck</h6>
             {renderDrawPile()}
             <div className="card-tags">
               <span className="last-turn-summary">{lastTurnSummary}</span>
             </div>
           </div>
-          <div className="game-pile">
+          <div className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable" : ""}`}>
             <h6>Discard</h6>
             {renderDiscardPile()}
           </div>
-          <div className="game-pile">
+          <div className={`game-pile${showSelectedCard ? " game-pile--selected-live" : ""}`}>
             <h6>Selected card</h6>
             <>
               {showSelectedCard ? (
