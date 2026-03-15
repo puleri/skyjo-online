@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
 import SnowfallLayer from "./SnowfallLayer";
@@ -38,6 +38,7 @@ import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase
 import { usePreferences } from "../lib/preferences";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 import { CRITICAL_PRELOAD_GROUP_LABELS, PRELOAD_PRIORITY_GROUPS } from "../lib/assetPreloadManifest";
+import { animateCardTravel } from "../lib/animateCardTravel";
 
 type GameScreenProps = {
   gameId: string;
@@ -238,6 +239,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     null
   );
   const [drawnCardAnimationNonce, setDrawnCardAnimationNonce] = useState(0);
+  const drawPileTopRef = useRef<HTMLElement | null>(null);
+  const discardPileTopRef = useRef<HTMLElement | null>(null);
+  const selectedCardSlotRef = useRef<HTMLElement | null>(null);
+  const gridCardRefs = useRef(new Map<string, HTMLElement>());
+
+  const setGridCardRef = useCallback(
+    ({ playerId, index, element }: { playerId: string; index: number; element: HTMLElement | null }) => {
+      const key = `${playerId}:${index}`;
+      if (element) {
+        gridCardRefs.current.set(key, element);
+        return;
+      }
+      gridCardRefs.current.delete(key);
+    },
+    []
+  );
+
+  const getGridCardElement = useCallback((playerId: string, index: number) => {
+    return gridCardRefs.current.get(`${playerId}:${index}`) ?? null;
+  }, []);
+
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -1416,6 +1438,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <button
               key={`draw-top-${drawIndex}`}
               type="button"
+              ref={(element) => {
+                drawPileTopRef.current = element;
+              }}
               className="card-back-button card-back-button--stack card-back-button--top"
               data-draw-animated={activeDrawAnimationSource === "deck" ? "true" : "false"}
               aria-label="Draw pile (face down)"
@@ -1451,6 +1476,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <button
               key={`discard-top-${discardIndex}`}
               type="button"
+              ref={(element) => {
+                discardPileTopRef.current = element;
+              }}
               className={`card card--discard-pile card--discard-pile-stack card--discard-top${getCardStyleClass(card)}`}
               data-draw-animated={activeDrawAnimationSource === "discard" ? "true" : "false"}
               aria-label="Discard pile"
@@ -2292,6 +2320,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     };
   }, []);
 
+  const queueCardTravelAnimation = useCallback((source: HTMLElement | null, destination: HTMLElement | null, durationMs?: number) => {
+    if (!source || !destination) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      void animateCardTravel({
+        sourceElement: source,
+        destinationElement: destination,
+        durationMs,
+      });
+    });
+  }, []);
+
   const handleDrawFromDeck = async () => {
     if (!uid) {
       setError("Sign in to draw a card.");
@@ -2306,6 +2348,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
+      queueCardTravelAnimation(drawPileTopRef.current, selectedCardSlotRef.current, 220);
       await drawFromDeck(gameId, uid);
     });
   };
@@ -2339,6 +2382,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
+      queueCardTravelAnimation(discardPileTopRef.current, getGridCardElement(uid, targetIndex), 260);
       await drawFromDiscard(gameId, uid, targetIndex);
       setActiveActionIndex(null);
     });
@@ -2358,6 +2402,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
+      queueCardTravelAnimation(discardPileTopRef.current, selectedCardSlotRef.current, 220);
       await selectDiscard(gameId, uid);
       setActiveActionIndex(null);
     });
@@ -2374,6 +2419,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
+      queueCardTravelAnimation(selectedCardSlotRef.current, getGridCardElement(uid, index), 260);
       await swapPendingDraw(gameId, uid, index);
       setActiveActionIndex(null);
     });
@@ -2487,6 +2533,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     await runWithActionSubmission(async () => {
       const cardTargets = itemTargets.filter(isCardTarget);
+
+      if (itemCode === "C" && cardTargets[0]) {
+        queueCardTravelAnimation(
+          selectedCardSlotRef.current,
+          getGridCardElement(cardTargets[0].playerId, cardTargets[0].index),
+          260
+        );
+      } else if (itemCode === "H" && cardTargets[0] && cardTargets[1]) {
+        queueCardTravelAnimation(
+          getGridCardElement(cardTargets[0].playerId, cardTargets[0].index),
+          getGridCardElement(cardTargets[1].playerId, cardTargets[1].index),
+          280
+        );
+      } else if (itemCode === "E" && cardTargets[0] && cardTargets[1]) {
+        const firstElement = getGridCardElement(cardTargets[0].playerId, cardTargets[0].index);
+        const secondElement = getGridCardElement(cardTargets[1].playerId, cardTargets[1].index);
+        queueCardTravelAnimation(firstElement, secondElement, 300);
+        queueCardTravelAnimation(secondElement, firstElement, 300);
+      }
+
       if (itemCode === "C") {
         await useItemCard(gameId, uid, {
           code: "C",
@@ -3351,7 +3417,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
           <div className="game-pile">
             <h6>Selected card</h6>
-            <div>
+            <div
+              ref={(element) => {
+                if (element) {
+                  selectedCardSlotRef.current = element;
+                }
+              }}
+            >
               {showSelectedCard ? (
                 <div
                   className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}${
@@ -3404,7 +3476,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
           <div className="game-pile">
             <h6>Selected card</h6>
-            <>
+            <div
+              ref={(element) => {
+                selectedCardSlotRef.current = element;
+              }}
+            >
               {showSelectedCard ? (
                 <div
                   className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}${
@@ -3431,7 +3507,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <span className="card-draw-source">{selectedCardOwnerLabel}</span>
                 <span className="card-draw-source">{selectedCardSourceLabel}</span>
               </div>
-            </>
+            </div>
           </div>
         </div>
         {isResolvingItem && itemCode ? (
@@ -3575,6 +3651,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                           }
                         : undefined
                     }
+                    onCardRef={setGridCardRef}
                   />
                 );
               })

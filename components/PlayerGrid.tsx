@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { Card, ItemCard, ItemCode } from "../lib/game/deck";
 
@@ -27,6 +27,7 @@ type PlayerGridProps = {
     targets: Array<{ playerId: string; index: number }>;
     onSelect?: (target: { playerId: string; index: number }) => void;
   };
+  onCardRef?: (target: { playerId: string; index: number; element: HTMLElement | null }) => void;
 };
 
 const placeholderCards = Array.from({ length: 12 }, (_, index) => index + 1);
@@ -118,6 +119,7 @@ export default function PlayerGrid({
   revealSelectionActive = false,
   disableActionControls = false,
   itemSelection,
+  onCardRef,
 }: PlayerGridProps) {
   const cards = grid && grid.length === 12 ? grid : placeholderCards;
   const visibility =
@@ -147,6 +149,16 @@ export default function PlayerGrid({
 
     return lookup;
   }, [itemSelection?.targets]);
+  const registerCardRef = useCallback(
+    (index: number, element: HTMLElement | null) => {
+      if (!onCardRef) {
+        return;
+      }
+
+      onCardRef({ playerId, index, element });
+    },
+    [onCardRef, playerId]
+  );
 
   return (
     <section
@@ -197,6 +209,7 @@ export default function PlayerGrid({
           return (
             <div
               key={`${label}-${index}`}
+              ref={(element) => registerCardRef(index, element)}
               className={`player-grid__card${
                 isActive ? " player-grid__card--active player-grid__card--menu-open" : ""
               }${isItemSelectable ? " player-grid__card--item-selectable" : ""}${
