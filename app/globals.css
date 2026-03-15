@@ -979,8 +979,8 @@ button.player-grid__name:hover {
   .player-grid--active::before,
   .player-grid--misted .player-grid__cards::before,
   .player-grid--misted .player-grid__cards::after,
-  .game-pile--actionable .draw-stack,
-  .game-pile--actionable .discard-stack,
+  .game-pile--actionable-deck .card-back-button--top.card-back-button--actionable,
+  .game-pile--actionable-discard .card--discard-top.card--discard-actionable,
   .game-pile--selected-live .card--discard-pile {
     animation: none;
   }
@@ -1363,9 +1363,14 @@ button.card.card--discard-top:hover {
   color: var(--color-accent-secondary-strong);
 }
 
-.game-pile--actionable .draw-stack,
-.game-pile--actionable .discard-stack {
-  animation: pile-ready-breathe 1.7s ease-in-out infinite;
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .game-pile--actionable-deck .card-back-button--top.card-back-button--actionable {
+    animation: pile-ready-breathe 2.2s cubic-bezier(0.32, 0.01, 0.2, 1) infinite;
+  }
+
+  .game-pile--actionable-discard .card--discard-top.card--discard-actionable {
+    animation: pile-ready-breathe 1.5s cubic-bezier(0.4, 0, 0.25, 1) infinite;
+  }
 }
 
 .game-pile--selected-live .card--discard-pile {
