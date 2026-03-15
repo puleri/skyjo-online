@@ -1,3 +1,5 @@
+import { cardTravelMs, standardEase } from "./motion";
+
 export type AnimateCardTravelOptions = {
   sourceElement: HTMLElement | null;
   destinationElement: HTMLElement | null;
@@ -7,8 +9,8 @@ export type AnimateCardTravelOptions = {
   finalOpacity?: number;
 };
 
-const DEFAULT_DURATION_MS = 240;
-const DEFAULT_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+const DEFAULT_DURATION_MS = cardTravelMs;
+const DEFAULT_EASING = standardEase;
 
 const measureRect = (element: HTMLElement | null) => {
   if (!element) {
@@ -74,7 +76,7 @@ export const animateCardTravel = async ({
       },
     ],
     {
-      duration: Math.max(180, Math.min(durationMs, 320)),
+      duration: Math.max(0, durationMs),
       easing,
       fill: "both",
     }

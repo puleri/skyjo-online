@@ -39,6 +39,7 @@ import { usePreferences } from "../lib/preferences";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 import { CRITICAL_PRELOAD_GROUP_LABELS, PRELOAD_PRIORITY_GROUPS } from "../lib/assetPreloadManifest";
 import { animateCardTravel } from "../lib/animateCardTravel";
+import { cardTravelMs, drawPilePopMs } from "../lib/motion";
 
 type GameScreenProps = {
   gameId: string;
@@ -126,8 +127,8 @@ const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
 const BONUS_ANNOUNCEMENT_DURATION_MS = 2800;
 const LEADERBOARD_ENTRY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-const DRAW_PILE_ANIMATION_MS = 360;
-const DRAWN_CARD_ANIMATION_MS = 420;
+const DRAW_PILE_ANIMATION_MS = drawPilePopMs;
+const DRAWN_CARD_ANIMATION_MS = cardTravelMs;
 
 function isLeaderboardEntryActive(expiresAt: unknown) {
   return expiresAt instanceof Timestamp && expiresAt.toMillis() > Date.now();
@@ -2348,7 +2349,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
-      queueCardTravelAnimation(drawPileTopRef.current, selectedCardSlotRef.current, 220);
+      queueCardTravelAnimation(drawPileTopRef.current, selectedCardSlotRef.current, cardTravelMs);
       await drawFromDeck(gameId, uid);
     });
   };
@@ -2382,7 +2383,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
-      queueCardTravelAnimation(discardPileTopRef.current, getGridCardElement(uid, targetIndex), 260);
+      queueCardTravelAnimation(discardPileTopRef.current, getGridCardElement(uid, targetIndex), cardTravelMs);
       await drawFromDiscard(gameId, uid, targetIndex);
       setActiveActionIndex(null);
     });
@@ -2402,7 +2403,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
-      queueCardTravelAnimation(discardPileTopRef.current, selectedCardSlotRef.current, 220);
+      queueCardTravelAnimation(discardPileTopRef.current, selectedCardSlotRef.current, cardTravelMs);
       await selectDiscard(gameId, uid);
       setActiveActionIndex(null);
     });
@@ -2419,7 +2420,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     await runWithActionSubmission(async () => {
-      queueCardTravelAnimation(selectedCardSlotRef.current, getGridCardElement(uid, index), 260);
+      queueCardTravelAnimation(selectedCardSlotRef.current, getGridCardElement(uid, index), cardTravelMs);
       await swapPendingDraw(gameId, uid, index);
       setActiveActionIndex(null);
     });
@@ -2538,19 +2539,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         queueCardTravelAnimation(
           selectedCardSlotRef.current,
           getGridCardElement(cardTargets[0].playerId, cardTargets[0].index),
-          260
+          cardTravelMs
         );
       } else if (itemCode === "H" && cardTargets[0] && cardTargets[1]) {
         queueCardTravelAnimation(
           getGridCardElement(cardTargets[0].playerId, cardTargets[0].index),
           getGridCardElement(cardTargets[1].playerId, cardTargets[1].index),
-          280
+          cardTravelMs
         );
       } else if (itemCode === "E" && cardTargets[0] && cardTargets[1]) {
         const firstElement = getGridCardElement(cardTargets[0].playerId, cardTargets[0].index);
         const secondElement = getGridCardElement(cardTargets[1].playerId, cardTargets[1].index);
-        queueCardTravelAnimation(firstElement, secondElement, 300);
-        queueCardTravelAnimation(secondElement, firstElement, 300);
+        queueCardTravelAnimation(firstElement, secondElement, cardTravelMs);
+        queueCardTravelAnimation(secondElement, firstElement, cardTravelMs);
       }
 
       if (itemCode === "C") {
