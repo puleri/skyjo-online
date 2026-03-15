@@ -125,6 +125,8 @@ const BETWEEN_ROUNDS_FADE_IN_SECONDS = 1.5;
 const BETWEEN_ROUNDS_TARGET_VOLUME = 1;
 const BONUS_ANNOUNCEMENT_DURATION_MS = 2800;
 const LEADERBOARD_ENTRY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const DRAW_PILE_ANIMATION_MS = 360;
+const DRAWN_CARD_ANIMATION_MS = 420;
 
 function isLeaderboardEntryActive(expiresAt: unknown) {
   return expiresAt instanceof Timestamp && expiresAt.toMillis() > Date.now();
@@ -206,6 +208,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
   const pendingDrawRef = useRef<Map<string, Card | null>>(new Map());
   const hasInitializedDrawSoundRef = useRef(false);
+  const pendingDrawSourceRef = useRef<Map<string, "deck" | "discard" | null>>(new Map());
+  const drawAnimationTimeoutRef = useRef<number | null>(null);
+  const localPendingForAnimationRef = useRef<Card | null>(null);
+  const localPendingSourceForAnimationRef = useRef<"deck" | "discard" | null>(null);
+  const hasInitializedDrawAnimationRef = useRef(false);
   const hasInitializedDiscardSelectSoundRef = useRef(false);
   const lastSelectedDiscardPlayerIdRef = useRef<string | null>(null);
   const lastTurnActionRef = useRef<string | null>(null);
@@ -227,6 +234,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const actionWatchdogTimerRef = useRef<number | null>(null);
   const hasStartedProgressivePreloadRef = useRef(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
+  const [activeDrawAnimationSource, setActiveDrawAnimationSource] = useState<"deck" | "discard" | null>(
+    null
+  );
+  const [drawnCardAnimationNonce, setDrawnCardAnimationNonce] = useState(0);
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -873,10 +884,67 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     });
 
     pendingDrawRef.current = nextPendingDraws;
+    pendingDrawSourceRef.current = new Map(
+      players.map((player) => [player.id, player.pendingDrawSource ?? null])
+    );
     if (!hasInitializedDrawSoundRef.current) {
       hasInitializedDrawSoundRef.current = true;
     }
   }, [firebaseReady, players]);
+
+  useEffect(() => {
+    return () => {
+      if (drawAnimationTimeoutRef.current !== null) {
+        window.clearTimeout(drawAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!uid || !players.length) {
+      return;
+    }
+
+    const localPlayer = players.find((player) => player.id === uid);
+    if (!localPlayer) {
+      return;
+    }
+
+    const previousPending = localPendingForAnimationRef.current;
+    const previousSource = localPendingSourceForAnimationRef.current;
+    const nextPending = localPlayer.pendingDraw ?? null;
+    const nextSource = localPlayer.pendingDrawSource ?? null;
+    const hasNewPendingDraw =
+      nextPending !== null &&
+      !areCardsEqual(nextPending, previousPending) &&
+      (nextSource === "deck" || nextSource === "discard");
+
+    if (!hasInitializedDrawAnimationRef.current) {
+      localPendingForAnimationRef.current = nextPending;
+      localPendingSourceForAnimationRef.current = nextSource;
+      hasInitializedDrawAnimationRef.current = true;
+      return;
+    }
+
+    if (!hasNewPendingDraw || nextSource === previousSource) {
+      localPendingForAnimationRef.current = nextPending;
+      localPendingSourceForAnimationRef.current = nextSource;
+      return;
+    }
+
+    setActiveDrawAnimationSource(nextSource);
+    setDrawnCardAnimationNonce((nonce) => nonce + 1);
+    if (drawAnimationTimeoutRef.current !== null) {
+      window.clearTimeout(drawAnimationTimeoutRef.current);
+    }
+    drawAnimationTimeoutRef.current = window.setTimeout(() => {
+      setActiveDrawAnimationSource(null);
+      drawAnimationTimeoutRef.current = null;
+    }, Math.max(DRAW_PILE_ANIMATION_MS, DRAWN_CARD_ANIMATION_MS));
+
+    localPendingForAnimationRef.current = nextPending;
+    localPendingSourceForAnimationRef.current = nextSource;
+  }, [players, uid]);
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -1349,6 +1417,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               key={`draw-top-${drawIndex}`}
               type="button"
               className="card-back-button card-back-button--stack card-back-button--top"
+              data-draw-animated={activeDrawAnimationSource === "deck" ? "true" : "false"}
               aria-label="Draw pile (face down)"
               onClick={handleDrawFromDeck}
               disabled={!canDrawFromDeck}
@@ -1383,6 +1452,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               key={`discard-top-${discardIndex}`}
               type="button"
               className={`card card--discard-pile card--discard-pile-stack card--discard-top${getCardStyleClass(card)}`}
+              data-draw-animated={activeDrawAnimationSource === "discard" ? "true" : "false"}
               aria-label="Discard pile"
               onClick={handleSelectDiscard}
               disabled={!canSelectDiscardTarget}
@@ -3284,7 +3354,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div>
               {showSelectedCard ? (
                 <div
-                  className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}`}
+                  className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}${
+                    (activeDrawAnimationSource === "deck" || activeDrawAnimationSource === "discard") &&
+                    drawnCardAnimationNonce > 0
+                      ? " card--drawn-highlight"
+                      : ""
+                  }`}
+                  key={`selected-card-dock-${drawnCardAnimationNonce}`}
                   aria-label="Selected card"
                 >
                   {isItemCard(selectedCardValue) ? (
@@ -3331,7 +3407,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <>
               {showSelectedCard ? (
                 <div
-                  className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}`}
+                  className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}${
+                    (activeDrawAnimationSource === "deck" || activeDrawAnimationSource === "discard") &&
+                    drawnCardAnimationNonce > 0
+                      ? " card--drawn-highlight"
+                      : ""
+                  }`}
+                  key={`selected-card-main-${drawnCardAnimationNonce}`}
                   aria-label="Selected card"
                 >
                   {isItemCard(selectedCardValue) ? (

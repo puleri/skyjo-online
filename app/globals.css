@@ -1502,6 +1502,75 @@ button.card.card--discard-top:active:not(:disabled) {
   scale: 1;
 }
 
+@keyframes draw-pile-pop {
+  0% {
+    transform: translate(var(--draw-stack-offset-x, 0px), var(--draw-stack-offset-y, 0px))
+      rotate(var(--draw-rotate, 0deg)) skewX(var(--draw-skew, 0deg))
+      translate(var(--draw-offset-x, 0px), var(--draw-offset-y, 0px));
+    scale: 0.95;
+  }
+  40% {
+    transform: translate(var(--draw-stack-offset-x, 0px), calc(var(--draw-stack-offset-y, 0px) - 6px))
+      rotate(var(--draw-rotate, 0deg)) skewX(var(--draw-skew, 0deg))
+      translate(var(--draw-offset-x, 0px), var(--draw-offset-y, 0px));
+    scale: 1.03;
+  }
+  100% {
+    transform: translate(var(--draw-stack-offset-x, 0px), var(--draw-stack-offset-y, 0px))
+      rotate(var(--draw-rotate, 0deg)) skewX(var(--draw-skew, 0deg))
+      translate(var(--draw-offset-x, 0px), var(--draw-offset-y, 0px));
+    scale: 0.95;
+  }
+}
+
+@keyframes discard-pile-pop {
+  0% {
+    transform: translate(var(--discard-stack-offset-x, 0px), var(--discard-stack-offset-y, 0px))
+      rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
+      translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
+    scale: 0.95;
+  }
+  40% {
+    transform: translate(var(--discard-stack-offset-x, 0px), calc(var(--discard-stack-offset-y, 0px) - 6px))
+      rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
+      translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
+    scale: 1.03;
+  }
+  100% {
+    transform: translate(var(--discard-stack-offset-x, 0px), var(--discard-stack-offset-y, 0px))
+      rotate(var(--discard-rotate, 0deg)) skewX(var(--discard-skew, 0deg))
+      translate(var(--discard-offset-x, 0px), var(--discard-offset-y, 0px));
+    scale: 0.95;
+  }
+}
+
+.card-back-button--top[data-draw-animated="true"] {
+  animation: draw-pile-pop 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button.card.card--discard-top[data-draw-animated="true"] {
+  animation: discard-pile-pop 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes selected-drawn-card-reveal {
+  0% {
+    opacity: 0.2;
+    transform: translateY(-12px) scale(0.9);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(0) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card--drawn-highlight {
+  animation: selected-drawn-card-reveal 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (max-width: 640px) {
   .discard-stack,
   .draw-stack {
@@ -1523,6 +1592,19 @@ button.card.card--discard-top:active:not(:disabled) {
   .card-back-button--top:hover:not(:disabled),
   .card-back-button--top:active:not(:disabled) {
     transform: translate(calc(var(--draw-stack-offset-x, 0px) * 0.65), calc(var(--draw-stack-offset-y, 0px) * 0.65));
+  }
+
+  .card-back-button--top[data-draw-animated="true"],
+  button.card.card--discard-top[data-draw-animated="true"] {
+    animation-duration: 280ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-back-button--top[data-draw-animated="true"],
+  button.card.card--discard-top[data-draw-animated="true"],
+  .card--drawn-highlight {
+    animation: none;
   }
 }
 
