@@ -204,6 +204,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [itemValue, setItemValue] = useState<number | null>(null);
   const [isSwapConfirmOpen, setIsSwapConfirmOpen] = useState(false);
   const [pendingItemReveal, setPendingItemReveal] = useState(false);
+  const [selectedCardAnimationId, setSelectedCardAnimationId] = useState(0);
   const pendingDrawRef = useRef<Map<string, Card | null>>(new Map());
   const hasInitializedDrawSoundRef = useRef(false);
   const hasInitializedDiscardSelectSoundRef = useRef(false);
@@ -1637,6 +1638,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
+  const selectedCardAnimationSignature = showSelectedCard
+    ? JSON.stringify({
+        ownerId: selectedPlayer?.id ?? selectedDiscardPlayer?.id ?? null,
+        source: selectedPlayer?.pendingDrawSource ?? "discard",
+        card: selectedCardValue,
+      })
+    : null;
+  const selectedCardMaskStyle = useMemo(
+    () =>
+      ({
+        "--selected-mask-image": `url("/animations/selected.GIF?play=${selectedCardAnimationId}")`,
+      }) as CSSProperties,
+    [selectedCardAnimationId]
+  );
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const canSelectGridCard =
     isGameActive &&
@@ -1664,6 +1679,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     itemCode === "E" &&
     itemCardTargets.length === 2 &&
     itemCardTargets[0].playerId !== itemCardTargets[1].playerId;
+  const previousSelectedCardSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedCardAnimationSignature) {
+      previousSelectedCardSignatureRef.current = null;
+      return;
+    }
+
+    if (previousSelectedCardSignatureRef.current !== selectedCardAnimationSignature) {
+      previousSelectedCardSignatureRef.current = selectedCardAnimationSignature;
+      setSelectedCardAnimationId((currentId) => currentId + 1);
+    }
+  }, [selectedCardAnimationSignature]);
   const showDrawActions = showDrawnCard && !isPendingItem;
   const itemCardSelectionActive = isResolvingItem && itemTargetsNeeded > 0;
   const itemTargetInstruction =
@@ -3284,7 +3312,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div>
               {showSelectedCard ? (
                 <div
-                  className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}`}
+                  key={`selected-card-dock-${selectedCardAnimationId}`}
+                  className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                  style={selectedCardMaskStyle}
                   aria-label="Selected card"
                 >
                   {isItemCard(selectedCardValue) ? (
@@ -3331,7 +3361,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <>
               {showSelectedCard ? (
                 <div
-                  className={`card card--discard-pile${getCardStyleClass(selectedCardValue)}`}
+                  key={`selected-card-dock-${selectedCardAnimationId}`}
+                  className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                  style={selectedCardMaskStyle}
                   aria-label="Selected card"
                 >
                   {isItemCard(selectedCardValue) ? (
