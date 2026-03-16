@@ -1,9 +1,7 @@
 "use client";
 
+import { Workbox } from "workbox-window";
 import { useEffect } from "react";
-
-const WORKBOX_WINDOW_URL =
-  "https://storage.googleapis.com/workbox-cdn/releases/7.1.0/workbox-window.prod.mjs";
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -18,10 +16,6 @@ export default function ServiceWorkerRegistration() {
     let mounted = true;
 
     const register = async () => {
-      const { Workbox } = await import(
-        /* webpackIgnore: true */ WORKBOX_WINDOW_URL
-      );
-
       if (!mounted) {
         return;
       }
