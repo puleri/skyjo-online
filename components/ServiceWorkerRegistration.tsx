@@ -1,9 +1,21 @@
 "use client";
 
 import { Workbox } from "workbox-window";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function ServiceWorkerRegistration() {
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [workboxInstance, setWorkboxInstance] = useState<Workbox | null>(null);
+  const didRefreshRef = useRef(false);
+
+  const handleApplyUpdate = () => {
+    if (!workboxInstance) {
+      return;
+    }
+
+    workboxInstance.messageSkipWaiting();
+  };
+
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") {
       return;
@@ -21,12 +33,22 @@ export default function ServiceWorkerRegistration() {
       }
 
       const wb = new Workbox("/sw.js");
+      setWorkboxInstance(wb);
 
       wb.addEventListener("waiting", () => {
-        wb.messageSkipWaiting();
+        if (!navigator.serviceWorker.controller) {
+          return;
+        }
+
+        setIsUpdateAvailable(true);
       });
 
       wb.addEventListener("controlling", () => {
+        if (didRefreshRef.current) {
+          return;
+        }
+
+        didRefreshRef.current = true;
         window.location.reload();
       });
 
@@ -39,8 +61,20 @@ export default function ServiceWorkerRegistration() {
 
     return () => {
       mounted = false;
+      setWorkboxInstance(null);
     };
   }, []);
 
-  return null;
+  return isUpdateAvailable ? (
+    <div className="service-worker-update-toast" role="status" aria-live="polite">
+      <span>Update available</span>
+      <button
+        type="button"
+        className="service-worker-update-toast__button"
+        onClick={handleApplyUpdate}
+      >
+        Refresh
+      </button>
+    </div>
+  ) : null;
 }
