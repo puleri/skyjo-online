@@ -1,20 +1,35 @@
 import "./globals.css";
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import ThemeSync from "../components/ThemeSync";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
+const APP_NAME = "Misty Match";
+const APP_SHORT_NAME = "Misty";
+const THEME_COLOR = "#5f7a6a";
+const BACKGROUND_COLOR = "#f5eee9";
 
 export const metadata: Metadata = {
-  title: "Misty",
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_SHORT_NAME}`,
+  },
+  applicationName: APP_NAME,
   description: "A simple and mildly fun game for the whole family",
   manifest: "/manifest.json",
-  themeColor: "#ffffff",
   appleWebApp: {
     capable: true,
-    title: "Misty",
+    title: APP_SHORT_NAME,
     statusBarStyle: "default",
   },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: THEME_COLOR,
 };
 
 export default function RootLayout({
@@ -24,10 +39,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <meta name="apple-mobile-web-app-title" content="Misty" />
-      <SpeedInsights />
-
-      <body>
+      <body style={{ backgroundColor: BACKGROUND_COLOR }}>
+        <SpeedInsights />
         <ThemeSync>{children}</ThemeSync>
         <ServiceWorkerRegistration />
       </body>
