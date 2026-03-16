@@ -2,10 +2,8 @@ import "./globals.css";
 
 import type { Metadata } from "next";
 import ThemeSync from "../components/ThemeSync";
+import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 import { SpeedInsights } from "@vercel/speed-insights/next"
-
-
-
 
 export const metadata: Metadata = {
   title: "Misty",
@@ -31,6 +29,7 @@ export default function RootLayout({
 
       <body>
         <ThemeSync>{children}</ThemeSync>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
