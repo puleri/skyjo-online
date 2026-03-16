@@ -1634,6 +1634,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     !isSprinting &&
     !isSubmittingAction &&
     (game?.discard.length ?? 0) > 0;
+  const actionableDeckPileClass = canDrawFromDeck
+    ? " game-pile--actionable game-pile--actionable-deck"
+    : "";
+  const actionableDiscardPileClass = canSelectDiscardTarget
+    ? " game-pile--actionable game-pile--actionable-discard"
+    : "";
   const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
   const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
@@ -3269,7 +3275,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       {showDockedPiles && game?.status !== "round-complete" ? (
         <div className="game-piles game-piles--dock">
           <div
-            className={`game-pile${canDrawFromDeck ? " game-pile--actionable game-pile--actionable-deck" : ""}`}
+            className={`game-pile${actionableDeckPileClass}`}
           >
             <h6>Deck</h6>
             {renderDrawPile()}
@@ -3278,7 +3284,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             </div>
           </div>
           <div
-            className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable game-pile--actionable-discard" : ""}`}
+            className={`game-pile${actionableDiscardPileClass}`}
           >
             <h6>Discard</h6>
             {renderDiscardPile()}
@@ -3320,7 +3326,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         )}
         <div className="game-piles" ref={gamePilesRef}>
           <div
-            className={`game-pile${canDrawFromDeck ? " game-pile--actionable game-pile--actionable-deck" : ""}`}
+            className={`game-pile${actionableDeckPileClass}`}
           >
             <h6>Deck</h6>
             {renderDrawPile()}
@@ -3329,7 +3335,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             </div>
           </div>
           <div
-            className={`game-pile${canSelectDiscardTarget ? " game-pile--actionable game-pile--actionable-discard" : ""}`}
+            className={`game-pile${actionableDiscardPileClass}`}
           >
             <h6>Discard</h6>
             {renderDiscardPile()}
