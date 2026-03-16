@@ -493,42 +493,69 @@ workbox.precaching.precacheAndRoute([
 ]);
 workbox.precaching.cleanupOutdatedCaches();
 
+const AUTH_OR_SESSION_PATHS = [
+  /^\/api\/(?:auth|session)(?:\/|$)/,
+  /^\/(?:auth|session)(?:\/|$)/,
+];
+
+const isSensitivePath = (pathname) => AUTH_OR_SESSION_PATHS.some((pattern) => pattern.test(pathname));
+
+const isRuntimeCacheableGet = ({ request, url }) =>
+  request.method === 'GET' &&
+  url.origin === self.location.origin &&
+  !isSensitivePath(url.pathname);
+
 workbox.routing.registerRoute(
-  ({ request }) => request.mode === 'navigate',
+  ({ request, url }) => request.mode === 'navigate' && isRuntimeCacheableGet({ request, url }),
   new workbox.strategies.NetworkFirst({
     cacheName: 'pages',
     networkTimeoutSeconds: 5,
-    plugins: [new workbox.expiration.ExpirationPlugin({ maxEntries: 50 })],
+    plugins: [new workbox.expiration.ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 })],
   }),
 );
 
 workbox.routing.setCatchHandler(async ({ event }) => {
-  if (event.request.destination === 'document') {
+  if (event.request.mode === 'navigate') {
     return workbox.precaching.matchPrecache('/offline.html');
   }
   return Response.error();
 });
 
 workbox.routing.registerRoute(
-  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/_next/static/'),
+  ({ request, url }) =>
+    isRuntimeCacheableGet({ request, url }) &&
+    url.pathname.startsWith('/_next/static/'),
   new workbox.strategies.CacheFirst({
     cacheName: 'next-static-assets',
     plugins: [
       new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
-      new workbox.expiration.ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 }),
+      new workbox.expiration.ExpirationPlugin({ maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 365 }),
     ],
   }),
 );
 
 workbox.routing.registerRoute(
   ({ request, url }) =>
-    request.destination === 'style' ||
-    request.destination === 'script' ||
-    request.destination === 'image' ||
-    request.destination === 'font' ||
-    (url.origin === self.location.origin && /\.(?:json|wav|mp3)$/i.test(url.pathname)),
+    isRuntimeCacheableGet({ request, url }) &&
+    request.destination === 'font',
+  new workbox.strategies.CacheFirst({
+    cacheName: 'font-assets',
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
+      new workbox.expiration.ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 365 }),
+    ],
+  }),
+);
+
+workbox.routing.registerRoute(
+  ({ request, url }) =>
+    isRuntimeCacheableGet({ request, url }) &&
+    request.destination === 'image',
   new workbox.strategies.StaleWhileRevalidate({
-    cacheName: 'static-resources',
-    plugins: [new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] })],
+    cacheName: 'image-assets',
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({ statuses: [0, 200] }),
+      new workbox.expiration.ExpirationPlugin({ maxEntries: 250, maxAgeSeconds: 60 * 60 * 24 * 30 }),
+    ],
   }),
 );
