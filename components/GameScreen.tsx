@@ -1645,6 +1645,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         card: selectedCardValue,
       })
     : null;
+  const selectedCardMaskStyle = useMemo(
+    () =>
+      ({
+        "--selected-mask-image": `url("/animations/selected.GIF?play=${selectedCardAnimationId}")`,
+      }) as CSSProperties,
+    [selectedCardAnimationId]
+  );
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const canSelectGridCard =
     isGameActive &&
@@ -3307,6 +3314,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <div
                   key={`selected-card-dock-${selectedCardAnimationId}`}
                   className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                  style={selectedCardMaskStyle}
                   aria-label="Selected card"
                 >
                   {isItemCard(selectedCardValue) ? (
@@ -3355,6 +3363,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <div
                   key={`selected-card-dock-${selectedCardAnimationId}`}
                   className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                  style={selectedCardMaskStyle}
                   aria-label="Selected card"
                 >
                   {isItemCard(selectedCardValue) ? (
