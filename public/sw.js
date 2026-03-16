@@ -495,6 +495,7 @@ workbox.precaching.cleanupOutdatedCaches();
 
 const AUTH_OR_SESSION_PATHS = [
   /^\/api\/(?:auth|session)(?:\/|$)/,
+  /^\/api\/.*(?:auth|session|csrf|token)(?:\/|$)/,
   /^\/(?:auth|session)(?:\/|$)/,
 ];
 
@@ -515,7 +516,7 @@ workbox.routing.registerRoute(
 );
 
 workbox.routing.setCatchHandler(async ({ event }) => {
-  if (event.request.mode === 'navigate') {
+  if (event.request.mode === 'navigate' && event.request.destination === 'document') {
     return workbox.precaching.matchPrecache('/offline.html');
   }
   return Response.error();
