@@ -1551,6 +1551,28 @@ button.card.card--discard-top:active:not(:disabled) {
   color: #3f5a4a;
 }
 
+.card--selected-animated {
+  animation: selected-card-fade-in 0.6s ease-out;
+  -webkit-mask-image: url("/animations/selected.GIF");
+  mask-image: url("/animations/selected.GIF");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+@keyframes selected-card-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .card--empty-selected {
   border: 4px dashed #d3bf8a83;
   box-shadow: none;
@@ -3981,11 +4003,13 @@ border: 1px solid #ffedef;
   }
 }
 
+
 @media (prefers-reduced-motion: reduce) {
   .rules-animation--draw .card-chip:first-child,
   .rules-animation--reveal .card-chip:first-child,
   .rules-animation--reveal .card-chip:last-child,
-  .rules-animation--discard .card-chip:first-child {
+  .rules-animation--discard .card-chip:first-child,
+  .card--selected-animated {
     animation: none !important;
   }
 }
