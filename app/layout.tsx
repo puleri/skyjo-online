@@ -10,6 +10,13 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 export const metadata: Metadata = {
   title: "Misty",
   description: "A simple and mildly fun game for the whole family",
+  manifest: "/manifest.json",
+  themeColor: "#ffffff",
+  appleWebApp: {
+    capable: true,
+    title: "Misty",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
