@@ -1365,11 +1365,15 @@ button.card.card--discard-top:hover {
 
 @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
   .game-pile--actionable-deck .card-back-button--top.card-back-button--actionable {
-    animation: pile-ready-breathe 2.2s cubic-bezier(0.32, 0.01, 0.2, 1) infinite;
+    --pile-actionable-breathe-duration: 2.2s;
+    --pile-actionable-breathe-ease: cubic-bezier(0.32, 0.01, 0.2, 1);
+    animation: pile-ready-breathe var(--pile-actionable-breathe-duration) var(--pile-actionable-breathe-ease) infinite;
   }
 
   .game-pile--actionable-discard .card--discard-top.card--discard-actionable {
-    animation: pile-ready-breathe 1.5s cubic-bezier(0.4, 0, 0.25, 1) infinite;
+    --pile-actionable-breathe-duration: 1.5s;
+    --pile-actionable-breathe-ease: cubic-bezier(0.4, 0, 0.25, 1);
+    animation: pile-ready-breathe var(--pile-actionable-breathe-duration) var(--pile-actionable-breathe-ease) infinite;
   }
 
   .game-pile--selected-live .card--discard-pile {
