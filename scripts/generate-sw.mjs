@@ -15,12 +15,6 @@ const exists = async (target) => {
   }
 };
 
-const AUTH_OR_SESSION_PATHS = [
-  /^\/api\/(?:auth|session)(?:\/|$)/,
-  /^\/api\/.*(?:auth|session|csrf|token)(?:\/|$)/,
-  /^\/(?:auth|session)(?:\/|$)/,
-];
-
 const main = async () => {
   if (!(await exists(NEXT_STATIC_DIR))) {
     throw new Error('Missing .next/static output. Run `next build` before generating the service worker.');
@@ -47,7 +41,9 @@ const main = async () => {
           request.mode === 'navigate' &&
           request.method === 'GET' &&
           sameOrigin &&
-          !AUTH_OR_SESSION_PATHS.some((pattern) => pattern.test(url.pathname)),
+          !/^\/api\/(?:auth|session)(?:\/|$)/.test(url.pathname) &&
+          !/^\/api\/.*(?:auth|session|csrf|token)(?:\/|$)/.test(url.pathname) &&
+          !/^\/(?:auth|session)(?:\/|$)/.test(url.pathname),
         handler: 'NetworkFirst',
         options: {
           cacheName: 'pages',
