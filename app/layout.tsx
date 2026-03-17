@@ -8,7 +8,6 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const APP_NAME = "Misty Match";
 const APP_SHORT_NAME = "Misty";
 const THEME_COLOR = "#5f7a6a";
-const BACKGROUND_COLOR = "#f5eee9";
 const MANIFEST_PATH = "/manifest.json";
 const APP_ICON_192 = "/web-app-manifest-192x192.png";
 
@@ -52,7 +51,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ backgroundColor: BACKGROUND_COLOR }}>
+      <body>
         <SpeedInsights />
         <ThemeSync>{children}</ThemeSync>
         <ServiceWorkerRegistration />
