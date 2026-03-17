@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 export default function ServiceWorkerRegistration() {
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [isUpdatePromptVisible, setIsUpdatePromptVisible] = useState(false);
   const [workboxInstance, setWorkboxInstance] = useState<Workbox | null>(null);
   const didRefreshRef = useRef(false);
 
@@ -13,7 +14,12 @@ export default function ServiceWorkerRegistration() {
       return;
     }
 
+    setIsUpdatePromptVisible(false);
     workboxInstance.messageSkipWaiting();
+  };
+
+  const handleDismissUpdate = () => {
+    setIsUpdatePromptVisible(false);
   };
 
   useEffect(() => {
@@ -41,6 +47,7 @@ export default function ServiceWorkerRegistration() {
         }
 
         setIsUpdateAvailable(true);
+        setIsUpdatePromptVisible(true);
       });
 
       wb.addEventListener("controlling", () => {
@@ -65,7 +72,7 @@ export default function ServiceWorkerRegistration() {
     };
   }, []);
 
-  return isUpdateAvailable ? (
+  return isUpdateAvailable && isUpdatePromptVisible ? (
     <div className="service-worker-update-toast" role="status" aria-live="polite">
       <span>Update available</span>
       <button
@@ -73,7 +80,14 @@ export default function ServiceWorkerRegistration() {
         className="service-worker-update-toast__button"
         onClick={handleApplyUpdate}
       >
-        Refresh
+        Update
+      </button>
+      <button
+        type="button"
+        className="service-worker-update-toast__button"
+        onClick={handleDismissUpdate}
+      >
+        Later
       </button>
     </div>
   ) : null;
