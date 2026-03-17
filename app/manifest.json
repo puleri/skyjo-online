@@ -1,9 +1,9 @@
 {
-  "id": "./?source=pwa",
+  "id": "/",
   "name": "Misty Match",
   "short_name": "Misty",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#5f7a6a",
