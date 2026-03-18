@@ -5,7 +5,7 @@ import ThemeSync from "../components/ThemeSync";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-const APP_NAME = "Misty Match";
+const APP_NAME = "Misty";
 const APP_SHORT_NAME = "Misty";
 const THEME_COLOR = "#5f7a6a";
 const MANIFEST_PATH = "/manifest.json";

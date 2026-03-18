@@ -8,7 +8,7 @@ export default function GamePage() {
         <Link className="back-button" href="/">
           ← Back to main menu
         </Link>
-        <h1>Misty Match</h1>
+        <h1>Misty</h1>
       </header>
 
       <section className="game-screen__players">
