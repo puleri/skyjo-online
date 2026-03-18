@@ -27,6 +27,7 @@ type PlayerGridProps = {
     targets: Array<{ playerId: string; index: number }>;
     onSelect?: (target: { playerId: string; index: number }) => void;
   };
+  runningTotal?: number;
 };
 
 const placeholderCards = Array.from({ length: 12 }, (_, index) => index + 1);
@@ -118,6 +119,7 @@ export default function PlayerGrid({
   revealSelectionActive = false,
   disableActionControls = false,
   itemSelection,
+  runningTotal,
 }: PlayerGridProps) {
   const cards = grid && grid.length === 12 ? grid : placeholderCards;
   const visibility =
@@ -292,6 +294,12 @@ export default function PlayerGrid({
           );
         })}
       </div>
+        {typeof runningTotal === "number" ? (
+          <div className={`player-grid__total-badge${isActive ? " player-grid__total-badge--active" : ""}`}>
+            <span className="player-grid__total-label">Total</span>
+            <span className="player-grid__total-value">{runningTotal}</span>
+          </div>
+        ) : null}
     </section>
   );
 }
