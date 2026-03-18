@@ -3483,9 +3483,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   <PlayerGrid
                     key={player.id}
                     playerId={player.id}
-                    label={`${player.displayName}${isLocalPlayer ? " (you)" : ""}${
-                      player.isReady ? " ✓" : ""
-                    }`}
+                    label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
+                    localBadgeLabel={isLocalPlayer ? "YOU" : null}
                     size={isLocalPlayer ? "main" : "mini"}
                     isActive={isActivePlayer}
                     isLocal={isLocalPlayer}

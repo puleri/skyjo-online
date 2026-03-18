@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 
 import type { Card, ItemCard, ItemCode } from "../lib/game/deck";
 
 type PlayerGridProps = {
   playerId: string;
-  label: string;
+  label: ReactNode;
+  localBadgeLabel?: string | null;
   size?: "main" | "mini";
   isActive?: boolean;
   isLocal?: boolean;
@@ -104,6 +105,7 @@ export default function PlayerGrid({
   playerId,
   label,
   size = "main",
+  localBadgeLabel = null,
   isActive = false,
   isLocal = false,
   grid,
@@ -163,10 +165,18 @@ export default function PlayerGrid({
             className={`player-grid__name${isPlayerSelected ? " player-grid__name--selected" : ""}`}
             onClick={() => onPlayerSelect(playerId)}
           >
-            <strong>{label}</strong>
+            <strong className="player-grid__name-label">{label}</strong>
+            {localBadgeLabel ? (
+              <span className="player-grid__badge player-grid__badge--you">{localBadgeLabel}</span>
+            ) : null}
           </button>
         ) : (
-          <strong className="player-grid__name">{label}</strong>
+          <strong className="player-grid__name">
+            <span className="player-grid__name-label">{label}</span>
+            {localBadgeLabel ? (
+              <span className="player-grid__badge player-grid__badge--you">{localBadgeLabel}</span>
+            ) : null}
+          </strong>
         )}
         {isMisted ? (
           <span className="player-grid__badge player-grid__badge--misted">
