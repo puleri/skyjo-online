@@ -296,7 +296,6 @@ export default function PlayerGrid({
       </div>
         {typeof runningTotal === "number" ? (
           <div className={`player-grid__total-badge${isActive ? " player-grid__total-badge--active" : ""}`}>
-            <span className="player-grid__total-label">Total</span>
             <span className="player-grid__total-value">{runningTotal}</span>
           </div>
         ) : null}
