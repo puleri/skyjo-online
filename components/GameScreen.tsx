@@ -1209,15 +1209,6 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       }))
       .sort((a, b) => a.roundScore - b.roundScore);
   }, [game?.roundScores, game?.status, orderedPlayers]);
-  const runningTotals = useMemo(
-    () =>
-      orderedPlayers.map((player) => ({
-        id: player.id,
-        displayName: player.displayName,
-        totalScore: player.totalScore ?? 0,
-      })),
-    [orderedPlayers]
-  );
   const gameIdHash = useMemo(
     () =>
       Array.from(gameId).reduce((hash, char, index) => {
@@ -3525,6 +3516,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                           }
                         : undefined
                     }
+                    runningTotal={player.totalScore ?? 0}
                   />
                 );
               })
@@ -3534,24 +3526,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           </div>
         </div>
       </section>
-      <section className="score-strip">
-        <h2>Running totals</h2>
-        <ul className="score-strip__list">
-          {runningTotals.map((player) => (
-            <li
-              key={player.id}
-              className={`score-strip__item${
-                player.id === game?.currentPlayerId ? " score-strip__item--active" : ""
-              }`}
-            >
-              <span className="score-strip__name">{player.displayName}</span>
-              <span className="score-strip__score">{player.totalScore}</span>
-            </li>
-          ))}
-        </ul>
-              
 
-      </section>
     </main>
 
     </>
