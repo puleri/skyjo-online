@@ -76,7 +76,7 @@ export default function UsernameForm() {
             type="button"
             onClick={() => void signInWithGoogleSso()}
           >
-            Google (not working yet)
+            Sign in with Google
           </button>
 
         </div>

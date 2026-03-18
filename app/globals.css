@@ -851,8 +851,8 @@ button.player-grid__name:hover {
 }
 
 .player-grid__badge--you {
-  background: rgba(255, 230, 182, 0.92);
-  color: var(--color-accent-deep);
+  background: var(--color-accent-soft);
+  color: var(--color-dark);
 }
 
 .player-grid--active {
