@@ -27,8 +27,6 @@ const main = async () => {
     clientsClaim: true,
     skipWaiting: false,
     mode: 'production',
-    navigateFallback: '/offline.html',
-    navigateFallbackDenylist: [/^\/api\//],
     globPatterns: ['public/**/*.{html,js,css,png,svg,ico,webp,woff,woff2,ttf}', '.next/static/**/*.{js,css,woff2,png,svg,webp}'],
     globIgnores: ['**/sw.js', '**/*.map', '.next/cache/**/*'],
     modifyURLPrefix: {
