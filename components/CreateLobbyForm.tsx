@@ -138,8 +138,8 @@ export default function CreateLobbyForm() {
   return (
     <form onSubmit={handleSubmit}>
 
-      <span className="lobby-mode-tag" aria-label="Mode: spike">
-        spike
+      <span className="lobby-mode-tag" aria-label="Settings">
+        Settings
       </span>
       <button
               type="button"
@@ -193,14 +193,7 @@ export default function CreateLobbyForm() {
             <h2 className="leaderboard-title" id="lobby-settings-title">Game settings</h2>
             <p className="leaderboard-sub">Customize how your lobby plays.</p>
             <div className="modal__option">
-              <p className="modal__option-label">
-                <span className="flex-full-center">
-                  <img className="spike-icon" src="/spike-icon.png" alt="" aria-hidden="true" />
-                  Spike mode
-                </span>
-              </p>
-              <p className="modal__option-help">Special rules for a more challenging game.</p>
-              <div className="modal__subsettings" role="group" aria-label="Spike mode settings">
+              <div className="modal__subsettings" role="group" aria-label="Game settings">
                   <div className="modal__slider">
                     <div className="modal__slider-header">
                       <span className="modal__subsettings-option">Item frequency</span>

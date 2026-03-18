@@ -170,7 +170,7 @@ export default function LobbyScreen() {
               ref={settingsTriggerRef}
               onClick={() => setIsSettingsOpen(true)}
             >
-              <img className="settings-icon" src="/person-icon.svg" alt="Account settings icon" />
+              <img className="settings-icon" src="/profile.png" alt="Account settings icon" />
             </button>
             <Link
               href="/rules"
