@@ -183,7 +183,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
   const playerListContainerRef = useRef<HTMLDivElement | null>(null);
-  const playerGridRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const playerGridRefs = useRef<Record<string, HTMLElement | null>>({});
   const lastAutoFollowInteractionAtRef = useRef(0);
   const autoFollowResumeTimerRef = useRef<number | null>(null);
   const autoFollowScrollTimerRef = useRef<number | null>(null);
@@ -3672,38 +3672,36 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 const isActivePlayer = player.id === game?.currentPlayerId;
                 const isLocalPlayer = player.id === uid;
                 return (
-                  <div
+                  <PlayerGrid
                     key={player.id}
                     ref={(element) => {
                       playerGridRefs.current[player.id] = element;
                     }}
-                  >
-                    <PlayerGrid
-                      playerId={player.id}
-                      label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
-                      localBadgeLabel={isLocalPlayer ? "YOU" : null}
-                      size={isLocalPlayer ? "main" : "mini"}
-                      isActive={isActivePlayer}
-                      isLocal={isLocalPlayer}
-                      grid={player.grid}
-                      revealed={player.revealed}
-                      mistTurnsRemaining={player.mistTurnsRemaining}
-                      onCardSelect={
+                    playerId={player.id}
+                    label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
+                    localBadgeLabel={isLocalPlayer ? "YOU" : null}
+                    size={isLocalPlayer ? "main" : "mini"}
+                    isActive={isActivePlayer}
+                    isLocal={isLocalPlayer}
+                    grid={player.grid}
+                    revealed={player.revealed}
+                    mistTurnsRemaining={player.mistTurnsRemaining}
+                    onCardSelect={
                         isLocalPlayer && canSelectGridCard ? handleSelectGridCard : undefined
                       }
-                      activeActionIndex={isLocalPlayer ? activeActionIndex : null}
-                      onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
-                      onReveal={
+                    activeActionIndex={isLocalPlayer ? activeActionIndex : null}
+                    onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
+                    onReveal={
                         isLocalPlayer && showDrawActions && !isSprinting ? handleReveal : undefined
                       }
-                      onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
-                      revealSelectionActive={
+                    onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
+                    revealSelectionActive={
                         isLocalPlayer && (isItemRevealPending || isRevealRecoveryActive) && !isSprinting
                       }
-                      disableActionControls={isLocalPlayer && isSubmittingAction}
-                      onPlayerSelect={undefined}
-                      isPlayerSelected={false}
-                      itemSelection={
+                    disableActionControls={isLocalPlayer && isSubmittingAction}
+                    onPlayerSelect={undefined}
+                    isPlayerSelected={false}
+                    itemSelection={
                         isLocalPlayer && isCurrentTurn && itemCardSelectionActive
                           ? {
                               active: true,
@@ -3712,9 +3710,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                             }
                           : undefined
                       }
-                      runningTotal={player.totalScore ?? 0}
-                    />
-                  </div>
+                    runningTotal={player.totalScore ?? 0}
+                  />
                 );
               })
             ) : (
