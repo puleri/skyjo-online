@@ -2029,7 +2029,7 @@ small {
 }
 
 .toast ~ .auto-follow-widget {
-  bottom: calc(24px + 76px);
+  bottom: calc(24px + 6px);
 }
 
 .auto-follow-widget__label {
@@ -2089,14 +2089,14 @@ small {
   .service-worker-update-toast {
     right: 16px;
     left: 16px;
-    bottom: 16px;
+    bottom: 6px;
     max-width: none;
   }
 
   .auto-follow-widget {
     right: 16px;
     left: 16px;
-    bottom: max(84px, env(safe-area-inset-bottom, 0px) + 16px);
+    bottom: max(14px, env(safe-area-inset-bottom, 0px) + 16px);
     width: auto;
   }
 
