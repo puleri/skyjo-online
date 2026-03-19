@@ -175,13 +175,22 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     cardSounds: isCardSoundsEnabled,
     backgroundMusic: isBackgroundMusicEnabled,
     snow: isSnowEnabled,
-    autoFollow: isAutoFollowEnabled,
+    autoFollow: autoFollowPreferenceEnabled,
   } = preferences;
+  const [isAutoFollowEnabled, setIsAutoFollowEnabled] = useState(autoFollowPreferenceEnabled);
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
+  const playerListContainerRef = useRef<HTMLDivElement | null>(null);
   const playerGridRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastAutoFollowInteractionAtRef = useRef(0);
+  const autoFollowResumeTimerRef = useRef<number | null>(null);
+  const autoFollowScrollTimerRef = useRef<number | null>(null);
+  const autoFollowScrollIgnoreUntilRef = useRef(0);
+  const lastAutoFollowAttemptKeyRef = useRef<string | null>(null);
+  const [isAutoFollowSuspended, setIsAutoFollowSuspended] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
   const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
   const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
@@ -1186,9 +1195,101 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         : null,
     [game?.currentPlayerId, orderedPlayers]
   );
+  const shouldShowAutoFollowWidget = Boolean(
+    uid && game?.status === "playing" && game?.currentPlayerId && uid !== game.currentPlayerId && autoFollowPreferenceEnabled
+  );
+  const isAutoFollowActive = shouldShowAutoFollowWidget && isAutoFollowEnabled && !isAutoFollowSuspended;
 
   useEffect(() => {
-    if (typeof window === "undefined" || !isAutoFollowEnabled || !game?.currentPlayerId) {
+    setIsAutoFollowEnabled(autoFollowPreferenceEnabled);
+  }, [autoFollowPreferenceEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateReducedMotionPreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    updateReducedMotionPreference();
+    mediaQuery.addEventListener("change", updateReducedMotionPreference);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateReducedMotionPreference);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !shouldShowAutoFollowWidget) {
+      setIsAutoFollowSuspended(false);
+      if (autoFollowResumeTimerRef.current !== null) {
+        window.clearTimeout(autoFollowResumeTimerRef.current);
+        autoFollowResumeTimerRef.current = null;
+      }
+      return;
+    }
+
+    const handleInteraction = () => {
+      if (Date.now() < autoFollowScrollIgnoreUntilRef.current) {
+        return;
+      }
+
+      lastAutoFollowInteractionAtRef.current = Date.now();
+      setIsAutoFollowSuspended(true);
+
+      if (autoFollowResumeTimerRef.current !== null) {
+        window.clearTimeout(autoFollowResumeTimerRef.current);
+      }
+
+      autoFollowResumeTimerRef.current = window.setTimeout(() => {
+        if (Date.now() - lastAutoFollowInteractionAtRef.current >= 1600) {
+          setIsAutoFollowSuspended(false);
+        }
+        autoFollowResumeTimerRef.current = null;
+      }, 1600);
+    };
+
+    const playerListContainer = playerListContainerRef.current;
+    const interactionEvents: Array<keyof WindowEventMap> = ["wheel", "touchmove"];
+    const keyboardHandler = (event: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Tab"].includes(event.key)) {
+        handleInteraction();
+      }
+    };
+
+    window.addEventListener("scroll", handleInteraction, { passive: true });
+    window.addEventListener("keydown", keyboardHandler, { passive: true });
+    interactionEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleInteraction, { passive: true });
+      playerListContainer?.addEventListener(eventName, handleInteraction, { passive: true });
+    });
+    playerListContainer?.addEventListener("scroll", handleInteraction, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleInteraction);
+      window.removeEventListener("keydown", keyboardHandler);
+      interactionEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleInteraction);
+        playerListContainer?.removeEventListener(eventName, handleInteraction);
+      });
+      playerListContainer?.removeEventListener("scroll", handleInteraction);
+      if (autoFollowResumeTimerRef.current !== null) {
+        window.clearTimeout(autoFollowResumeTimerRef.current);
+        autoFollowResumeTimerRef.current = null;
+      }
+    };
+  }, [shouldShowAutoFollowWidget]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !isAutoFollowActive || !game?.currentPlayerId) {
+      lastAutoFollowAttemptKeyRef.current = null;
+      if (autoFollowScrollTimerRef.current !== null) {
+        window.clearTimeout(autoFollowScrollTimerRef.current);
+        autoFollowScrollTimerRef.current = null;
+      }
       return;
     }
 
@@ -1197,16 +1298,48 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const timeout = window.setTimeout(() => {
+    const viewportMargin = 32;
+    const activePlayerRect = activePlayerElement.getBoundingClientRect();
+    const containerRect = playerListContainerRef.current?.getBoundingClientRect() ?? null;
+    const visibleTop = containerRect ? Math.max(containerRect.top, viewportMargin) : viewportMargin;
+    const visibleBottom = containerRect
+      ? Math.min(containerRect.bottom, window.innerHeight - viewportMargin)
+      : window.innerHeight - viewportMargin;
+    const isAdequatelyVisible =
+      activePlayerRect.top >= visibleTop && activePlayerRect.bottom <= visibleBottom;
+    const autoFollowAttemptKey = `${game.currentPlayerId}:${isAutoFollowActive}`;
+
+    if (isAdequatelyVisible) {
+      lastAutoFollowAttemptKeyRef.current = autoFollowAttemptKey;
+      return;
+    }
+
+    if (lastAutoFollowAttemptKeyRef.current === autoFollowAttemptKey) {
+      return;
+    }
+
+    if (autoFollowScrollTimerRef.current !== null) {
+      window.clearTimeout(autoFollowScrollTimerRef.current);
+    }
+
+    autoFollowScrollTimerRef.current = window.setTimeout(() => {
+      autoFollowScrollIgnoreUntilRef.current = Date.now() + (prefersReducedMotion ? 200 : 900);
       activePlayerElement.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: prefersReducedMotion ? "nearest" : "center",
         inline: "nearest",
       });
-    }, 250);
+      lastAutoFollowAttemptKeyRef.current = autoFollowAttemptKey;
+      autoFollowScrollTimerRef.current = null;
+    }, 120);
 
-    return () => window.clearTimeout(timeout);
-  }, [displayPlayers, game?.currentPlayerId, isAutoFollowEnabled]);
+    return () => {
+      if (autoFollowScrollTimerRef.current !== null) {
+        window.clearTimeout(autoFollowScrollTimerRef.current);
+        autoFollowScrollTimerRef.current = null;
+      }
+    };
+  }, [displayPlayers, game?.currentPlayerId, isAutoFollowActive, prefersReducedMotion]);
 
   const lastTurnSummary = useMemo(() => {
     if (!game || !game.lastTurnPlayerId || !game.lastTurnAction) {
@@ -2874,6 +3007,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           {toastMessage}
         </div>
       ) : null}
+      {shouldShowAutoFollowWidget ? (
+        <div className="auto-follow-widget">
+          <label className="auto-follow-widget__label modal__option-label modal__option-toggle">
+            <span>Auto-Follow</span>
+            <span className="toggle">
+              <input
+                className="toggle__input"
+                type="checkbox"
+                checked={isAutoFollowEnabled}
+                onChange={(event) => {
+                  setIsAutoFollowEnabled(event.target.checked);
+                  setIsAutoFollowSuspended(false);
+                }}
+              />
+              <span className="toggle__track" aria-hidden="true" />
+            </span>
+          </label>
+        </div>
+      ) : null}
       {isFinalTurnOverlayOpen ? (
         <div
           className="final-turn-overlay"
@@ -3514,7 +3666,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         ) : null}
 
         <div className="player-grids">
-          <div className="player-grids__list">
+          <div className="player-grids__list" ref={playerListContainerRef}>
             {displayPlayers.length ? (
               displayPlayers.map((player) => {
                 const isActivePlayer = player.id === game?.currentPlayerId;

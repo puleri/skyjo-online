@@ -2009,6 +2009,29 @@ small {
   z-index: 10;
 }
 
+.auto-follow-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 88px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 12px 24px rgba(31, 41, 51, 0.14);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+
+.auto-follow-widget__label {
+  gap: 16px;
+  margin: 0;
+}
+
+.auto-follow-widget__label span:first-child {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
 .service-worker-update-toast {
   position: fixed;
   right: 24px;
