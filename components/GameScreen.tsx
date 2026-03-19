@@ -1196,7 +1196,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     [game?.currentPlayerId, orderedPlayers]
   );
   const shouldShowAutoFollowWidget = Boolean(
-    uid && game?.status === "playing" && game?.currentPlayerId && uid !== game.currentPlayerId && autoFollowPreferenceEnabled
+    uid && game?.status === "playing" && game?.currentPlayerId && autoFollowPreferenceEnabled
   );
   const isAutoFollowActive = shouldShowAutoFollowWidget && isAutoFollowEnabled && !isAutoFollowSuspended;
 
@@ -1284,7 +1284,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [shouldShowAutoFollowWidget]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !isAutoFollowActive || !game?.currentPlayerId) {
+    if (typeof window === "undefined" || !isAutoFollowActive || !uid || !game?.currentPlayerId) {
       lastAutoFollowAttemptKeyRef.current = null;
       if (autoFollowScrollTimerRef.current !== null) {
         window.clearTimeout(autoFollowScrollTimerRef.current);
@@ -1293,7 +1293,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const activePlayerElement = playerGridRefs.current[game.currentPlayerId];
+    const autoFollowTargetPlayerId = game.currentPlayerId === uid ? uid : game.currentPlayerId;
+    const activePlayerElement = playerGridRefs.current[autoFollowTargetPlayerId];
     if (!activePlayerElement) {
       return;
     }
@@ -1307,7 +1308,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       : window.innerHeight - viewportMargin;
     const isAdequatelyVisible =
       activePlayerRect.top >= visibleTop && activePlayerRect.bottom <= visibleBottom;
-    const autoFollowAttemptKey = `${game.currentPlayerId}:${isAutoFollowActive}`;
+    const autoFollowAttemptKey = `${autoFollowTargetPlayerId}:${isAutoFollowActive}`;
 
     if (isAdequatelyVisible) {
       lastAutoFollowAttemptKeyRef.current = autoFollowAttemptKey;
@@ -1339,7 +1340,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         autoFollowScrollTimerRef.current = null;
       }
     };
-  }, [displayPlayers, game?.currentPlayerId, isAutoFollowActive, prefersReducedMotion]);
+  }, [displayPlayers, game?.currentPlayerId, isAutoFollowActive, prefersReducedMotion, uid]);
 
   const lastTurnSummary = useMemo(() => {
     if (!game || !game.lastTurnPlayerId || !game.lastTurnAction) {
