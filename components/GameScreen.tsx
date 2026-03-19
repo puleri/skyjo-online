@@ -175,11 +175,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     cardSounds: isCardSoundsEnabled,
     backgroundMusic: isBackgroundMusicEnabled,
     snow: isSnowEnabled,
+    autoFollow: isAutoFollowEnabled,
   } = preferences;
   const [showDockedPiles, setShowDockedPiles] = useState(false);
   const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
+  const playerGridRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
   const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
   const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
@@ -1184,6 +1186,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         : null,
     [game?.currentPlayerId, orderedPlayers]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !isAutoFollowEnabled || !game?.currentPlayerId) {
+      return;
+    }
+
+    const activePlayerElement = playerGridRefs.current[game.currentPlayerId];
+    if (!activePlayerElement) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      activePlayerElement.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [displayPlayers, game?.currentPlayerId, isAutoFollowEnabled]);
 
   const lastTurnSummary = useMemo(() => {
     if (!game || !game.lastTurnPlayerId || !game.lastTurnAction) {
@@ -3061,6 +3084,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     Show the quick hints about revealing, replacing, and swapping cards.
                   </p>
                 </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Auto-follow active player</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isAutoFollowEnabled}
+                        onChange={(event) => setPreference("autoFollow", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">
+                    Automatically follow the active player after scrolling settles.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -3480,43 +3520,49 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 const isActivePlayer = player.id === game?.currentPlayerId;
                 const isLocalPlayer = player.id === uid;
                 return (
-                  <PlayerGrid
+                  <div
                     key={player.id}
-                    playerId={player.id}
-                    label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
-                    localBadgeLabel={isLocalPlayer ? "YOU" : null}
-                    size={isLocalPlayer ? "main" : "mini"}
-                    isActive={isActivePlayer}
-                    isLocal={isLocalPlayer}
-                    grid={player.grid}
-                    revealed={player.revealed}
-                    mistTurnsRemaining={player.mistTurnsRemaining}
-                    onCardSelect={
-                      isLocalPlayer && canSelectGridCard ? handleSelectGridCard : undefined
-                    }
-                    activeActionIndex={isLocalPlayer ? activeActionIndex : null}
-                    onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
-                    onReveal={
-                      isLocalPlayer && showDrawActions && !isSprinting ? handleReveal : undefined
-                    }
-                    onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
-                    revealSelectionActive={
-                      isLocalPlayer && (isItemRevealPending || isRevealRecoveryActive) && !isSprinting
-                    }
-                    disableActionControls={isLocalPlayer && isSubmittingAction}
-                    onPlayerSelect={undefined}
-                    isPlayerSelected={false}
-                    itemSelection={
-                      isLocalPlayer && isCurrentTurn && itemCardSelectionActive
-                        ? {
-                            active: true,
-                            targets: itemCardTargets,
-                            onSelect: handleItemTargetSelect,
-                          }
-                        : undefined
-                    }
-                    runningTotal={player.totalScore ?? 0}
-                  />
+                    ref={(element) => {
+                      playerGridRefs.current[player.id] = element;
+                    }}
+                  >
+                    <PlayerGrid
+                      playerId={player.id}
+                      label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
+                      localBadgeLabel={isLocalPlayer ? "YOU" : null}
+                      size={isLocalPlayer ? "main" : "mini"}
+                      isActive={isActivePlayer}
+                      isLocal={isLocalPlayer}
+                      grid={player.grid}
+                      revealed={player.revealed}
+                      mistTurnsRemaining={player.mistTurnsRemaining}
+                      onCardSelect={
+                        isLocalPlayer && canSelectGridCard ? handleSelectGridCard : undefined
+                      }
+                      activeActionIndex={isLocalPlayer ? activeActionIndex : null}
+                      onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
+                      onReveal={
+                        isLocalPlayer && showDrawActions && !isSprinting ? handleReveal : undefined
+                      }
+                      onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
+                      revealSelectionActive={
+                        isLocalPlayer && (isItemRevealPending || isRevealRecoveryActive) && !isSprinting
+                      }
+                      disableActionControls={isLocalPlayer && isSubmittingAction}
+                      onPlayerSelect={undefined}
+                      isPlayerSelected={false}
+                      itemSelection={
+                        isLocalPlayer && isCurrentTurn && itemCardSelectionActive
+                          ? {
+                              active: true,
+                              targets: itemCardTargets,
+                              onSelect: handleItemTargetSelect,
+                            }
+                          : undefined
+                      }
+                      runningTotal={player.totalScore ?? 0}
+                    />
+                  </div>
                 );
               })
             ) : (

@@ -16,6 +16,7 @@ export const preferenceDefaults = {
   backgroundMusic: false,
   snow: false,
   firstTimeTips: false,
+  autoFollow: true,
 } as const;
 
 export type PreferenceName = keyof typeof preferenceDefaults;
@@ -26,6 +27,7 @@ export const preferenceStorageKeys: Record<PreferenceName, string> = {
   backgroundMusic: "misty-background-music",
   snow: "misty-snow",
   firstTimeTips: "misty-first-time-tips",
+  autoFollow: "misty-auto-follow",
 };
 
 export type Preferences = {
@@ -59,6 +61,7 @@ function getInitialPreferences(): Preferences {
     backgroundMusic: readStoredPreference("backgroundMusic"),
     snow: readStoredPreference("snow"),
     firstTimeTips: readStoredPreference("firstTimeTips"),
+    autoFollow: readStoredPreference("autoFollow"),
   };
 }
 
