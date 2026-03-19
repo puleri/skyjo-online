@@ -33,6 +33,7 @@ export default function LobbyScreen() {
     cardSounds: isCardSoundsEnabled,
     backgroundMusic: isBackgroundMusicEnabled,
     snow: isSnowEnabled,
+    autoFollow: isAutoFollowEnabled,
   } = preferences;
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
@@ -278,6 +279,23 @@ export default function LobbyScreen() {
                 </label>
                 <p className="modal__option-help">
                   Play theme music during round breaks and in the lobby.
+                </p>
+              </div>
+              <div className="modal__option">
+                <label className="modal__option-label modal__option-toggle">
+                  <span>Auto-follow active player</span>
+                  <span className="toggle">
+                    <input
+                      className="toggle__input"
+                      type="checkbox"
+                      checked={isAutoFollowEnabled}
+                      onChange={(event) => setPreference("autoFollow", event.target.checked)}
+                    />
+                    <span className="toggle__track" aria-hidden="true" />
+                  </span>
+                </label>
+                <p className="modal__option-help">
+                  Automatically follow the active player after scrolling settles.
                 </p>
               </div>
               <div className="modal__actions">
