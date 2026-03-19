@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo } from "react";
+import { ReactNode, forwardRef, useMemo } from "react";
 
 import type { Card, ItemCard, ItemCode } from "../lib/game/deck";
 
@@ -101,7 +101,8 @@ const renderItemContent = (code: ItemCode) => {
   );
 };
 
-export default function PlayerGrid({
+const PlayerGrid = forwardRef<HTMLElement, PlayerGridProps>(function PlayerGrid(
+  {
   playerId,
   label,
   size = "main",
@@ -121,8 +122,10 @@ export default function PlayerGrid({
   revealSelectionActive = false,
   disableActionControls = false,
   itemSelection,
-  runningTotal,
-}: PlayerGridProps) {
+    runningTotal,
+  }: PlayerGridProps,
+  ref
+) {
   const cards = grid && grid.length === 12 ? grid : placeholderCards;
   const visibility =
     revealed && revealed.length === 12
@@ -154,6 +157,7 @@ export default function PlayerGrid({
 
   return (
     <section
+      ref={ref}
       className={`player-grid player-grid--${size}${isLocal ? " player-grid--local" : ""}${
         isActive ? " player-grid--active" : ""
       }${isMisted ? " " : ""}`}
@@ -311,4 +315,6 @@ export default function PlayerGrid({
         ) : null}
     </section>
   );
-}
+});
+
+export default PlayerGrid;
