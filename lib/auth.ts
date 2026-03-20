@@ -37,7 +37,7 @@ function readCachedProfileDisplayName(uid: string) {
   return cachedName || null;
 }
 
-function cacheProfileDisplayName(uid: string, displayName: string | null) {
+export function cacheProfileDisplayName(uid: string, displayName: string | null) {
   if (typeof window === "undefined") {
     return;
   }
