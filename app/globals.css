@@ -2659,7 +2659,7 @@ small {
   padding: 18px 16px;
   text-align: center;
   background: radial-gradient(circle at top, rgba(141, 159, 143, 0.35), transparent 60%);
-  animation: bonus-flourish 2560ms ease-out both;
+  animation: bonus-flourish 1560ms ease-out both;
 }
 
 .bonus-announcement__title {
