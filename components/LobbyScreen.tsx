@@ -174,6 +174,7 @@ export default function LobbyScreen() {
     () => recentPlacements.map((placement) => formatPlacementLabel(placement)).join(", "),
     [recentPlacements]
   );
+  const canEditProfile = isSignedIn && !isAnonymousUser && Boolean(profile);
 
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -272,7 +273,7 @@ export default function LobbyScreen() {
                 aria-hidden={!isProfileSectionOpen}
               >
                 <div className="modal__collapsible-content">
-                  {isSignedIn && !isAnonymousUser && profile ? (
+                  {canEditProfile ? (
                     <form className="modal__profile-form" onSubmit={(event) => void handleProfileSave(event)}>
                       <div className="modal__option">
                         <label className="modal__option-label" htmlFor="settings-profile-name">
@@ -325,9 +326,13 @@ export default function LobbyScreen() {
                       </div>
                       {profileSaveMessage ? <p className="notice">{profileSaveMessage}</p> : null}
                     </form>
+                  ) : isSignedIn && !isAnonymousUser ? (
+                    <div className="modal__option">
+                      <p className="modal__option-help">We&apos;re loading your saved profile and recent match history.</p>
+                    </div>
                   ) : (
                     <div className="modal__option">
-                      <p className="modal__option-help">Sign in with Google to save a profile name and keep your match history across devices.</p>
+                      <p className="modal__option-help">Sign in with Google to save your profile, keep your match history, and see your last 5 games across devices.</p>
                     </div>
                   )}
                 </div>
