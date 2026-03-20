@@ -1,5 +1,6 @@
 export const DEFAULT_MATCH_BASE_XP = 50;
 export const CLEARED_ROW_XP_MULTIPLIER = 5;
+export const REWARD_UNLOCK_LEVEL_INTERVAL = 5;
 
 // Level number -> cumulative XP required to be at that level.
 export const LEVEL_XP_TABLE = [
@@ -170,6 +171,37 @@ export function applyEarnedExperience(
     level,
     clampNonNegative(experience) + clampNonNegative(earnedExperience),
   );
+}
+
+
+export function getRewardUnlockIdForLevel(level: number) {
+  const normalizedLevel = normalizeLevel(level);
+  return `level-${normalizedLevel}-reward`;
+}
+
+export function getNewlyUnlockedRewardIds(
+  previousLevel: number,
+  currentLevel: number,
+) {
+  const normalizedPreviousLevel = normalizeLevel(previousLevel);
+  const normalizedCurrentLevel = normalizeLevel(currentLevel);
+
+  if (normalizedCurrentLevel <= normalizedPreviousLevel) {
+    return [] as string[];
+  }
+
+  const unlockedRewards: string[] = [];
+  for (
+    let level = normalizedPreviousLevel + 1;
+    level <= normalizedCurrentLevel;
+    level += 1
+  ) {
+    if (level % REWARD_UNLOCK_LEVEL_INTERVAL === 0) {
+      unlockedRewards.push(getRewardUnlockIdForLevel(level));
+    }
+  }
+
+  return unlockedRewards;
 }
 
 export function getNextLevelMetadata(experience: number): NextLevelMeta {
