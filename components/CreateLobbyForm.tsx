@@ -3,13 +3,15 @@
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAnonymousAuth } from "../lib/auth";
+import {
+  readStoredUsername,
+  resolvePlayerDisplayName,
+  useAnonymousAuth,
+  usernameUpdatedEvent,
+} from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import type { SpikeItemCount } from "../lib/game/deck";
-
-const storageKey = "misty:username";
-const usernameUpdatedEvent = "misty:username-updated";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
@@ -22,7 +24,7 @@ export default function CreateLobbyForm() {
   const [isJoiningLobby, setIsJoiningLobby] = useState(false);
   const [savedDisplayName, setSavedDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { uid } = useAnonymousAuth();
+  const { uid, displayName, profileDisplayName } = useAnonymousAuth();
   const router = useRouter();
   const firebaseReady = isFirebaseConfigured;
   const spikeItemCountOptions: { value: SpikeItemCount; label: string }[] = [
@@ -40,8 +42,9 @@ export default function CreateLobbyForm() {
 
   useEffect(() => {
     const syncSavedDisplayName = () => {
-      const storedName = window.localStorage.getItem(storageKey)?.trim() ?? "";
-      setSavedDisplayName(storedName || null);
+      const nextDisplayName =
+        profileDisplayName?.trim() || displayName?.trim() || readStoredUsername();
+      setSavedDisplayName(nextDisplayName || null);
     };
 
     syncSavedDisplayName();
@@ -52,7 +55,7 @@ export default function CreateLobbyForm() {
       window.removeEventListener("storage", syncSavedDisplayName);
       window.removeEventListener(usernameUpdatedEvent, syncSavedDisplayName);
     };
-  }, []);
+  }, [displayName, profileDisplayName]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -72,11 +75,11 @@ export default function CreateLobbyForm() {
     setError(null);
 
     try {
-      const resolvedName = savedDisplayName;
-      if (!resolvedName) {
-        setError("Save your display name before creating a lobby.");
-        return;
-      }
+      const resolvedName = resolvePlayerDisplayName({
+        profileDisplayName,
+        authDisplayName: displayName,
+        storedDisplayName: readStoredUsername(),
+      });
       const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
       const lobbyRef = await addDoc(collection(db, "lobbies"), {
         name: name.trim(),

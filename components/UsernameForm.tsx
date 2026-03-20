@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useAnonymousAuth } from "../lib/auth";
-
-const storageKey = "misty:username";
-const usernameUpdatedEvent = "misty:username-updated";
+import {
+  readStoredUsername,
+  useAnonymousAuth,
+  usernameStorageKey,
+  usernameUpdatedEvent,
+} from "../lib/auth";
 
 export default function UsernameForm() {
   const [username, setUsername] = useState("");
@@ -13,47 +15,89 @@ export default function UsernameForm() {
     uid,
     email,
     displayName,
+    profileDisplayName,
+    isProfileLoading,
     isAnonymousUser,
     error: authError,
     authMode,
     signInAsAnonymous,
     signInWithGoogleSso,
     goBackToSignInMethods,
+    saveProfileDisplayName,
   } = useAnonymousAuth();
-
-  useEffect(() => {
-    const storedName = window.localStorage.getItem(storageKey);
-    if (storedName) {
-      setUsername(storedName);
-      setSavedName(storedName);
-    }
-  }, []);
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmed = username.trim();
-    if (!trimmed) {
-      return;
-    }
-
-    window.localStorage.setItem(storageKey, trimmed);
-    window.dispatchEvent(new Event(usernameUpdatedEvent));
-    setSavedName(trimmed);
-  };
 
   const isSignedIn = Boolean(uid);
   const isGoogleSignedIn = isSignedIn && !isAnonymousUser;
   const shouldShowAnonymousForm = isSignedIn && authMode === "anonymous";
   const firstName = displayName?.trim().split(/\s+/)[0] ?? "there";
 
+  useEffect(() => {
+    const storedName = readStoredUsername();
+    if (storedName) {
+      setUsername(storedName);
+      setSavedName(storedName);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isSignedIn && !isAnonymousUser) {
+      const nextName = profileDisplayName?.trim() || displayName?.trim() || "";
+      setUsername(nextName);
+      setSavedName(nextName || null);
+    }
+  }, [displayName, isAnonymousUser, isSignedIn, profileDisplayName]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = username.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    if (isSignedIn && !isAnonymousUser) {
+      await saveProfileDisplayName(trimmed);
+      setSavedName(trimmed);
+      return;
+    }
+
+    window.localStorage.setItem(usernameStorageKey, trimmed);
+    window.dispatchEvent(new Event(usernameUpdatedEvent));
+    setSavedName(trimmed);
+  };
+
   if (isGoogleSignedIn) {
     return (
-      <div className="form-card">
+      <form onSubmit={handleSubmit} className="form-card">
         <h3 className="signin-eyebrow-text">Signed in with Google</h3>
         <p>{`Hello, ${firstName}!`}</p>
-        <p>{displayName ?? "Google user"}</p>
         <p className="notice">{email ?? "No email available"}</p>
-      </div>
+        <div className="label-input-grid">
+          <label className="form-card-font" htmlFor="profile-name">
+            Profile name
+          </label>
+          <input
+            id="profile-name"
+            value={username}
+            className="form-card-font remaining-grid"
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder={displayName ?? "Skye"}
+            disabled={isProfileLoading}
+          />
+        </div>
+        <button
+          className="form-button-full-width form-card-font"
+          type="submit"
+          disabled={!username.trim() || isProfileLoading}
+        >
+          Save Profile Name
+        </button>
+        {savedName ? (
+          <p className="notice">Profile saved as {savedName}.</p>
+        ) : (
+          <p>Choose the name other players should see in lobbies and games.</p>
+        )}
+        {authError ? <p className="notice">Auth error: {authError}</p> : null}
+      </form>
     );
   }
 
