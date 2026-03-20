@@ -21,6 +21,10 @@ type UseUserProfileState = {
   profile: UserProfile | null;
   loading: boolean;
   error: string | null;
+  authDisplayName: string | null;
+  authEmail: string | null;
+  isSignedIn: boolean;
+  isAnonymousUser: boolean;
   updateProfile: (updates: UserProfileUpdate) => Promise<void>;
 };
 
@@ -57,6 +61,10 @@ export function useUserProfile(): UseUserProfileState {
   const [loading, setLoading] = useState(isFirebaseConfigured);
   const [error, setError] = useState<string | null>(null);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
+  const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isAnonymousUser, setIsAnonymousUser] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -64,6 +72,10 @@ export function useUserProfile(): UseUserProfileState {
       setProfile(null);
       setError(null);
       setCurrentUid(null);
+      setAuthDisplayName(null);
+      setAuthEmail(null);
+      setIsSignedIn(false);
+      setIsAnonymousUser(false);
       return;
     }
 
@@ -76,6 +88,10 @@ export function useUserProfile(): UseUserProfileState {
       }
 
       setCurrentUid(user?.uid ?? null);
+      setAuthDisplayName(user?.displayName ?? null);
+      setAuthEmail(user?.email ?? null);
+      setIsSignedIn(Boolean(user));
+      setIsAnonymousUser(user?.isAnonymous ?? false);
       setProfile(null);
       setError(null);
       setLoading(Boolean(user && !user.isAnonymous));
@@ -162,5 +178,14 @@ export function useUserProfile(): UseUserProfileState {
     );
   }, []);
 
-  return { profile, loading, error, updateProfile };
+  return {
+    profile,
+    loading,
+    error,
+    authDisplayName,
+    authEmail,
+    isSignedIn,
+    isAnonymousUser,
+    updateProfile,
+  };
 }
