@@ -8,10 +8,11 @@ export const LEVEL_XP_TABLE = [
 ] as const;
 
 const PLACEMENT_BAND_XP = {
-  top: 120,
-  high: 80,
-  mid: 50,
-  low: 25,
+  "first place": 120,
+  "top 25%": 80,
+  "top 50%": 50,
+  "bottom 50%": 25,
+  "last place": 25,
 } as const;
 
 export type PlacementBand = keyof typeof PLACEMENT_BAND_XP;
@@ -197,19 +198,6 @@ export function getPlayerCountMultiplier(playerCount: number) {
   return 1 + (normalizedPlayerCount - 2) * 0.12;
 }
 
-export function getPlacementBand(percentile: number): PlacementBand {
-  if (percentile >= 0.8) {
-    return "top";
-  }
-  if (percentile >= 0.5) {
-    return "high";
-  }
-  if (percentile >= 0.25) {
-    return "mid";
-  }
-  return "low";
-}
-
 export function getPlacementPercentile(finalRank: number, lobbySize: number) {
   const normalizedLobbySize = Math.max(2, Math.floor(lobbySize));
   const normalizedRank = Math.min(
@@ -222,9 +210,63 @@ export function getPlacementPercentile(finalRank: number, lobbySize: number) {
   return (normalizedLobbySize - normalizedRank) / (normalizedLobbySize - 1);
 }
 
+/**
+ * Maps a concrete placement into the reward band used for progression XP.
+ *
+ * Ordering matters:
+ * - `first place` is checked before percentile buckets so the winner always gets
+ *   the winner band even when the top-half bucket would also match.
+ * - `last place` is checked before `bottom 50%` so the final finisher keeps its
+ *   own explicit label instead of being swallowed by the generic lower-half band.
+ *
+ * Rounding strategy for percentile-style buckets:
+ * - We compute the target slot count with `Math.ceil(playerCount * share)`.
+ * - `Math.ceil` is intentionally generous: if a split lands between whole
+ *   players, we round up so borderline finishes still feel rewarded.
+ * - After that, `top 50%` means ranks `<= ceil(playerCount * 0.5)` and
+ *   `top 25%` means ranks `<= ceil(playerCount * 0.25)`.
+ *
+ * Examples called out in product language so the rewards feel intentional:
+ * - 3 players: `ceil(3 * 0.25) = 1`, so only 1st is in the top-quarter band;
+ *   `ceil(3 * 0.5) = 2`, so 2nd still counts as top-half.
+ * - 5 players: `ceil(5 * 0.25) = 2`, so 2nd is generously included in top 25%;
+ *   `ceil(5 * 0.5) = 3`, so the middle finisher still counts as top-half.
+ * - 7 players: `ceil(7 * 0.25) = 2`, so the top-quarter band stays selective at
+ *   two players; `ceil(7 * 0.5) = 4`, so finishing 4th still lands in top-half.
+ */
+export function getPlacementBand(
+  placement: number,
+  playerCount: number,
+): PlacementBand {
+  const normalizedPlayerCount = Math.max(2, Math.floor(playerCount));
+  const normalizedPlacement = Math.min(
+    normalizedPlayerCount,
+    Math.max(1, Math.floor(placement)),
+  );
+
+  if (normalizedPlacement === 1) {
+    return "first place";
+  }
+
+  if (normalizedPlacement === normalizedPlayerCount) {
+    return "last place";
+  }
+
+  const topQuarterCutoff = Math.ceil(normalizedPlayerCount * 0.25);
+  if (normalizedPlacement <= topQuarterCutoff) {
+    return "top 25%";
+  }
+
+  const topHalfCutoff = Math.ceil(normalizedPlayerCount * 0.5);
+  if (normalizedPlacement <= topHalfCutoff) {
+    return "top 50%";
+  }
+
+  return "bottom 50%";
+}
+
 export function getPlacementXp(finalRank: number, lobbySize: number) {
-  const percentile = getPlacementPercentile(finalRank, lobbySize);
-  const placementBand = getPlacementBand(percentile);
+  const placementBand = getPlacementBand(finalRank, lobbySize);
   const playerCountMultiplier = getPlayerCountMultiplier(lobbySize);
   return Math.round(PLACEMENT_BAND_XP[placementBand] * playerCountMultiplier);
 }
@@ -244,8 +286,7 @@ export function getTotalEarnedXpBreakdown({
   lobbySize: number;
   pointsClearedFromRows: number;
 }): EarnedXpBreakdown {
-  const percentile = getPlacementPercentile(finalRank, lobbySize);
-  const placementBand = getPlacementBand(percentile);
+  const placementBand = getPlacementBand(finalRank, lobbySize);
   const playerCountMultiplier = getPlayerCountMultiplier(lobbySize);
   const placementXp = Math.round(
     PLACEMENT_BAND_XP[placementBand] * playerCountMultiplier,
