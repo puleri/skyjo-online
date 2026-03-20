@@ -611,6 +611,58 @@ section {
   overflow: hidden;
 }
 
+
+.modal__profile-form {
+  display: grid;
+  gap: 4px;
+}
+
+.modal__text-input {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.profile-results-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-results-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #2f2419;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.profile-results-badge--1 {
+  background: linear-gradient(130deg, rgba(250, 208, 68, 1) 30%, rgba(255, 252, 214, 1) 50%, rgba(250, 208, 68, 1) 69%);
+  border: 1px solid #fff4d7;
+}
+
+.profile-results-badge--2 {
+  background: linear-gradient(130deg, rgba(192, 192, 192, 1) 30%, rgba(247, 247, 247, 1) 50%, rgba(192, 192, 192, 1) 69%);
+  border: 1px solid #e7e7e7;
+}
+
+.profile-results-badge--3 {
+  background: linear-gradient(130deg, rgba(183, 110, 121, 1) 30%, rgba(255, 227, 234, 1) 50%, rgba(183, 110, 121, 1) 69%);
+  border: 1px solid #ffedef;
+}
+
+.profile-results-badge--4 {
+  background: linear-gradient(130deg, rgba(171, 206, 184, 1) 30%, rgba(237, 248, 241, 1) 50%, rgba(171, 206, 184, 1) 69%);
+  border: 1px solid #dbeee1;
+}
+
 .modal__section-title {
   margin: 20px 0 0;
   font-size: 0.85rem;

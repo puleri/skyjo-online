@@ -42,6 +42,25 @@ export function clampLastFiveGames(
   return entries.slice(-USER_PROFILE_LAST_FIVE_GAMES_LIMIT);
 }
 
+export function formatPlacementLabel(placement: UserProfileGamePlacement): string {
+  const remainderTen = placement % 10;
+  const remainderHundred = placement % 100;
+
+  if (remainderTen === 1 && remainderHundred !== 11) {
+    return `${placement}st`;
+  }
+
+  if (remainderTen === 2 && remainderHundred !== 12) {
+    return `${placement}nd`;
+  }
+
+  if (remainderTen === 3 && remainderHundred !== 13) {
+    return `${placement}rd`;
+  }
+
+  return `${placement}th`;
+}
+
 export function defaultUserProfile(authUser: UserProfileAuthFields): UserProfile {
   return {
     uid: authUser.uid,

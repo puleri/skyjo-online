@@ -1,7 +1,7 @@
 'use client';
 import { collection, deleteDoc, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
@@ -9,6 +9,7 @@ import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import { useUserProfile } from "../lib/useUserProfile";
+import { formatPlacementLabel } from "../lib/userProfile";
 
 const heroBannerLight = "/images/misty-hero-banner.png";
 const heroBannerDark = "/images/misty-hero-banner-darkmode.png";
@@ -28,7 +29,16 @@ function isLeaderboardEntryActive(expiresAt: unknown) {
 export default function LobbyScreen() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
-  const { profile, loading: isProfileLoading, error: profileError } = useUserProfile();
+  const {
+    profile,
+    loading: isProfileLoading,
+    error: profileError,
+    authDisplayName,
+    authEmail,
+    isSignedIn,
+    isAnonymousUser,
+    updateProfile,
+  } = useUserProfile();
   const {
     firstTimeTips: showFirstTimeTips,
     darkMode: isDarkMode,
@@ -37,6 +47,11 @@ export default function LobbyScreen() {
     snow: isSnowEnabled,
     autoFollow: isAutoFollowEnabled,
   } = preferences;
+  const [isProfileSectionOpen, setIsProfileSectionOpen] = useState(true);
+  const [isPreferencesSectionOpen, setIsPreferencesSectionOpen] = useState(true);
+  const [profileName, setProfileName] = useState("");
+  const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -144,6 +159,43 @@ export default function LobbyScreen() {
     wasLeaderboardOpen.current = false;
   }, [isLeaderboardOpen]);
 
+  useEffect(() => {
+    const nextProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "";
+    setProfileName(nextProfileName);
+  }, [authDisplayName, profile?.displayName]);
+
+  useEffect(() => {
+    setProfileSaveMessage(null);
+  }, [profileName]);
+
+  const resolvedProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "Anonymous player";
+  const recentPlacements = profile?.lastFiveGames ?? [];
+  const recentPlacementSummary = useMemo(
+    () => recentPlacements.map((placement) => formatPlacementLabel(placement)).join(", "),
+    [recentPlacements]
+  );
+
+  const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedName = profileName.trim();
+
+    if (!trimmedName) {
+      setProfileSaveMessage("Enter a display name before saving.");
+      return;
+    }
+
+    try {
+      setIsSavingProfile(true);
+      setProfileSaveMessage(null);
+      await updateProfile({ displayName: trimmedName });
+      setProfileSaveMessage(`Saved as ${trimmedName}.`);
+    } catch (error) {
+      setProfileSaveMessage(error instanceof Error ? error.message : "Unable to save your profile right now.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const podiumLabels = ["1st", "2nd", "3rd"];
 
   return (
@@ -198,112 +250,206 @@ export default function LobbyScreen() {
           >
             <div className="modal" onClick={(event) => event.stopPropagation()}>
               <h2 id="main-menu-settings-title">Settings</h2>
-              <p>Update your preferences.</p>
+              <p>Update your profile and preferences.</p>
               {isProfileLoading ? <p className="notice">Loading account settings…</p> : null}
-              {!isProfileLoading && profile ? (
-                <p className="notice">Signed in as {profile.displayName?.trim() || profile.email || "Anonymous player"}.</p>
+              {!isProfileLoading && isSignedIn && !isAnonymousUser ? (
+                <p className="notice">Signed in as {resolvedProfileName || authEmail || "Anonymous player"}.</p>
               ) : null}
               {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
-              <div className="modal__option">
-                <label className="modal__option-label modal__option-toggle">
-                  <span>First time tips</span>
-                  <span className="toggle">
-                    <input
-                      className="toggle__input"
-                      type="checkbox"
-                      checked={showFirstTimeTips}
-                      onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
-                    />
-                    <span className="toggle__track" aria-hidden="true" />
-                  </span>
-                </label>
-                <p className="modal__option-help">
-                  Show the quick hints about revealing, replacing, and swapping cards.
-                </p>
+              <button
+                type="button"
+                className="modal__section-dropdown"
+                onClick={() => setIsProfileSectionOpen((current) => !current)}
+                aria-expanded={isProfileSectionOpen}
+                aria-controls="main-menu-profile-settings"
+              >
+                <span className="modal__section-dropdown-label">Profile</span>
+                <span aria-hidden="true">{isProfileSectionOpen ? "▾" : "▸"}</span>
+              </button>
+              <div
+                id="main-menu-profile-settings"
+                className={`modal__collapsible ${isProfileSectionOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isProfileSectionOpen}
+              >
+                <div className="modal__collapsible-content">
+                  {isSignedIn && !isAnonymousUser && profile ? (
+                    <form className="modal__profile-form" onSubmit={(event) => void handleProfileSave(event)}>
+                      <div className="modal__option">
+                        <label className="modal__option-label" htmlFor="settings-profile-name">
+                          <span>Display name</span>
+                        </label>
+                        <input
+                          id="settings-profile-name"
+                          className="form-card-font modal__text-input"
+                          type="text"
+                          value={profileName}
+                          onChange={(event) => setProfileName(event.target.value)}
+                          placeholder={authDisplayName ?? "Skye"}
+                          disabled={isProfileLoading || isSavingProfile}
+                        />
+                        <p className="modal__option-help">Choose the name other players see in lobbies and completed games.</p>
+                      </div>
+                      <div className="modal__option">
+                        <div className="modal__option-label">
+                          <span>Last 5 Results</span>
+                        </div>
+                        {recentPlacements.length ? (
+                          <>
+                            <div className="profile-results-list" aria-label={`Last 5 results: ${recentPlacementSummary}`}>
+                              {recentPlacements.map((placement, index) => {
+                                const badgeTone = placement <= 3 ? placement : 4;
+                                return (
+                                  <span
+                                    key={`${placement}-${index}`}
+                                    className={`profile-results-badge profile-results-badge--${badgeTone}`}
+                                  >
+                                    {formatPlacementLabel(placement)}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                            <p className="modal__option-help">Recent finishes: {recentPlacementSummary}.</p>
+                          </>
+                        ) : (
+                          <p className="modal__option-help">No completed games yet.</p>
+                        )}
+                      </div>
+                      <div className="modal__actions">
+                        <button
+                          className="form-button-full-width"
+                          type="submit"
+                          disabled={!profileName.trim() || isProfileLoading || isSavingProfile}
+                        >
+                          {isSavingProfile ? "Saving…" : "Save profile"}
+                        </button>
+                      </div>
+                      {profileSaveMessage ? <p className="notice">{profileSaveMessage}</p> : null}
+                    </form>
+                  ) : (
+                    <div className="modal__option">
+                      <p className="modal__option-help">Sign in with Google to save a profile name and keep your match history across devices.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <h3 className="modal__section-title">UI Preferences</h3>
-              <div className="modal__option">
-                <label className="modal__option-label modal__option-toggle">
-                  <span>Dark mode</span>
-                  <span className="toggle">
-                    <input
-                      className="toggle__input"
-                      type="checkbox"
-                      checked={isDarkMode}
-                      onChange={(event) => setPreference("darkMode", event.target.checked)}
-                    />
-                    <span className="toggle__track" aria-hidden="true" />
-                  </span>
-                </label>
-                <p className="modal__option-help">Switch the interface to the dark theme.</p>
-              </div>
-              <div className="modal__option">
-                <label className="modal__option-label modal__option-toggle">
-                  <span>Let it snow</span>
-                  <span className="toggle">
-                    <input
-                      className="toggle__input"
-                      type="checkbox"
-                      checked={isSnowEnabled}
-                      onChange={(event) => setPreference("snow", event.target.checked)}
-                    />
-                    <span className="toggle__track" aria-hidden="true" />
-                  </span>
-                </label>
-                <p className="modal__option-help">
-                  Sprinkle a light snowfall across the screen.
-                </p>
-              </div>
-              <div className="modal__option">
-                <label className="modal__option-label modal__option-toggle">
-                  <span>Card sounds</span>
-                  <span className="toggle">
-                    <input
-                      className="toggle__input"
-                      type="checkbox"
-                      checked={isCardSoundsEnabled}
-                      onChange={(event) => setPreference("cardSounds", event.target.checked)}
-                    />
-                    <span className="toggle__track" aria-hidden="true" />
-                  </span>
-                </label>
-                <p className="modal__option-help">
-                  Mute card draws, turn alerts, reveal sounds, and swap effects.
-                </p>
-              </div>
-              <div className="modal__option">
-                <label className="modal__option-label modal__option-toggle">
-                  <span>Background music</span>
-                  <span className="toggle">
-                    <input
-                      className="toggle__input"
-                      type="checkbox"
-                      checked={isBackgroundMusicEnabled}
-                      onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
-                    />
-                    <span className="toggle__track" aria-hidden="true" />
-                  </span>
-                </label>
-                <p className="modal__option-help">
-                  Play theme music during round breaks and in the lobby.
-                </p>
-              </div>
-              <div className="modal__option">
-                <label className="modal__option-label modal__option-toggle">
-                  <span>Auto-follow active player</span>
-                  <span className="toggle">
-                    <input
-                      className="toggle__input"
-                      type="checkbox"
-                      checked={isAutoFollowEnabled}
-                      onChange={(event) => setPreference("autoFollow", event.target.checked)}
-                    />
-                    <span className="toggle__track" aria-hidden="true" />
-                  </span>
-                </label>
-                <p className="modal__option-help">
-                  Automatically follow the active player after scrolling settles.
-                </p>
+              <button
+                type="button"
+                className="modal__section-dropdown"
+                onClick={() => setIsPreferencesSectionOpen((current) => !current)}
+                aria-expanded={isPreferencesSectionOpen}
+                aria-controls="main-menu-preferences-settings"
+              >
+                <span className="modal__section-dropdown-label">Preferences</span>
+                <span aria-hidden="true">{isPreferencesSectionOpen ? "▾" : "▸"}</span>
+              </button>
+              <div
+                id="main-menu-preferences-settings"
+                className={`modal__collapsible ${isPreferencesSectionOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isPreferencesSectionOpen}
+              >
+                <div className="modal__collapsible-content">
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>First time tips</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={showFirstTimeTips}
+                          onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Show the quick hints about revealing, replacing, and swapping cards.
+                    </p>
+                  </div>
+                  <h3 className="modal__section-title">UI Preferences</h3>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Dark mode</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isDarkMode}
+                          onChange={(event) => setPreference("darkMode", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">Switch the interface to the dark theme.</p>
+                  </div>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Let it snow</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isSnowEnabled}
+                          onChange={(event) => setPreference("snow", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Sprinkle a light snowfall across the screen.
+                    </p>
+                  </div>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Card sounds</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isCardSoundsEnabled}
+                          onChange={(event) => setPreference("cardSounds", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Mute card draws, turn alerts, reveal sounds, and swap effects.
+                    </p>
+                  </div>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Background music</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isBackgroundMusicEnabled}
+                          onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Play theme music during round breaks and in the lobby.
+                    </p>
+                  </div>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Auto-follow active player</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isAutoFollowEnabled}
+                          onChange={(event) => setPreference("autoFollow", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Automatically follow the active player after scrolling settles.
+                    </p>
+                  </div>
+                </div>
               </div>
               <div className="modal__actions">
                 <button
