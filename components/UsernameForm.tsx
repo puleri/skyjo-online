@@ -3,11 +3,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   readStoredUsername,
+  resolvePlayerDisplayName,
   useAnonymousAuth,
   usernameStorageKey,
   usernameUpdatedEvent,
 } from "../lib/auth";
-import { useUserProfile } from "../lib/useUserProfile";
 
 export default function UsernameForm() {
   const [username, setUsername] = useState("");
@@ -16,6 +16,8 @@ export default function UsernameForm() {
     uid,
     email,
     displayName,
+    profileDisplayName,
+    isProfileLoading,
     isAnonymousUser,
     error: authError,
     authMode,
@@ -23,17 +25,15 @@ export default function UsernameForm() {
     signInWithGoogleSso,
     goBackToSignInMethods,
   } = useAnonymousAuth();
-  const {
-    profile,
-    loading: isProfileLoading,
-    error: profileError,
-    updateProfile,
-  } = useUserProfile();
 
   const isSignedIn = Boolean(uid);
   const isGoogleSignedIn = isSignedIn && !isAnonymousUser;
   const shouldShowAnonymousForm = isSignedIn && authMode === "anonymous";
-  const firstName = displayName?.trim().split(/\s+/)[0] ?? "there";
+  const resolvedSignedInName = resolvePlayerDisplayName({
+    profileDisplayName,
+    authDisplayName: displayName,
+  });
+  const firstName = resolvedSignedInName.trim().split(/\s+/)[0] ?? "there";
 
   useEffect(() => {
     const storedName = readStoredUsername();
@@ -43,24 +43,10 @@ export default function UsernameForm() {
     }
   }, []);
 
-  useEffect(() => {
-    if (isSignedIn && !isAnonymousUser) {
-      const nextName = profile?.displayName?.trim() || displayName?.trim() || "";
-      setUsername(nextName);
-      setSavedName(nextName || null);
-    }
-  }, [displayName, isAnonymousUser, isSignedIn, profile?.displayName]);
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = username.trim();
     if (!trimmed) {
-      return;
-    }
-
-    if (isSignedIn && !isAnonymousUser) {
-      await updateProfile({ displayName: trimmed });
-      setSavedName(trimmed);
       return;
     }
 
@@ -71,38 +57,15 @@ export default function UsernameForm() {
 
   if (isGoogleSignedIn) {
     return (
-      <form onSubmit={handleSubmit} className="form-card">
+      <div className="form-card">
         <h3 className="signin-eyebrow-text">Signed in with Google</h3>
         <p>{`Hello, ${firstName}!`}</p>
         <p className="notice">{email ?? "No email available"}</p>
-        <div className="label-input-grid">
-          <label className="form-card-font" htmlFor="profile-name">
-            Profile name
-          </label>
-          <input
-            id="profile-name"
-            value={username}
-            className="form-card-font remaining-grid"
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder={displayName ?? "Skye"}
-            disabled={isProfileLoading}
-          />
-        </div>
-        <button
-          className="form-button-full-width form-card-font"
-          type="submit"
-          disabled={!username.trim() || isProfileLoading}
-        >
-          Save Profile Name
-        </button>
-        {savedName ? (
-          <p className="notice">Profile saved as {savedName}.</p>
-        ) : (
-          <p>Choose the name other players should see in lobbies and games.</p>
-        )}
-        {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
+        <p>Signed in as <strong>{resolvedSignedInName}</strong>.</p>
+        <p>Open <strong>Settings &gt; Profile</strong> to update your display name and recent form details.</p>
+        {isProfileLoading ? <p className="notice">Loading your profile…</p> : null}
         {authError ? <p className="notice">Auth error: {authError}</p> : null}
-      </form>
+      </div>
     );
   }
 
@@ -115,7 +78,6 @@ export default function UsernameForm() {
           <button
             className="form-button-full-width form-card-font mb-10"
             type="button"
-            
             onClick={() => void signInAsAnonymous()}
           >
             Continue without signing in
@@ -127,9 +89,7 @@ export default function UsernameForm() {
           >
             Sign in with Google
           </button>
-
         </div>
-        {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
         {authError ? <p className="notice">Auth error: {authError}</p> : null}
       </div>
     );
