@@ -12,7 +12,11 @@ import {
 import { getAuth } from "firebase/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAnonymousAuth } from "../lib/auth";
+import {
+  readStoredUsername,
+  useAnonymousAuth,
+  usernameStorageKey,
+} from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { app, db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
@@ -27,8 +31,6 @@ type LobbyMeta = {
   gameId: string | null;
 };
 
-const storageKey = "misty:username";
-
 export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [lobby, setLobby] = useState<LobbyMeta | null>(null);
   const [lobbyState, setLobbyState] = useState<"loading" | "exists" | "missing" | "error">(
@@ -39,7 +41,15 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
-  const { uid, error: authError, signInAsAnonymous } = useAnonymousAuth();
+  const {
+    uid,
+    displayName,
+    profileDisplayName,
+    isAnonymousUser,
+    error: authError,
+    signInAsAnonymous,
+    saveProfileDisplayName,
+  } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
 
@@ -97,11 +107,10 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   }, [authError]);
 
   useEffect(() => {
-    const storedName = window.localStorage.getItem(storageKey);
-    if (storedName) {
-      setUsername(storedName);
-    }
-  }, []);
+    const nextDisplayName =
+      profileDisplayName?.trim() || displayName?.trim() || readStoredUsername() || "";
+    setUsername(nextDisplayName);
+  }, [displayName, profileDisplayName]);
 
   const inviteMessage = useMemo(
     () => `${hostName} invited you to their misty lobby, please make a username first`,
@@ -131,6 +140,12 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
       if (!resolvedUid) {
         setError("Unable to sign in anonymously. Please try again.");
         return;
+      }
+
+      if (!uid || isAnonymousUser) {
+        window.localStorage.setItem(usernameStorageKey, trimmedName);
+      } else {
+        await saveProfileDisplayName(trimmedName);
       }
 
       const lobbyRef = doc(db, "lobbies", lobbyId);
@@ -253,7 +268,6 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         transaction.update(lobbyRef, lobbyUpdates);
       });
 
-      window.localStorage.setItem(storageKey, trimmedName);
       router.push(`/lobby/${lobbyId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";

@@ -11,7 +11,7 @@ import {
   signOut,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { app, db, isFirebaseConfigured } from "./firebase";
 import { defaultUserProfile } from "./userProfile";
@@ -20,16 +20,48 @@ type AuthMode = "anonymous" | "google" | null;
 
 const authModeStorageKey = "misty:auth-mode";
 
+export const usernameStorageKey = "misty:username";
+export const usernameUpdatedEvent = "misty:username-updated";
+
+export function readStoredUsername() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storedName = window.localStorage.getItem(usernameStorageKey)?.trim();
+  return storedName || null;
+}
+
+export function resolvePlayerDisplayName({
+  profileDisplayName,
+  authDisplayName,
+  storedDisplayName,
+}: {
+  profileDisplayName?: string | null;
+  authDisplayName?: string | null;
+  storedDisplayName?: string | null;
+}) {
+  return (
+    profileDisplayName?.trim() ||
+    authDisplayName?.trim() ||
+    storedDisplayName?.trim() ||
+    "Anonymous player"
+  );
+}
+
 type AuthState = {
   uid: string | null;
   email: string | null;
   displayName: string | null;
+  profileDisplayName: string | null;
+  isProfileLoading: boolean;
   isAnonymousUser: boolean;
   error: string | null;
   authMode: AuthMode;
   signInAsAnonymous: () => Promise<void>;
   signInWithGoogleSso: () => Promise<void>;
   goBackToSignInMethods: () => Promise<void>;
+  saveProfileDisplayName: (nextDisplayName: string) => Promise<void>;
 };
 
 async function ensureUserProfile(user: User) {
@@ -48,10 +80,11 @@ async function ensureUserProfile(user: User) {
     return;
   }
 
+  const existingProfile = userSnapshot.data();
   await setDoc(
     userRef,
     {
-      displayName: user.displayName,
+      ...(existingProfile.displayName ? {} : { displayName: user.displayName }),
       email: user.email,
       photoURL: user.photoURL,
       updatedAt: serverTimestamp(),
@@ -93,6 +126,8 @@ export function useAnonymousAuth(): AuthState {
   const [uid, setUid] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isAnonymousUser, setIsAnonymousUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>(null);
@@ -104,9 +139,8 @@ export function useAnonymousAuth(): AuthState {
 
     const auth = getAuth(app);
     let isMounted = true;
+    let unsubscribeProfile: (() => void) | null = null;
     setAuthMode(loadStoredAuthMode());
-
-    console.log("[auth] Current user on load:", auth.currentUser);
 
     void setPersistence(auth, browserLocalPersistence).catch((err) => {
       if (!isMounted) {
@@ -118,11 +152,12 @@ export function useAnonymousAuth(): AuthState {
     });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribeProfile?.();
+      unsubscribeProfile = null;
+
       if (!isMounted) {
         return;
       }
-
-      console.log("[auth] Auth state changed:", user);
 
       const resolvedAuthMode = user
         ? user.isAnonymous
@@ -133,6 +168,8 @@ export function useAnonymousAuth(): AuthState {
       setUid(user?.uid ?? null);
       setEmail(user?.email ?? null);
       setDisplayName(user?.displayName ?? null);
+      setProfileDisplayName(null);
+      setIsProfileLoading(false);
       setIsAnonymousUser(user?.isAnonymous ?? false);
       setAuthMode(resolvedAuthMode);
 
@@ -147,14 +184,38 @@ export function useAnonymousAuth(): AuthState {
       }
 
       if (user && !user.isAnonymous) {
+        setIsProfileLoading(true);
         void ensureUserProfile(user).catch((err) => {
           console.error("[auth] Failed to ensure user profile", err);
         });
+
+        unsubscribeProfile = onSnapshot(
+          doc(db, "users", user.uid),
+          (snapshot) => {
+            if (!isMounted) {
+              return;
+            }
+
+            const nextDisplayName = snapshot.data()?.displayName;
+            setProfileDisplayName(typeof nextDisplayName === "string" ? nextDisplayName : null);
+            setIsProfileLoading(false);
+          },
+          (err) => {
+            if (!isMounted) {
+              return;
+            }
+
+            const message = err instanceof Error ? err.message : "Unknown error.";
+            setError(message);
+            setIsProfileLoading(false);
+          }
+        );
       }
     });
 
     return () => {
       isMounted = false;
+      unsubscribeProfile?.();
       unsubscribe();
     };
   }, []);
@@ -202,21 +263,14 @@ export function useAnonymousAuth(): AuthState {
     setAuthMode("google");
     saveAuthMode("google");
 
-    console.log("[auth] Starting Google sign-in", {
-      currentUser: auth.currentUser,
-    });
-
     try {
       if (auth.currentUser?.isAnonymous) {
         await signOut(auth);
-        console.log("[auth] Signed out anonymous user before Google sign-in");
       }
 
       await signInWithPopup(auth, new GoogleAuthProvider());
-      console.log("[auth] Completed Google sign-in popup");
       setError(null);
     } catch (err) {
-      console.error("[auth] Google sign-in failed", err);
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
     }
@@ -236,6 +290,25 @@ export function useAnonymousAuth(): AuthState {
     }
   }, []);
 
+  const saveProfileDisplayName = useCallback(
+    async (nextDisplayName: string) => {
+      const trimmedDisplayName = nextDisplayName.trim();
+      if (!uid || isAnonymousUser || !trimmedDisplayName) {
+        return;
+      }
+
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          displayName: trimmedDisplayName,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    },
+    [isAnonymousUser, uid]
+  );
+
   useEffect(() => {
     if (authMode !== "anonymous") {
       return;
@@ -253,11 +326,14 @@ export function useAnonymousAuth(): AuthState {
     uid,
     email,
     displayName,
+    profileDisplayName,
+    isProfileLoading,
     isAnonymousUser,
     error,
     authMode,
     signInAsAnonymous,
     signInWithGoogleSso,
     goBackToSignInMethods,
+    saveProfileDisplayName,
   };
 }

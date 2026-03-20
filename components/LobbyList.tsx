@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAnonymousAuth } from "../lib/auth";
+import { readStoredUsername, resolvePlayerDisplayName, useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import type { SpikeItemCount } from "../lib/game/deck";
@@ -62,7 +62,7 @@ export default function LobbyList() {
   const [previewCache, setPreviewCache] = useState<Record<string, LobbyPreview>>({});
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const { uid, error: authError } = useAnonymousAuth();
+  const { uid, displayName, profileDisplayName, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
 
@@ -238,8 +238,11 @@ export default function LobbyList() {
     setJoiningLobbyId(lobbyId);
     setError(null);
     try {
-      const storedName = window.localStorage.getItem("misty:username");
-      const resolvedName = storedName?.trim();
+      const resolvedName = resolvePlayerDisplayName({
+        profileDisplayName,
+        authDisplayName: displayName,
+        storedDisplayName: readStoredUsername(),
+      });
       const lobbyRef = doc(db, "lobbies", lobbyId);
       const playerRef = doc(db, "lobbies", lobbyId, "players", uid);
       await runTransaction(db, async (transaction) => {
@@ -249,7 +252,7 @@ export default function LobbyList() {
         }
 
         const lobbyData = lobbySnapshot.data();
-        const displayName = resolvedName || "Anonymous player";
+        const playerDisplayName = resolvedName;
         const existingPlayerSnapshot = await transaction.get(playerRef);
         const isHost = (lobbyData.hostId as string | undefined) === uid;
         const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
@@ -290,7 +293,7 @@ export default function LobbyList() {
         if (!playerNameMap.has(uid)) {
           currentPlayerIds.push(uid);
         }
-        playerNameMap.set(uid, displayName);
+        playerNameMap.set(uid, playerDisplayName);
         const nextPlayerIds = currentPlayerIds.filter(
           (playerId, index) => currentPlayerIds.indexOf(playerId) === index
         );
@@ -304,7 +307,7 @@ export default function LobbyList() {
           playerNames: nextPlayerNames,
         };
         if (isHost) {
-          lobbyUpdates.hostDisplayName = displayName;
+          lobbyUpdates.hostDisplayName = playerDisplayName;
         }
 
         if (!isExistingPlayer && availableGlyphs && availableGlyphs.length > 0) {
@@ -314,10 +317,10 @@ export default function LobbyList() {
         }
 
         if (isExistingPlayer) {
-          transaction.update(playerRef, { displayName });
+          transaction.update(playerRef, { displayName: playerDisplayName });
         } else {
           transaction.set(playerRef, {
-            displayName,
+            displayName: playerDisplayName,
             joinedAt: serverTimestamp(),
             isReady: false,
             glyph,
