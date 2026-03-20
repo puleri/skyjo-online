@@ -1,0 +1,166 @@
+"use client";
+
+import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
+import {
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  type FirestoreError,
+} from "firebase/firestore";
+import { useCallback, useEffect, useState } from "react";
+import { app, db, isFirebaseConfigured } from "./firebase";
+import {
+  defaultUserProfile,
+  mergeUserProfile,
+  type UserProfile,
+  type UserProfileUpdate,
+} from "./userProfile";
+
+type UseUserProfileState = {
+  profile: UserProfile | null;
+  loading: boolean;
+  error: string | null;
+  updateProfile: (updates: UserProfileUpdate) => Promise<void>;
+};
+
+async function ensureUserProfile(user: User) {
+  const userRef = doc(db, "users", user.uid);
+  const defaultProfile = defaultUserProfile(user);
+
+  await setDoc(
+    userRef,
+    {
+      ...defaultProfile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown error.";
+}
+
+function mapFirestoreProfile(user: User, value: unknown): UserProfile {
+  const baseProfile = defaultUserProfile(user);
+  if (!value || typeof value !== "object") {
+    return baseProfile;
+  }
+
+  return mergeUserProfile(baseProfile, value as UserProfileUpdate);
+}
+
+export function useUserProfile(): UseUserProfileState {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [error, setError] = useState<string | null>(null);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setLoading(false);
+      setProfile(null);
+      setError(null);
+      setCurrentUid(null);
+      return;
+    }
+
+    const auth = getAuth(app);
+    let isMounted = true;
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setCurrentUid(user?.uid ?? null);
+      setProfile(null);
+      setError(null);
+      setLoading(Boolean(user && !user.isAnonymous));
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUid) {
+      setLoading(false);
+      setProfile(null);
+      return;
+    }
+
+    const auth = getAuth(app);
+    const user = auth.currentUser;
+    if (!user || user.uid !== currentUid || user.isAnonymous) {
+      setLoading(false);
+      setProfile(null);
+      return;
+    }
+
+    let isMounted = true;
+    setLoading(true);
+
+    void ensureUserProfile(user).catch((err) => {
+      if (!isMounted) {
+        return;
+      }
+
+      console.error("[useUserProfile] Failed to ensure user profile", err);
+      setError(getErrorMessage(err));
+      setLoading(false);
+    });
+
+    const unsubscribe = onSnapshot(
+      doc(db, "users", currentUid),
+      (snapshot) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setProfile(mapFirestoreProfile(user, snapshot.data()));
+        setError(null);
+        setLoading(false);
+      },
+      (snapshotError: FirestoreError) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setError(snapshotError.message);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [currentUid]);
+
+  const updateProfile = useCallback(async (updates: UserProfileUpdate) => {
+    const auth = getAuth(app);
+    const user = auth.currentUser;
+    const trimmedDisplayName = updates.displayName?.trim();
+
+    if (!user || user.isAnonymous) {
+      throw new Error("A signed-in user profile is required.");
+    }
+
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        ...updates,
+        ...(updates.displayName !== undefined ? { displayName: trimmedDisplayName || null } : {}),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }, []);
+
+  return { profile, loading, error, updateProfile };
+}

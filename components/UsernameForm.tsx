@@ -7,6 +7,7 @@ import {
   usernameStorageKey,
   usernameUpdatedEvent,
 } from "../lib/auth";
+import { useUserProfile } from "../lib/useUserProfile";
 
 export default function UsernameForm() {
   const [username, setUsername] = useState("");
@@ -15,16 +16,19 @@ export default function UsernameForm() {
     uid,
     email,
     displayName,
-    profileDisplayName,
-    isProfileLoading,
     isAnonymousUser,
     error: authError,
     authMode,
     signInAsAnonymous,
     signInWithGoogleSso,
     goBackToSignInMethods,
-    saveProfileDisplayName,
   } = useAnonymousAuth();
+  const {
+    profile,
+    loading: isProfileLoading,
+    error: profileError,
+    updateProfile,
+  } = useUserProfile();
 
   const isSignedIn = Boolean(uid);
   const isGoogleSignedIn = isSignedIn && !isAnonymousUser;
@@ -41,11 +45,11 @@ export default function UsernameForm() {
 
   useEffect(() => {
     if (isSignedIn && !isAnonymousUser) {
-      const nextName = profileDisplayName?.trim() || displayName?.trim() || "";
+      const nextName = profile?.displayName?.trim() || displayName?.trim() || "";
       setUsername(nextName);
       setSavedName(nextName || null);
     }
-  }, [displayName, isAnonymousUser, isSignedIn, profileDisplayName]);
+  }, [displayName, isAnonymousUser, isSignedIn, profile?.displayName]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,7 +59,7 @@ export default function UsernameForm() {
     }
 
     if (isSignedIn && !isAnonymousUser) {
-      await saveProfileDisplayName(trimmed);
+      await updateProfile({ displayName: trimmed });
       setSavedName(trimmed);
       return;
     }
@@ -96,6 +100,7 @@ export default function UsernameForm() {
         ) : (
           <p>Choose the name other players should see in lobbies and games.</p>
         )}
+        {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
         {authError ? <p className="notice">Auth error: {authError}</p> : null}
       </form>
     );
@@ -124,6 +129,7 @@ export default function UsernameForm() {
           </button>
 
         </div>
+        {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
         {authError ? <p className="notice">Auth error: {authError}</p> : null}
       </div>
     );

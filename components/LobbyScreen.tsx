@@ -8,6 +8,7 @@ import LobbyList from "./LobbyList";
 import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import { useUserProfile } from "../lib/useUserProfile";
 
 const heroBannerLight = "/images/misty-hero-banner.png";
 const heroBannerDark = "/images/misty-hero-banner-darkmode.png";
@@ -27,6 +28,7 @@ function isLeaderboardEntryActive(expiresAt: unknown) {
 export default function LobbyScreen() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
+  const { profile, loading: isProfileLoading, error: profileError } = useUserProfile();
   const {
     firstTimeTips: showFirstTimeTips,
     darkMode: isDarkMode,
@@ -197,6 +199,11 @@ export default function LobbyScreen() {
             <div className="modal" onClick={(event) => event.stopPropagation()}>
               <h2 id="main-menu-settings-title">Settings</h2>
               <p>Update your preferences.</p>
+              {isProfileLoading ? <p className="notice">Loading account settings…</p> : null}
+              {!isProfileLoading && profile ? (
+                <p className="notice">Signed in as {profile.displayName?.trim() || profile.email || "Anonymous player"}.</p>
+              ) : null}
+              {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
               <div className="modal__option">
                 <label className="modal__option-label modal__option-toggle">
                   <span>First time tips</span>
