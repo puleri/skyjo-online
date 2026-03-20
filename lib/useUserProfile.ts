@@ -1,6 +1,11 @@
 "use client";
 
-import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  updateProfile as updateAuthProfile,
+  type User,
+} from "firebase/auth";
 import {
   doc,
   onSnapshot,
@@ -10,6 +15,11 @@ import {
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { app, db, isFirebaseConfigured } from "./firebase";
+import {
+  cacheProfileDisplayName,
+  usernameStorageKey,
+  usernameUpdatedEvent,
+} from "./auth";
 import {
   defaultUserProfile,
   mergeUserProfile,
@@ -176,6 +186,21 @@ export function useUserProfile(): UseUserProfileState {
       },
       { merge: true }
     );
+
+    if (updates.displayName !== undefined) {
+      await updateAuthProfile(user, { displayName: trimmedDisplayName || null });
+
+      if (typeof window !== "undefined") {
+        if (trimmedDisplayName) {
+          window.localStorage.setItem(usernameStorageKey, trimmedDisplayName);
+        } else {
+          window.localStorage.removeItem(usernameStorageKey);
+        }
+
+        cacheProfileDisplayName(user.uid, trimmedDisplayName || null);
+        window.dispatchEvent(new Event(usernameUpdatedEvent));
+      }
+    }
   }, []);
 
   return {
