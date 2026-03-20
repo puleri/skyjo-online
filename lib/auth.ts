@@ -3,12 +3,11 @@
 import {
   browserLocalPersistence,
   GoogleAuthProvider,
-  getRedirectResult,
   getAuth,
   onAuthStateChanged,
   setPersistence,
   signInAnonymously,
-  signInWithRedirect,
+  signInWithPopup,
   signOut,
 } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
@@ -117,28 +116,6 @@ export function useAnonymousAuth(): AuthState {
       }
     });
 
-    void getRedirectResult(auth)
-      .then((result) => {
-        if (!isMounted || !result?.user) {
-          return;
-        }
-
-        setUid(result.user.uid);
-        setEmail(result.user.email ?? null);
-        setDisplayName(result.user.displayName ?? null);
-        setIsAnonymousUser(result.user.isAnonymous);
-        setAuthMode(result.user.isAnonymous ? "anonymous" : "google");
-        setError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) {
-          return;
-        }
-
-        const message = err instanceof Error ? err.message : "Unknown error.";
-        setError(message);
-      });
-
     return () => {
       isMounted = false;
       unsubscribe();
@@ -198,8 +175,8 @@ export function useAnonymousAuth(): AuthState {
         console.log("[auth] Signed out anonymous user before Google sign-in");
       }
 
-      await signInWithRedirect(auth, new GoogleAuthProvider());
-      console.log("[auth] Triggered Google sign-in redirect");
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      console.log("[auth] Completed Google sign-in popup");
       setError(null);
     } catch (err) {
       console.error("[auth] Google sign-in failed", err);
