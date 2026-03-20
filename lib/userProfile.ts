@@ -8,12 +8,7 @@ export type UserProfileTimestamp = Timestamp | Date | string | null;
 
 export type UserProfileSettings = Preferences;
 
-export type UserProfileGamePlacement = {
-  gameId: string;
-  placed: number;
-  playerCount: number;
-  finishedAt: UserProfileTimestamp;
-};
+export type UserProfileGamePlacement = number;
 
 export type UserProfile = {
   uid: string;

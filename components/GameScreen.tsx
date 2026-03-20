@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -38,6 +39,7 @@ import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase
 import { usePreferences } from "../lib/preferences";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 import { CRITICAL_PRELOAD_GROUP_LABELS, PRELOAD_PRIORITY_GROUPS } from "../lib/assetPreloadManifest";
+import { clampLastFiveGames, type UserProfileGamePlacement } from "../lib/userProfile";
 
 type GameScreenProps = {
   gameId: string;
@@ -152,7 +154,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
   const recoveryRevealTipMessage = "Select a card to reveal and finish your turn.";
   const firebaseReady = isFirebaseConfigured;
-  const { uid, error: authError } = useAnonymousAuth();
+  const { uid, error: authError, isAnonymousUser } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
   const [lobbyName, setLobbyName] = useState<string | null>(null);
   const [playerSummaries, setPlayerSummaries] = useState<GamePlayerSummary[]>([]);
@@ -204,6 +206,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
+  const userLastFiveGamesUpdateRef = useRef(new Set<string>());
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
   const [revealedBonusCount, setRevealedBonusCount] = useState(0);
   const hasGameCompletedRef = useRef(false);
@@ -2344,6 +2347,45 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     gameId,
     isGameComplete,
   ]);
+
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !uid || isAnonymousUser || !isGameComplete || !finalScores.length) {
+      return;
+    }
+
+    if (userLastFiveGamesUpdateRef.current.has(gameId)) {
+      return;
+    }
+    userLastFiveGamesUpdateRef.current.add(gameId);
+
+    const updateUserLastFiveGames = async () => {
+      const playerPlacement = finalScores.findIndex((entry) => entry.id === uid);
+      if (playerPlacement < 0) {
+        return;
+      }
+
+      const userRef = doc(db, "users", uid);
+      const userSnapshot = await getDoc(userRef);
+      const existingData = userSnapshot.data();
+      const existingLastFiveGames = Array.isArray(existingData?.lastFiveGames)
+        ? (existingData.lastFiveGames as UserProfileGamePlacement[])
+        : [];
+
+      await setDoc(
+        userRef,
+        {
+          lastFiveGames: clampLastFiveGames([...existingLastFiveGames, playerPlacement + 1]),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    };
+
+    updateUserLastFiveGames().catch((err: Error) => {
+      userLastFiveGamesUpdateRef.current.delete(gameId);
+      setError(err.message);
+    });
+  }, [firebaseReady, finalScores, gameId, isAnonymousUser, isGameComplete, uid]);
 
   useEffect(() => {
     if (!canSelectGridCard) {
