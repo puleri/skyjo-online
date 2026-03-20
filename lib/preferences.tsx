@@ -6,9 +6,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { app, db, isFirebaseConfigured } from "./firebase";
 
 export const preferenceDefaults = {
   darkMode: false,
@@ -65,20 +69,145 @@ function getInitialPreferences(): Preferences {
   };
 }
 
+function writePreferencesToLocalStorage(preferences: Preferences) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  for (const name of Object.keys(preferenceStorageKeys) as PreferenceName[]) {
+    window.localStorage.setItem(preferenceStorageKeys[name], String(preferences[name]));
+  }
+}
+
+function normalizePreferences(preferences: Partial<Preferences> | null | undefined): Preferences {
+  return {
+    darkMode: typeof preferences?.darkMode === "boolean" ? preferences.darkMode : preferenceDefaults.darkMode,
+    cardSounds:
+      typeof preferences?.cardSounds === "boolean"
+        ? preferences.cardSounds
+        : preferenceDefaults.cardSounds,
+    backgroundMusic:
+      typeof preferences?.backgroundMusic === "boolean"
+        ? preferences.backgroundMusic
+        : preferenceDefaults.backgroundMusic,
+    snow: typeof preferences?.snow === "boolean" ? preferences.snow : preferenceDefaults.snow,
+    firstTimeTips:
+      typeof preferences?.firstTimeTips === "boolean"
+        ? preferences.firstTimeTips
+        : preferenceDefaults.firstTimeTips,
+    autoFollow:
+      typeof preferences?.autoFollow === "boolean"
+        ? preferences.autoFollow
+        : preferenceDefaults.autoFollow,
+  };
+}
+
+async function loadFirestorePreferences(user: User): Promise<Preferences | null> {
+  const userSnapshot = await getDoc(doc(db, "users", user.uid));
+  if (!userSnapshot.exists()) {
+    return null;
+  }
+
+  const profile = userSnapshot.data();
+  if (!profile.settingsPreferences || typeof profile.settingsPreferences !== "object") {
+    return null;
+  }
+
+  return normalizePreferences(profile.settingsPreferences as Partial<Preferences>);
+}
+
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<Preferences>(getInitialPreferences);
+  const [activeUser, setActiveUser] = useState<User | null>(null);
+  const preferencesRef = useRef(preferences);
+
+  useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
 
   const setPreference = useCallback((name: PreferenceName, value: boolean) => {
+    const nextPreferences = {
+      ...preferencesRef.current,
+      [name]: value,
+    };
+
     setPreferences((current) => {
       if (current[name] === value) {
         return current;
       }
-      return { ...current, [name]: value };
+
+      return nextPreferences;
     });
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(preferenceStorageKeys[name], String(value));
+    writePreferencesToLocalStorage(nextPreferences);
+
+    if (!isFirebaseConfigured || !activeUser || activeUser.isAnonymous) {
+      return;
     }
+
+    void setDoc(
+      doc(db, "users", activeUser.uid),
+      {
+        settingsPreferences: nextPreferences,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    ).catch((error: unknown) => {
+      console.error("[preferences] Failed to sync preference", error);
+    });
+  }, [activeUser]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      return;
+    }
+
+    let isMounted = true;
+    let loadRequestId = 0;
+    const auth = getAuth(app);
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      loadRequestId += 1;
+      const currentLoadRequestId = loadRequestId;
+      setActiveUser(user ?? null);
+
+      if (!user || user.isAnonymous) {
+        if (!isMounted) {
+          return;
+        }
+
+        const storedPreferences = getInitialPreferences();
+        setPreferences(storedPreferences);
+        writePreferencesToLocalStorage(storedPreferences);
+        return;
+      }
+
+      void loadFirestorePreferences(user)
+        .then((firestorePreferences) => {
+          if (!isMounted || currentLoadRequestId !== loadRequestId) {
+            return;
+          }
+
+          const nextPreferences = firestorePreferences ?? getInitialPreferences();
+          setPreferences(nextPreferences);
+          writePreferencesToLocalStorage(nextPreferences);
+        })
+        .catch((error: unknown) => {
+          if (!isMounted || currentLoadRequestId !== loadRequestId) {
+            return;
+          }
+
+          console.error("[preferences] Failed to load Firestore preferences", error);
+          const storedPreferences = getInitialPreferences();
+          setPreferences(storedPreferences);
+          writePreferencesToLocalStorage(storedPreferences);
+        });
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
