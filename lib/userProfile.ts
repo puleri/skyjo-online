@@ -21,6 +21,7 @@ export type UserProfile = {
   level: number;
   experience: number;
   unlockedSpells: string[];
+  rewardedGameIds?: string[];
   createdAt: UserProfileTimestamp;
   updatedAt: UserProfileTimestamp;
 };
@@ -73,6 +74,7 @@ export function defaultUserProfile(authUser: UserProfileAuthFields): UserProfile
     level: 1,
     experience: 0,
     unlockedSpells: [],
+    rewardedGameIds: [],
     createdAt: null,
     updatedAt: null,
   };
@@ -87,6 +89,7 @@ export function mergeUserProfile(
     ...updates,
     friends: [...(updates.friends ?? current.friends)],
     unlockedSpells: [...(updates.unlockedSpells ?? current.unlockedSpells)],
+    rewardedGameIds: [...(updates.rewardedGameIds ?? current.rewardedGameIds ?? [])],
     lastFiveGames: clampLastFiveGames(updates.lastFiveGames ?? current.lastFiveGames),
     settingsPreferences: {
       ...createDefaultUserSettings(),

@@ -10,6 +10,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   Timestamp,
   serverTimestamp,
   setDoc,
@@ -63,6 +64,7 @@ import {
 } from "../lib/userProfile";
 import {
   applyEarnedExperience,
+  getNewlyUnlockedRewardIds,
   getTotalEarnedXpBreakdown,
   isNextLevelMultipleOfFive,
 } from "../lib/progression";
@@ -174,6 +176,131 @@ const formatAverageValue = (total: number, count: number) => {
   }
   return (Math.round((total / count) * 10) / 10).toFixed(1);
 };
+
+type FinalScoreEntry = {
+  id: string;
+  displayName: string;
+  totalScore: number;
+};
+
+type LocalPlayerExperiencePreview = {
+  currentLevel: number;
+  xpGainedTowardCurrentLevel: number;
+  xpRequiredForCurrentLevel: number;
+  xpRemainingToNextLevel: number;
+  nextLevel: number;
+  showRewardPreview: boolean;
+};
+
+async function updateCompletedGameProfile({
+  gameId,
+  finalScores,
+  playerSummaries,
+  uid,
+}: {
+  gameId: string;
+  finalScores: FinalScoreEntry[];
+  playerSummaries: GamePlayerSummary[];
+  uid: string;
+}): Promise<LocalPlayerExperiencePreview | null> {
+  const playerPlacement = finalScores.findIndex((entry) => entry.id === uid);
+  if (playerPlacement < 0) {
+    return null;
+  }
+
+  const localPlayerSummary =
+    playerSummaries.find((player) => player.id === uid) ?? null;
+  const earnedXp = getTotalEarnedXpBreakdown({
+    finalRank: playerPlacement + 1,
+    lobbySize: Math.max(finalScores.length, 2),
+    pointsClearedFromRows: localPlayerSummary?.pointsClearedFromRows ?? 0,
+  });
+
+  const userRef = doc(db, "users", uid);
+
+  return runTransaction(db, async (transaction) => {
+    const userSnapshot = await transaction.get(userRef);
+    const existingData = userSnapshot.data();
+    const rewardedGameIds = Array.isArray(existingData?.rewardedGameIds)
+      ? existingData.rewardedGameIds.filter(
+          (rewardedGameId): rewardedGameId is string =>
+            typeof rewardedGameId === "string",
+        )
+      : [];
+
+    if (rewardedGameIds.includes(gameId)) {
+      const existingLevel =
+        typeof existingData?.level === "number" ? existingData.level : 1;
+      const existingExperience =
+        typeof existingData?.experience === "number"
+          ? existingData.experience
+          : 0;
+      const existingProgress = applyEarnedExperience(
+        existingLevel,
+        existingExperience,
+        0,
+      );
+      return {
+        currentLevel: existingProgress.currentLevel,
+        xpGainedTowardCurrentLevel:
+          existingProgress.xpGainedTowardCurrentLevel,
+        xpRequiredForCurrentLevel: existingProgress.xpRequiredForCurrentLevel,
+        xpRemainingToNextLevel: existingProgress.xpRemainingToNextLevel,
+        nextLevel: existingProgress.nextLevel,
+        showRewardPreview: isNextLevelMultipleOfFive(existingProgress.nextLevel),
+      } satisfies LocalPlayerExperiencePreview;
+    }
+
+    const existingLastFiveGames = Array.isArray(existingData?.lastFiveGames)
+      ? (existingData.lastFiveGames as UserProfileGamePlacement[])
+      : [];
+    const existingLevel =
+      typeof existingData?.level === "number" ? existingData.level : 1;
+    const existingExperience =
+      typeof existingData?.experience === "number" ? existingData.experience : 0;
+    const existingUnlockedSpells = Array.isArray(existingData?.unlockedSpells)
+      ? existingData.unlockedSpells.filter(
+          (rewardId): rewardId is string => typeof rewardId === "string",
+        )
+      : [];
+    const updatedProgress = applyEarnedExperience(
+      existingLevel,
+      existingExperience,
+      earnedXp.totalXp,
+    );
+    const newlyUnlockedRewardIds = getNewlyUnlockedRewardIds(
+      existingLevel,
+      updatedProgress.currentLevel,
+    );
+
+    transaction.set(
+      userRef,
+      {
+        experience: updatedProgress.xpGainedTowardCurrentLevel,
+        level: updatedProgress.currentLevel,
+        unlockedSpells: Array.from(
+          new Set([...existingUnlockedSpells, ...newlyUnlockedRewardIds]),
+        ),
+        lastFiveGames: clampLastFiveGames([
+          ...existingLastFiveGames,
+          playerPlacement + 1,
+        ]),
+        rewardedGameIds: [...rewardedGameIds, gameId],
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    return {
+      currentLevel: updatedProgress.currentLevel,
+      xpGainedTowardCurrentLevel: updatedProgress.xpGainedTowardCurrentLevel,
+      xpRequiredForCurrentLevel: updatedProgress.xpRequiredForCurrentLevel,
+      xpRemainingToNextLevel: updatedProgress.xpRemainingToNextLevel,
+      nextLevel: updatedProgress.nextLevel,
+      showRewardPreview: isNextLevelMultipleOfFive(updatedProgress.nextLevel),
+    } satisfies LocalPlayerExperiencePreview;
+  });
+}
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
@@ -295,14 +422,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasStartedProgressivePreloadRef = useRef(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const [localPlayerExperiencePreview, setLocalPlayerExperiencePreview] =
-    useState<{
-      currentLevel: number;
-      xpGainedTowardCurrentLevel: number;
-      xpRequiredForCurrentLevel: number;
-      xpRemainingToNextLevel: number;
-      nextLevel: number;
-      showRewardPreview: boolean;
-    } | null>(null);
+    useState<LocalPlayerExperiencePreview | null>(null);
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -2679,61 +2799,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     userLastFiveGamesUpdateRef.current.add(gameId);
 
     const updateUserLastFiveGames = async () => {
-      const playerPlacement = finalScores.findIndex(
-        (entry) => entry.id === uid,
-      );
-      if (playerPlacement < 0) {
-        return;
+      const updatedPreview = await updateCompletedGameProfile({
+        gameId,
+        finalScores,
+        playerSummaries,
+        uid,
+      });
+
+      if (updatedPreview) {
+        setLocalPlayerExperiencePreview(updatedPreview);
       }
-
-      const userRef = doc(db, "users", uid);
-      const userSnapshot = await getDoc(userRef);
-      const existingData = userSnapshot.data();
-      const existingLastFiveGames = Array.isArray(existingData?.lastFiveGames)
-        ? (existingData.lastFiveGames as UserProfileGamePlacement[])
-        : [];
-      const existingLevel =
-        typeof existingData?.level === "number" ? existingData.level : 1;
-      const existingExperience =
-        typeof existingData?.experience === "number"
-          ? existingData.experience
-          : 0;
-      const earnedXp = getTotalEarnedXpBreakdown({
-        finalRank: playerPlacement + 1,
-        lobbySize: Math.max(finalScores.length, 2),
-        pointsClearedFromRows:
-          playerSummaries.find((player) => player.id === uid)
-            ?.pointsClearedFromRows ?? 0,
-      });
-      const updatedProgress = applyEarnedExperience(
-        existingLevel,
-        existingExperience,
-        earnedXp.totalXp,
-      );
-
-      setLocalPlayerExperiencePreview({
-        currentLevel: updatedProgress.currentLevel,
-        xpGainedTowardCurrentLevel:
-          updatedProgress.xpGainedTowardCurrentLevel,
-        xpRequiredForCurrentLevel: updatedProgress.xpRequiredForCurrentLevel,
-        xpRemainingToNextLevel: updatedProgress.xpRemainingToNextLevel,
-        nextLevel: updatedProgress.nextLevel,
-        showRewardPreview: isNextLevelMultipleOfFive(updatedProgress.nextLevel),
-      });
-
-      await setDoc(
-        userRef,
-        {
-          experience: updatedProgress.xpGainedTowardCurrentLevel,
-          level: updatedProgress.currentLevel,
-          lastFiveGames: clampLastFiveGames([
-            ...existingLastFiveGames,
-            playerPlacement + 1,
-          ]),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
     };
 
     updateUserLastFiveGames().catch((err: Error) => {
