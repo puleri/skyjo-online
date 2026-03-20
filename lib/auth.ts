@@ -11,7 +11,7 @@ import {
   signOut,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { app, db, isFirebaseConfigured } from "./firebase";
 import { defaultUserProfile } from "./userProfile";
@@ -19,9 +19,38 @@ import { defaultUserProfile } from "./userProfile";
 type AuthMode = "anonymous" | "google" | null;
 
 const authModeStorageKey = "misty:auth-mode";
+const profileDisplayNameStorageKeyPrefix = "misty:profile-display-name:";
 
 export const usernameStorageKey = "misty:username";
 export const usernameUpdatedEvent = "misty:username-updated";
+
+function getProfileDisplayNameStorageKey(uid: string) {
+  return `${profileDisplayNameStorageKeyPrefix}${uid}`;
+}
+
+function readCachedProfileDisplayName(uid: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const cachedName = window.localStorage.getItem(getProfileDisplayNameStorageKey(uid))?.trim();
+  return cachedName || null;
+}
+
+function cacheProfileDisplayName(uid: string, displayName: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const storageKey = getProfileDisplayNameStorageKey(uid);
+  const trimmedDisplayName = displayName?.trim();
+  if (trimmedDisplayName) {
+    window.localStorage.setItem(storageKey, trimmedDisplayName);
+    return;
+  }
+
+  window.localStorage.removeItem(storageKey);
+}
 
 export function readStoredUsername() {
   if (typeof window === "undefined") {
@@ -77,10 +106,15 @@ async function ensureUserProfile(user: User) {
       updatedAt: serverTimestamp(),
     });
 
-    return;
+    return defaultProfile.displayName;
   }
 
   const existingProfile = userSnapshot.data();
+  const resolvedDisplayName =
+    typeof existingProfile.displayName === "string" && existingProfile.displayName.trim()
+      ? existingProfile.displayName
+      : user.displayName;
+
   await setDoc(
     userRef,
     {
@@ -91,6 +125,8 @@ async function ensureUserProfile(user: User) {
     },
     { merge: true }
   );
+
+  return resolvedDisplayName;
 }
 
 function loadStoredAuthMode(): AuthMode {
@@ -139,7 +175,7 @@ export function useAnonymousAuth(): AuthState {
 
     const auth = getAuth(app);
     let isMounted = true;
-    let unsubscribeProfile: (() => void) | null = null;
+    let profileRequestId = 0;
     setAuthMode(loadStoredAuthMode());
 
     void setPersistence(auth, browserLocalPersistence).catch((err) => {
@@ -152,9 +188,8 @@ export function useAnonymousAuth(): AuthState {
     });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribeProfile?.();
-      unsubscribeProfile = null;
-
+      profileRequestId += 1;
+      const currentProfileRequestId = profileRequestId;
       if (!isMounted) {
         return;
       }
@@ -164,12 +199,15 @@ export function useAnonymousAuth(): AuthState {
           ? "anonymous"
           : "google"
         : null;
+      const cachedProfileDisplayName = user && !user.isAnonymous
+        ? readCachedProfileDisplayName(user.uid)
+        : null;
 
       setUid(user?.uid ?? null);
       setEmail(user?.email ?? null);
       setDisplayName(user?.displayName ?? null);
-      setProfileDisplayName(null);
-      setIsProfileLoading(false);
+      setProfileDisplayName(cachedProfileDisplayName);
+      setIsProfileLoading(Boolean(user && !user.isAnonymous));
       setIsAnonymousUser(user?.isAnonymous ?? false);
       setAuthMode(resolvedAuthMode);
 
@@ -184,38 +222,31 @@ export function useAnonymousAuth(): AuthState {
       }
 
       if (user && !user.isAnonymous) {
-        setIsProfileLoading(true);
-        void ensureUserProfile(user).catch((err) => {
-          console.error("[auth] Failed to ensure user profile", err);
-        });
-
-        unsubscribeProfile = onSnapshot(
-          doc(db, "users", user.uid),
-          (snapshot) => {
-            if (!isMounted) {
+        void ensureUserProfile(user)
+          .then((resolvedProfileDisplayName) => {
+            if (!isMounted || currentProfileRequestId !== profileRequestId) {
               return;
             }
 
-            const nextDisplayName = snapshot.data()?.displayName;
-            setProfileDisplayName(typeof nextDisplayName === "string" ? nextDisplayName : null);
+            setProfileDisplayName(resolvedProfileDisplayName ?? null);
+            cacheProfileDisplayName(user.uid, resolvedProfileDisplayName ?? null);
             setIsProfileLoading(false);
-          },
-          (err) => {
-            if (!isMounted) {
+          })
+          .catch((err) => {
+            if (!isMounted || currentProfileRequestId !== profileRequestId) {
               return;
             }
 
+            console.error("[auth] Failed to ensure user profile", err);
             const message = err instanceof Error ? err.message : "Unknown error.";
             setError(message);
             setIsProfileLoading(false);
-          }
-        );
+          });
       }
     });
 
     return () => {
       isMounted = false;
-      unsubscribeProfile?.();
       unsubscribe();
     };
   }, []);
@@ -296,6 +327,9 @@ export function useAnonymousAuth(): AuthState {
       if (!uid || isAnonymousUser || !trimmedDisplayName) {
         return;
       }
+
+      setProfileDisplayName(trimmedDisplayName);
+      cacheProfileDisplayName(uid, trimmedDisplayName);
 
       await setDoc(
         doc(db, "users", uid),
