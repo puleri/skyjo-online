@@ -25,6 +25,15 @@ export type LevelProgress = {
   progressPercent: number;
 };
 
+export type StoredLevelProgress = {
+  currentLevel: number;
+  xpGainedTowardCurrentLevel: number;
+  xpRequiredForCurrentLevel: number;
+  xpRemainingToNextLevel: number;
+  nextLevel: number;
+  progressPercent: number;
+};
+
 export type NextLevelMeta = {
   currentLevel: number;
   nextLevel: number | null;
@@ -50,6 +59,13 @@ function clampNonNegative(value: number) {
   return Math.max(0, Math.floor(value));
 }
 
+function normalizeLevel(value: number) {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(value));
+}
+
 function getOverflowLevelXpRequirement(level: number) {
   const lastKnownIndex = LEVEL_XP_TABLE.length - 1;
   const lastKnownLevel = lastKnownIndex + 1;
@@ -64,6 +80,14 @@ export function getXpRequiredForLevel(level: number) {
   const normalizedLevel = Math.max(1, Math.floor(level));
   const tableValue = LEVEL_XP_TABLE[normalizedLevel - 1];
   return tableValue ?? getOverflowLevelXpRequirement(normalizedLevel);
+}
+
+export function getXpRequiredForCurrentLevel(level: number) {
+  const normalizedLevel = normalizeLevel(level);
+  return (
+    getXpRequiredForLevel(normalizedLevel + 1) -
+    getXpRequiredForLevel(normalizedLevel)
+  );
 }
 
 export function getLevelForXp(experience: number) {
@@ -99,6 +123,53 @@ export function getProgressWithinLevel(experience: number): LevelProgress {
     xpNeededForNextLevel,
     progressPercent,
   };
+}
+
+export function getStoredLevelProgress(
+  level: number,
+  experience: number,
+): StoredLevelProgress {
+  let currentLevel = normalizeLevel(level);
+  let xpGainedTowardCurrentLevel = clampNonNegative(experience);
+  let xpRequiredForCurrentLevel = getXpRequiredForCurrentLevel(currentLevel);
+
+  while (xpGainedTowardCurrentLevel >= xpRequiredForCurrentLevel) {
+    xpGainedTowardCurrentLevel -= xpRequiredForCurrentLevel;
+    currentLevel += 1;
+    xpRequiredForCurrentLevel = getXpRequiredForCurrentLevel(currentLevel);
+  }
+
+  return {
+    currentLevel,
+    xpGainedTowardCurrentLevel,
+    xpRequiredForCurrentLevel,
+    xpRemainingToNextLevel: Math.max(
+      0,
+      xpRequiredForCurrentLevel - xpGainedTowardCurrentLevel,
+    ),
+    nextLevel: currentLevel + 1,
+    progressPercent:
+      xpRequiredForCurrentLevel === 0
+        ? 100
+        : Math.min(
+            100,
+            Math.max(
+              0,
+              (xpGainedTowardCurrentLevel / xpRequiredForCurrentLevel) * 100,
+            ),
+          ),
+  };
+}
+
+export function applyEarnedExperience(
+  level: number,
+  experience: number,
+  earnedExperience: number,
+) {
+  return getStoredLevelProgress(
+    level,
+    clampNonNegative(experience) + clampNonNegative(earnedExperience),
+  );
 }
 
 export function getNextLevelMetadata(experience: number): NextLevelMeta {

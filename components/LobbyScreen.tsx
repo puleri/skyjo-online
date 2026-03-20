@@ -21,8 +21,7 @@ import {
 } from "../lib/firebase";
 import { useUserProfile } from "../lib/useUserProfile";
 import {
-  getNextLevelMetadata,
-  getProgressWithinLevel,
+  getStoredLevelProgress,
   isNextLevelMultipleOfFive,
 } from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
@@ -207,14 +206,12 @@ export default function LobbyScreen() {
   );
   const canEditProfile = isSignedIn && !isAnonymousUser && Boolean(profile);
   const experienceProgress = useMemo(
-    () => getProgressWithinLevel(profile?.experience ?? 0),
-    [profile?.experience],
+    () => getStoredLevelProgress(profile?.level ?? 1, profile?.experience ?? 0),
+    [profile?.experience, profile?.level],
   );
-  const nextLevelMeta = useMemo(
-    () => getNextLevelMetadata(profile?.experience ?? 0),
-    [profile?.experience],
+  const showRewardPreview = isNextLevelMultipleOfFive(
+    experienceProgress.nextLevel,
   );
-  const showRewardPreview = isNextLevelMultipleOfFive(nextLevelMeta);
 
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -369,17 +366,16 @@ export default function LobbyScreen() {
                           <span>Level</span>
                         </div>
                         <p className="modal__option-help">
-                          Level {experienceProgress.level} ·{" "}
-                          {profile?.experience ?? 0} XP total
+                          Level {experienceProgress.currentLevel}.
                         </p>
                         <p className="modal__option-help">
-                          {experienceProgress.xpIntoLevel} /{" "}
-                          {experienceProgress.xpNeededForNextLevel} XP toward
-                          level {nextLevelMeta.nextLevel}.
+                          {experienceProgress.xpGainedTowardCurrentLevel} /{" "}
+                          {experienceProgress.xpRequiredForCurrentLevel} XP in
+                          the current level.
                         </p>
                         <p className="modal__option-help">
-                          {nextLevelMeta.xpRemaining} XP remaining until level{" "}
-                          {nextLevelMeta.nextLevel}
+                          {experienceProgress.xpRemainingToNextLevel} XP
+                          remaining until level {experienceProgress.nextLevel}
                           {showRewardPreview
                             ? " · Reward preview unlocked"
                             : ""}
