@@ -9,9 +9,12 @@ import {
   signInAnonymously,
   signInWithPopup,
   signOut,
+  type User,
 } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
-import { app, isFirebaseConfigured } from "./firebase";
+import { app, db, isFirebaseConfigured } from "./firebase";
+import { defaultUserProfile } from "./userProfile";
 
 type AuthMode = "anonymous" | "google" | null;
 
@@ -28,6 +31,34 @@ type AuthState = {
   signInWithGoogleSso: () => Promise<void>;
   goBackToSignInMethods: () => Promise<void>;
 };
+
+async function ensureUserProfile(user: User) {
+  const userRef = doc(db, "users", user.uid);
+  const userSnapshot = await getDoc(userRef);
+
+  if (!userSnapshot.exists()) {
+    const defaultProfile = defaultUserProfile(user);
+
+    await setDoc(userRef, {
+      ...defaultProfile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return;
+  }
+
+  await setDoc(
+    userRef,
+    {
+      displayName: user.displayName,
+      email: user.email,
+      photoURL: user.photoURL,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
 
 function loadStoredAuthMode(): AuthMode {
   if (typeof window === "undefined") {
@@ -113,6 +144,12 @@ export function useAnonymousAuth(): AuthState {
 
       if (user) {
         setError(null);
+      }
+
+      if (user && !user.isAnonymous) {
+        void ensureUserProfile(user).catch((err) => {
+          console.error("[auth] Failed to ensure user profile", err);
+        });
       }
     });
 
