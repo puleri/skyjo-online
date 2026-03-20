@@ -1,5 +1,12 @@
-'use client';
-import { collection, deleteDoc, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
+"use client";
+import {
+  collection,
+  deleteDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+} from "firebase/firestore";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { usePreferences } from "../lib/preferences";
@@ -7,8 +14,17 @@ import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import SnowfallLayer from "./SnowfallLayer";
 import UsernameForm from "./UsernameForm";
-import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import {
+  db,
+  isFirebaseConfigured,
+  missingFirebaseConfig,
+} from "../lib/firebase";
 import { useUserProfile } from "../lib/useUserProfile";
+import {
+  getNextLevelMetadata,
+  getProgressWithinLevel,
+  isNextLevelMultipleOfFive,
+} from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
 
 const heroBannerLight = "/images/misty-hero-banner.png";
@@ -51,10 +67,14 @@ export default function LobbyScreen() {
   const [isUiPreferencesOpen, setIsUiPreferencesOpen] = useState(false);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
   const [profileName, setProfileName] = useState("");
-  const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
+  const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(
+    null,
+  );
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<
+    LeaderboardEntry[]
+  >([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
   const firebaseReady = isFirebaseConfigured;
@@ -64,7 +84,6 @@ export default function LobbyScreen() {
   const leaderboardCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const wasSettingsOpen = useRef(false);
   const wasLeaderboardOpen = useRef(false);
-
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -77,17 +96,20 @@ export default function LobbyScreen() {
       return;
     }
 
-    const leaderboardQuery = query(collection(db, "leaderboard"), orderBy("score", "asc"));
+    const leaderboardQuery = query(
+      collection(db, "leaderboard"),
+      orderBy("score", "asc"),
+    );
     const unsubscribe = onSnapshot(
       leaderboardQuery,
       (snapshot) => {
         const expiredEntries = snapshot.docs.filter(
-          (entry) => !isLeaderboardEntryActive(entry.data().expiresAt)
+          (entry) => !isLeaderboardEntryActive(entry.data().expiresAt),
         );
         if (expiredEntries.length) {
-          void Promise.all(expiredEntries.map((entry) => deleteDoc(entry.ref))).catch(
-            (err: Error) => setLeaderboardError(err.message)
-          );
+          void Promise.all(
+            expiredEntries.map((entry) => deleteDoc(entry.ref)),
+          ).catch((err: Error) => setLeaderboardError(err.message));
         }
 
         setLeaderboardEntries(
@@ -98,23 +120,24 @@ export default function LobbyScreen() {
               const data = entry.data();
               return {
                 id: entry.id,
-                displayName: (data.displayName as string | undefined) ?? "Anonymous player",
+                displayName:
+                  (data.displayName as string | undefined) ??
+                  "Anonymous player",
                 score: (data.score as number | undefined) ?? 0,
                 gameId: (data.gameId as string | null | undefined) ?? null,
                 playerId: (data.playerId as string | null | undefined) ?? null,
               };
-            })
+            }),
         );
         setLeaderboardError(null);
       },
       (err) => {
         setLeaderboardError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, [firebaseReady, isLeaderboardOpen]);
-
 
   useEffect(() => {
     if (isSettingsOpen) {
@@ -161,7 +184,8 @@ export default function LobbyScreen() {
   }, [isLeaderboardOpen]);
 
   useEffect(() => {
-    const nextProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "";
+    const nextProfileName =
+      profile?.displayName?.trim() || authDisplayName?.trim() || "";
     setProfileName(nextProfileName);
   }, [authDisplayName, profile?.displayName]);
 
@@ -169,13 +193,28 @@ export default function LobbyScreen() {
     setProfileSaveMessage(null);
   }, [profileName]);
 
-  const resolvedProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "Anonymous player";
+  const resolvedProfileName =
+    profile?.displayName?.trim() ||
+    authDisplayName?.trim() ||
+    "Anonymous player";
   const recentPlacements = profile?.lastFiveGames ?? [];
   const recentPlacementSummary = useMemo(
-    () => recentPlacements.map((placement) => formatPlacementLabel(placement)).join(", "),
-    [recentPlacements]
+    () =>
+      recentPlacements
+        .map((placement) => formatPlacementLabel(placement))
+        .join(", "),
+    [recentPlacements],
   );
   const canEditProfile = isSignedIn && !isAnonymousUser && Boolean(profile);
+  const experienceProgress = useMemo(
+    () => getProgressWithinLevel(profile?.experience ?? 0),
+    [profile?.experience],
+  );
+  const nextLevelMeta = useMemo(
+    () => getNextLevelMetadata(profile?.experience ?? 0),
+    [profile?.experience],
+  );
+  const showRewardPreview = isNextLevelMultipleOfFive(nextLevelMeta);
 
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -192,7 +231,11 @@ export default function LobbyScreen() {
       await updateProfile({ displayName: trimmedName });
       setProfileSaveMessage(`Saved as ${trimmedName}.`);
     } catch (error) {
-      setProfileSaveMessage(error instanceof Error ? error.message : "Unable to save your profile right now.");
+      setProfileSaveMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to save your profile right now.",
+      );
     } finally {
       setIsSavingProfile(false);
     }
@@ -203,7 +246,11 @@ export default function LobbyScreen() {
   return (
     <main>
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
-      <img className="welcome-div" src={heroBannerSrc} alt="Misty Hero Banner" />
+      <img
+        className="welcome-div"
+        src={heroBannerSrc}
+        alt="Misty Hero Banner"
+      />
 
       <div className="container">
         <div className="flex-space-between">
@@ -218,7 +265,11 @@ export default function LobbyScreen() {
               ref={leaderboardTriggerRef}
               onClick={() => setIsLeaderboardOpen(true)}
             >
-              <img className="settings-icon" src="/leaderboard-icon.png" alt="Leaderboard icon" />
+              <img
+                className="settings-icon"
+                src="/leaderboard-icon.png"
+                alt="Leaderboard icon"
+              />
             </button>
             <button
               type="button"
@@ -227,7 +278,11 @@ export default function LobbyScreen() {
               ref={settingsTriggerRef}
               onClick={() => setIsSettingsOpen(true)}
             >
-              <img className="settings-icon" src="/profile.png" alt="Account settings icon" />
+              <img
+                className="settings-icon"
+                src="/profile.png"
+                alt="Account settings icon"
+              />
             </button>
             <Link
               href="/rules"
@@ -253,11 +308,18 @@ export default function LobbyScreen() {
             <div className="modal" onClick={(event) => event.stopPropagation()}>
               <h2 id="main-menu-settings-title">Settings</h2>
               <p>Update your profile and preferences.</p>
-              {isProfileLoading ? <p className="notice">Loading account settings…</p> : null}
-              {!isProfileLoading && isSignedIn && !isAnonymousUser ? (
-                <p className="notice">Signed in as {resolvedProfileName || authEmail || "Anonymous player"}.</p>
+              {isProfileLoading ? (
+                <p className="notice">Loading account settings…</p>
               ) : null}
-              {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
+              {!isProfileLoading && isSignedIn && !isAnonymousUser ? (
+                <p className="notice">
+                  Signed in as{" "}
+                  {resolvedProfileName || authEmail || "Anonymous player"}.
+                </p>
+              ) : null}
+              {profileError ? (
+                <p className="notice">Profile error: {profileError}</p>
+              ) : null}
               <button
                 type="button"
                 className="modal__section-dropdown"
@@ -275,9 +337,15 @@ export default function LobbyScreen() {
               >
                 <div className="modal__collapsible-content">
                   {canEditProfile ? (
-                    <form className="modal__profile-form" onSubmit={(event) => void handleProfileSave(event)}>
+                    <form
+                      className="modal__profile-form"
+                      onSubmit={(event) => void handleProfileSave(event)}
+                    >
                       <div className="modal__option">
-                        <label className="modal__option-label" htmlFor="settings-profile-name">
+                        <label
+                          className="modal__option-label"
+                          htmlFor="settings-profile-name"
+                        >
                           <span>Display name</span>
                         </label>
                         <input
@@ -285,11 +353,38 @@ export default function LobbyScreen() {
                           className="form-card-font modal__text-input"
                           type="text"
                           value={profileName}
-                          onChange={(event) => setProfileName(event.target.value)}
+                          onChange={(event) =>
+                            setProfileName(event.target.value)
+                          }
                           placeholder={authDisplayName ?? "Skye"}
                           disabled={isProfileLoading || isSavingProfile}
                         />
-                        <p className="modal__option-help">Choose the name other players see in lobbies and completed games.</p>
+                        <p className="modal__option-help">
+                          Choose the name other players see in lobbies and
+                          completed games.
+                        </p>
+                      </div>
+                      <div className="modal__option">
+                        <div className="modal__option-label">
+                          <span>Level</span>
+                        </div>
+                        <p className="modal__option-help">
+                          Level {experienceProgress.level} ·{" "}
+                          {profile?.experience ?? 0} XP total
+                        </p>
+                        <p className="modal__option-help">
+                          {experienceProgress.xpIntoLevel} /{" "}
+                          {experienceProgress.xpNeededForNextLevel} XP toward
+                          level {nextLevelMeta.nextLevel}.
+                        </p>
+                        <p className="modal__option-help">
+                          {nextLevelMeta.xpRemaining} XP remaining until level{" "}
+                          {nextLevelMeta.nextLevel}
+                          {showRewardPreview
+                            ? " · Reward preview unlocked"
+                            : ""}
+                          .
+                        </p>
                       </div>
                       <div className="modal__option">
                         <div className="modal__option-label">
@@ -297,9 +392,13 @@ export default function LobbyScreen() {
                         </div>
                         {recentPlacements.length ? (
                           <>
-                            <div className="profile-results-list" aria-label={`Last 5 results: ${recentPlacementSummary}`}>
+                            <div
+                              className="profile-results-list"
+                              aria-label={`Last 5 results: ${recentPlacementSummary}`}
+                            >
                               {recentPlacements.map((placement, index) => {
-                                const badgeTone = placement <= 3 ? placement : 4;
+                                const badgeTone =
+                                  placement <= 3 ? placement : 4;
                                 return (
                                   <span
                                     key={`${placement}-${index}`}
@@ -310,30 +409,46 @@ export default function LobbyScreen() {
                                 );
                               })}
                             </div>
-                            <p className="modal__option-help">Recent finishes: {recentPlacementSummary}.</p>
+                            <p className="modal__option-help">
+                              Recent finishes: {recentPlacementSummary}.
+                            </p>
                           </>
                         ) : (
-                          <p className="modal__option-help">No completed games yet.</p>
+                          <p className="modal__option-help">
+                            No completed games yet.
+                          </p>
                         )}
                       </div>
                       <div className="modal__actions">
                         <button
                           className="form-button-full-width"
                           type="submit"
-                          disabled={!profileName.trim() || isProfileLoading || isSavingProfile}
+                          disabled={
+                            !profileName.trim() ||
+                            isProfileLoading ||
+                            isSavingProfile
+                          }
                         >
                           {isSavingProfile ? "Saving…" : "Save profile"}
                         </button>
                       </div>
-                      {profileSaveMessage ? <p className="notice">{profileSaveMessage}</p> : null}
+                      {profileSaveMessage ? (
+                        <p className="notice">{profileSaveMessage}</p>
+                      ) : null}
                     </form>
                   ) : isSignedIn && !isAnonymousUser ? (
                     <div className="modal__option">
-                      <p className="modal__option-help">We&apos;re loading your saved profile and recent match history.</p>
+                      <p className="modal__option-help">
+                        We&apos;re loading your saved profile and recent match
+                        history.
+                      </p>
                     </div>
                   ) : (
                     <div className="modal__option">
-                      <p className="modal__option-help">Sign in with Google to save your profile, keep your match history, and see your last 5 games across devices.</p>
+                      <p className="modal__option-help">
+                        Sign in with Google to save your profile, keep your
+                        match history, and see your last 5 games across devices.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -345,8 +460,12 @@ export default function LobbyScreen() {
                 aria-expanded={isUiPreferencesOpen}
                 aria-controls="main-menu-ui-preferences"
               >
-                <span className="modal__section-dropdown-label">UI Preferences</span>
-                <span aria-hidden="true">{isUiPreferencesOpen ? "▾" : "▸"}</span>
+                <span className="modal__section-dropdown-label">
+                  UI Preferences
+                </span>
+                <span aria-hidden="true">
+                  {isUiPreferencesOpen ? "▾" : "▸"}
+                </span>
               </button>
               <div
                 id="main-menu-ui-preferences"
@@ -362,12 +481,16 @@ export default function LobbyScreen() {
                           className="toggle__input"
                           type="checkbox"
                           checked={isDarkMode}
-                          onChange={(event) => setPreference("darkMode", event.target.checked)}
+                          onChange={(event) =>
+                            setPreference("darkMode", event.target.checked)
+                          }
                         />
                         <span className="toggle__track" aria-hidden="true" />
                       </span>
                     </label>
-                    <p className="modal__option-help">Switch the interface to the dark theme.</p>
+                    <p className="modal__option-help">
+                      Switch the interface to the dark theme.
+                    </p>
                   </div>
                   <div className="modal__option">
                     <label className="modal__option-label modal__option-toggle">
@@ -377,7 +500,9 @@ export default function LobbyScreen() {
                           className="toggle__input"
                           type="checkbox"
                           checked={isSnowEnabled}
-                          onChange={(event) => setPreference("snow", event.target.checked)}
+                          onChange={(event) =>
+                            setPreference("snow", event.target.checked)
+                          }
                         />
                         <span className="toggle__track" aria-hidden="true" />
                       </span>
@@ -394,13 +519,16 @@ export default function LobbyScreen() {
                           className="toggle__input"
                           type="checkbox"
                           checked={isCardSoundsEnabled}
-                          onChange={(event) => setPreference("cardSounds", event.target.checked)}
+                          onChange={(event) =>
+                            setPreference("cardSounds", event.target.checked)
+                          }
                         />
                         <span className="toggle__track" aria-hidden="true" />
                       </span>
                     </label>
                     <p className="modal__option-help">
-                      Mute card draws, turn alerts, reveal sounds, and swap effects.
+                      Mute card draws, turn alerts, reveal sounds, and swap
+                      effects.
                     </p>
                   </div>
                   <div className="modal__option">
@@ -411,7 +539,12 @@ export default function LobbyScreen() {
                           className="toggle__input"
                           type="checkbox"
                           checked={isBackgroundMusicEnabled}
-                          onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
+                          onChange={(event) =>
+                            setPreference(
+                              "backgroundMusic",
+                              event.target.checked,
+                            )
+                          }
                         />
                         <span className="toggle__track" aria-hidden="true" />
                       </span>
@@ -429,8 +562,12 @@ export default function LobbyScreen() {
                 aria-expanded={isAccessibilityOpen}
                 aria-controls="main-menu-accessibility-settings"
               >
-                <span className="modal__section-dropdown-label">Accessibility</span>
-                <span aria-hidden="true">{isAccessibilityOpen ? "▾" : "▸"}</span>
+                <span className="modal__section-dropdown-label">
+                  Accessibility
+                </span>
+                <span aria-hidden="true">
+                  {isAccessibilityOpen ? "▾" : "▸"}
+                </span>
               </button>
               <div
                 id="main-menu-accessibility-settings"
@@ -446,13 +583,16 @@ export default function LobbyScreen() {
                           className="toggle__input"
                           type="checkbox"
                           checked={showFirstTimeTips}
-                          onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                          onChange={(event) =>
+                            setPreference("firstTimeTips", event.target.checked)
+                          }
                         />
                         <span className="toggle__track" aria-hidden="true" />
                       </span>
                     </label>
                     <p className="modal__option-help">
-                      Show the quick hints about revealing, replacing, and swapping cards.
+                      Show the quick hints about revealing, replacing, and
+                      swapping cards.
                     </p>
                   </div>
                   <div className="modal__option">
@@ -463,13 +603,16 @@ export default function LobbyScreen() {
                           className="toggle__input"
                           type="checkbox"
                           checked={isAutoFollowEnabled}
-                          onChange={(event) => setPreference("autoFollow", event.target.checked)}
+                          onChange={(event) =>
+                            setPreference("autoFollow", event.target.checked)
+                          }
                         />
                         <span className="toggle__track" aria-hidden="true" />
                       </span>
                     </label>
                     <p className="modal__option-help">
-                      Automatically follow the active player after scrolling settles.
+                      Automatically follow the active player after scrolling
+                      settles.
                     </p>
                   </div>
                 </div>
@@ -512,13 +655,17 @@ export default function LobbyScreen() {
           >
             <div className="modal" onClick={(event) => event.stopPropagation()}>
               <h3 id="leaderboard-title">Leaderboard</h3>
-              <p className="leaderboard-sub mb-0">Lowest 10 scores of the season.</p>
-              <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
+              <p className="leaderboard-sub mb-0">
+                Lowest 10 scores of the season.
+              </p>
+              <p className="leaderboard-sub text-xs">
+                Entries expire after 90 days
+              </p>
 
               {!firebaseReady ? (
                 <p>
-                  Provide your Firebase environment variables to load leaderboard results.
-                  Missing keys:{" "}
+                  Provide your Firebase environment variables to load
+                  leaderboard results. Missing keys:{" "}
                   {missingFirebaseConfig.length
                     ? missingFirebaseConfig.join(", ")
                     : "Unknown (restart the dev server)."}
@@ -540,16 +687,24 @@ export default function LobbyScreen() {
                             {podiumLabels[index]}
                           </span>
                         ) : (
-                          <span className="leaderboard-list__rank">{index + 1}.</span>
+                          <span className="leaderboard-list__rank">
+                            {index + 1}.
+                          </span>
                         )}
-                        <span className="leaderboard-list__name">{entry.displayName}</span>
-                        <span className="leaderboard-list__score">{entry.score}</span>
+                        <span className="leaderboard-list__name">
+                          {entry.displayName}
+                        </span>
+                        <span className="leaderboard-list__score">
+                          {entry.score}
+                        </span>
                       </li>
                     );
                   })}
                 </ol>
               ) : (
-                <p className="tiny-bold">No scores yet. Finish a game to claim a spot!</p>
+                <p className="tiny-bold">
+                  No scores yet. Finish a game to claim a spot!
+                </p>
               )}
               <div className="modal__actions">
                 <button

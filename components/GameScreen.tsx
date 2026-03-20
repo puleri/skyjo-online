@@ -14,7 +14,13 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useRouter } from "next/navigation";
 import PlayerGrid from "./PlayerGrid";
 import SnowfallLayer from "./SnowfallLayer";
@@ -33,13 +39,34 @@ import {
   useItemCard,
 } from "../lib/gameActions";
 import { useAnonymousAuth } from "../lib/auth";
-import type { Card, ItemCard, ItemCode, SpikeItemCount } from "../lib/game/deck";
+import type {
+  Card,
+  ItemCard,
+  ItemCode,
+  SpikeItemCount,
+} from "../lib/game/deck";
 import { getModeDetails, getModeLabel } from "../lib/game/modeLabels";
-import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import {
+  db,
+  isFirebaseConfigured,
+  missingFirebaseConfig,
+} from "../lib/firebase";
 import { usePreferences } from "../lib/preferences";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
-import { CRITICAL_PRELOAD_GROUP_LABELS, PRELOAD_PRIORITY_GROUPS } from "../lib/assetPreloadManifest";
-import { clampLastFiveGames, type UserProfileGamePlacement } from "../lib/userProfile";
+import {
+  CRITICAL_PRELOAD_GROUP_LABELS,
+  PRELOAD_PRIORITY_GROUPS,
+} from "../lib/assetPreloadManifest";
+import {
+  clampLastFiveGames,
+  type UserProfileGamePlacement,
+} from "../lib/userProfile";
+import {
+  getNextLevelMetadata,
+  getProgressWithinLevel,
+  getTotalEarnedXpBreakdown,
+  isNextLevelMultipleOfFive,
+} from "../lib/progression";
 
 type GameScreenProps = {
   gameId: string;
@@ -133,7 +160,9 @@ function isLeaderboardEntryActive(expiresAt: unknown) {
 }
 
 const formatTurnLength = (milliseconds: number) => {
-  const safeMilliseconds = Number.isFinite(milliseconds) ? Math.max(0, Math.round(milliseconds)) : 0;
+  const safeMilliseconds = Number.isFinite(milliseconds)
+    ? Math.max(0, Math.round(milliseconds))
+    : 0;
   const totalSeconds = Math.floor(safeMilliseconds / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -149,25 +178,34 @@ const formatAverageValue = (total: number, count: number) => {
 
 export default function GameScreen({ gameId }: GameScreenProps) {
   const router = useRouter();
-  const drawTipMessage = "Click a card on your grid to either reveal or replace!";
-  const discardTipMessage = "Select a card on your grid to swap with the discard pile.";
+  const drawTipMessage =
+    "Click a card on your grid to either reveal or replace!";
+  const discardTipMessage =
+    "Select a card on your grid to swap with the discard pile.";
   const itemRevealTipMessage = "Select an unrevealed card to reveal.";
-  const recoveryRevealTipMessage = "Select a card to reveal and finish your turn.";
+  const recoveryRevealTipMessage =
+    "Select a card to reveal and finish your turn.";
   const firebaseReady = isFirebaseConfigured;
   const { uid, error: authError, isAnonymousUser } = useAnonymousAuth();
   const [game, setGame] = useState<GameMeta | null>(null);
   const [lobbyName, setLobbyName] = useState<string | null>(null);
-  const [playerSummaries, setPlayerSummaries] = useState<GamePlayerSummary[]>([]);
-  const [localPlayerState, setLocalPlayerState] = useState<GamePlayerState | null>(null);
+  const [playerSummaries, setPlayerSummaries] = useState<GamePlayerSummary[]>(
+    [],
+  );
+  const [localPlayerState, setLocalPlayerState] =
+    useState<GamePlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionSyncError, setActionSyncError] = useState<string | null>(null);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [activeActionIndex, setActiveActionIndex] = useState<number | null>(null);
+  const [activeActionIndex, setActiveActionIndex] = useState<number | null>(
+    null,
+  );
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUxSettingsOpen, setIsUxSettingsOpen] = useState(true);
-  const [isAccessibilitySettingsOpen, setIsAccessibilitySettingsOpen] = useState(true);
+  const [isAccessibilitySettingsOpen, setIsAccessibilitySettingsOpen] =
+    useState(true);
   const [isLeaveGameModalOpen, setIsLeaveGameModalOpen] = useState(false);
   const [isModeTooltipOpen, setIsModeTooltipOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
@@ -179,9 +217,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     snow: isSnowEnabled,
     autoFollow: autoFollowPreferenceEnabled,
   } = preferences;
-  const [isAutoFollowEnabled, setIsAutoFollowEnabled] = useState(autoFollowPreferenceEnabled);
+  const [isAutoFollowEnabled, setIsAutoFollowEnabled] = useState(
+    autoFollowPreferenceEnabled,
+  );
   const [showDockedPiles, setShowDockedPiles] = useState(false);
-  const [spectators, setSpectators] = useState<Array<{ id: string; displayName: string }>>([]);
+  const [spectators, setSpectators] = useState<
+    Array<{ id: string; displayName: string }>
+  >([]);
   const endingAnnouncementRef = useRef<string | null>(null);
   const gamePilesRef = useRef<HTMLDivElement | null>(null);
   const playerListContainerRef = useRef<HTMLDivElement | null>(null);
@@ -195,16 +237,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
   const [isFinalTurnOverlayOpen, setIsFinalTurnOverlayOpen] = useState(false);
-  const [dismissedFinalTurnForEndingPlayerId, setDismissedFinalTurnForEndingPlayerId] =
-    useState<string | null>(null);
+  const [
+    dismissedFinalTurnForEndingPlayerId,
+    setDismissedFinalTurnForEndingPlayerId,
+  ] = useState<string | null>(null);
   const [isColdOverlayOpen, setIsColdOverlayOpen] = useState(false);
-  const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<number | null>(null);
+  const [dismissedColdOverlayRound, setDismissedColdOverlayRound] = useState<
+    number | null
+  >(null);
   const [isSpikedOverlayOpen, setIsSpikedOverlayOpen] = useState(false);
-  const [dismissedSpikedOverlayRound, setDismissedSpikedOverlayRound] = useState<number | null>(null);
+  const [dismissedSpikedOverlayRound, setDismissedSpikedOverlayRound] =
+    useState<number | null>(null);
   const [isClearingOverlayOpen, setIsClearingOverlayOpen] = useState(false);
-  const [dismissedClearingOverlayRound, setDismissedClearingOverlayRound] = useState<number | null>(null);
+  const [dismissedClearingOverlayRound, setDismissedClearingOverlayRound] =
+    useState<number | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<
+    LeaderboardEntry[]
+  >([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
   const userLastFiveGamesUpdateRef = useRef(new Set<string>());
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
@@ -234,7 +284,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const betweenRoundsGainRef = useRef<GainNode | null>(null);
   const itemImpactSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const itemLoopSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const activeItemSoundRef = useRef<{ playerId: string; itemCode: ItemCode } | null>(null);
+  const activeItemSoundRef = useRef<{
+    playerId: string;
+    itemCode: ItemCode;
+  } | null>(null);
   const shouldPlayBetweenRoundsRef = useRef(false);
   const hasInitializedTurnSoundRef = useRef(false);
   const lastTurnSoundKeyRef = useRef<string | null>(null);
@@ -242,6 +295,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const actionWatchdogTimerRef = useRef<number | null>(null);
   const hasStartedProgressivePreloadRef = useRef(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
+  const [localPlayerExperiencePreview, setLocalPlayerExperiencePreview] =
+    useState<{
+      totalExperience: number;
+      level: number;
+      nextLevel: number | null;
+      xpRemaining: number;
+      showRewardPreview: boolean;
+    } | null>(null);
   const players = useMemo<GamePlayer[]>(() => {
     return playerSummaries.map((player) => {
       const summaryState = {
@@ -258,7 +319,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         return { ...player, ...summaryState, ...(localPlayerState ?? {}) };
       }
       if (isMisted) {
-        return { ...player, ...summaryState, grid: maskedGrid, revealed: maskedRevealed };
+        return {
+          ...player,
+          ...summaryState,
+          grid: maskedGrid,
+          revealed: maskedRevealed,
+        };
       }
       return { ...player, ...summaryState };
     });
@@ -354,7 +420,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const isItemCard = (value: Card | null | undefined): value is ItemCard =>
     value != null && typeof value === "object" && value.kind === "item";
 
-  const itemCardDetails: Record<ItemCode, { name: string; image: string; eyebrow: string }> = {
+  const itemCardDetails: Record<
+    ItemCode,
+    { name: string; image: string; eyebrow: string }
+  > = {
     C: { name: "Wild", image: "/cards/wild.png", eyebrow: "Wild" },
     E: { name: "Swap", image: "/cards/swap.png", eyebrow: "Swap" },
     F: { name: "Mist", image: "/cards/mist.png", eyebrow: "Mist" },
@@ -377,7 +446,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return (
       <span className="card__item-content">
         <span className="card__item-eyebrow">{details.eyebrow}</span>
-        <img className="card__item-art" src={details.image} alt={`${details.name} item art`} />
+        <img
+          className="card__item-art"
+          src={details.image}
+          alt={`${details.name} item art`}
+        />
       </span>
     );
   };
@@ -429,7 +502,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       }
     });
 
-  const preloadAsset = async (path: string, type: "image" | "audio" | "fetch") => {
+  const preloadAsset = async (
+    path: string,
+    type: "image" | "audio" | "fetch",
+  ) => {
     if (type === "audio") {
       await loadAudioBuffer(path);
       return;
@@ -442,17 +518,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const preloadGroup = async (label: string) => {
-    const group = PRELOAD_PRIORITY_GROUPS.find((candidate) => candidate.label === label);
+    const group = PRELOAD_PRIORITY_GROUPS.find(
+      (candidate) => candidate.label === label,
+    );
     if (!group) {
       return;
     }
 
-    const shouldSkipAudio = !isCardSoundsEnabled && group.assets.some((asset) => asset.type === "audio");
+    const shouldSkipAudio =
+      !isCardSoundsEnabled &&
+      group.assets.some((asset) => asset.type === "audio");
     if (shouldSkipAudio) {
       return;
     }
 
-    await Promise.allSettled(group.assets.map((asset) => preloadAsset(asset.path, asset.type)));
+    await Promise.allSettled(
+      group.assets.map((asset) => preloadAsset(asset.path, asset.type)),
+    );
   };
 
   useEffect(() => {
@@ -464,17 +546,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const minimumOverlayDurationMs = 2000;
     let minimumOverlayTimer: number | null = null;
     const minimumDelayPromise = new Promise((resolve) => {
-      minimumOverlayTimer = window.setTimeout(resolve, minimumOverlayDurationMs);
+      minimumOverlayTimer = window.setTimeout(
+        resolve,
+        minimumOverlayDurationMs,
+      );
     });
 
     const preloadCritical = Promise.all(
-      CRITICAL_PRELOAD_GROUP_LABELS.map((label) => preloadGroup(label))
+      CRITICAL_PRELOAD_GROUP_LABELS.map((label) => preloadGroup(label)),
     );
 
-    Promise.allSettled([
-      preloadCritical,
-      minimumDelayPromise,
-    ]).then(() => {
+    Promise.allSettled([preloadCritical, minimumDelayPromise]).then(() => {
       if (isActive) {
         setShowLoadingOverlay(false);
       }
@@ -489,7 +571,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || hasStartedProgressivePreloadRef.current) {
+    if (
+      typeof window === "undefined" ||
+      hasStartedProgressivePreloadRef.current
+    ) {
       return;
     }
 
@@ -517,7 +602,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     window.addEventListener("click", handleFirstInteraction, { once: true });
     window.addEventListener("keydown", handleFirstInteraction, { once: true });
-    window.addEventListener("touchstart", handleFirstInteraction, { once: true });
+    window.addEventListener("touchstart", handleFirstInteraction, {
+      once: true,
+    });
 
     return () => {
       window.removeEventListener("click", handleFirstInteraction);
@@ -594,7 +681,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     gainNode.gain.setValueAtTime(0, now);
     gainNode.gain.linearRampToValueAtTime(
       BETWEEN_ROUNDS_TARGET_VOLUME,
-      now + BETWEEN_ROUNDS_FADE_IN_SECONDS
+      now + BETWEEN_ROUNDS_FADE_IN_SECONDS,
     );
     source.start(0);
     betweenRoundsSourceRef.current = source;
@@ -647,7 +734,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     };
   };
 
-  const playItemDrawSoundSequence = async (playerId: string, code: ItemCode) => {
+  const playItemDrawSoundSequence = async (
+    playerId: string,
+    code: ItemCode,
+  ) => {
     if (!isCardSoundsEnabled) {
       return;
     }
@@ -663,7 +753,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       loadAudioBuffer(loop),
     ]);
 
-    if (!impactBuffer || !loopBuffer || audioContextRef.current !== audioContext) {
+    if (
+      !impactBuffer ||
+      !loopBuffer ||
+      audioContextRef.current !== audioContext
+    ) {
       return;
     }
 
@@ -744,7 +838,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     playSound(soundPath);
   };
 
-  const areCardsEqual = (first: Card | null | undefined, second: Card | null | undefined) => {
+  const areCardsEqual = (
+    first: Card | null | undefined,
+    second: Card | null | undefined,
+  ) => {
     if (first == null || second == null) {
       return first === second;
     }
@@ -796,24 +893,38 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           roundNumber: (data.roundNumber as number | undefined) ?? 1,
           turnPhase: (data.turnPhase as string | undefined) ?? "choose-draw",
           spikeMode: Boolean(data.spikeMode),
-          spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
+          spikeItemCount:
+            (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
           spikeRowClear: Boolean(data.spikeRowClear),
-          spikeEndGameBonuses: (data.spikeEndGameBonuses as boolean | undefined) ?? true,
-          endingPlayerId: (data.endingPlayerId as string | null | undefined) ?? null,
+          spikeEndGameBonuses:
+            (data.spikeEndGameBonuses as boolean | undefined) ?? true,
+          endingPlayerId:
+            (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
             ? (data.finalTurnRemainingIds as string[])
             : null,
           selectedDiscardPlayerId:
             (data.selectedDiscardPlayerId as string | null | undefined) ?? null,
-          roundScores: (data.roundScores as Record<string, number> | undefined) ?? undefined,
+          roundScores:
+            (data.roundScores as Record<string, number> | undefined) ??
+            undefined,
           roundClearingPlayerIds:
             (data.roundClearingPlayerIds as string[] | undefined) ?? undefined,
-          lastTurnPlayerId: (data.lastTurnPlayerId as string | null | undefined) ?? null,
-          lastTurnAction: (data.lastTurnAction as string | null | undefined) ?? null,
-          lastTurnActionAt: (data.lastTurnActionAt as Timestamp | null | undefined) ?? null,
+          lastTurnPlayerId:
+            (data.lastTurnPlayerId as string | null | undefined) ?? null,
+          lastTurnAction:
+            (data.lastTurnAction as string | null | undefined) ?? null,
+          lastTurnActionAt:
+            (data.lastTurnActionAt as Timestamp | null | undefined) ?? null,
           lastClearType:
-            (data.lastClearType as "row" | "column" | "row-column" | null | undefined) ?? null,
-          lastClearTypeAt: (data.lastClearTypeAt as Timestamp | null | undefined) ?? null,
+            (data.lastClearType as
+              | "row"
+              | "column"
+              | "row-column"
+              | null
+              | undefined) ?? null,
+          lastClearTypeAt:
+            (data.lastClearTypeAt as Timestamp | null | undefined) ?? null,
           endGameBonusResults:
             (data.endGameBonusResults as
               | {
@@ -824,12 +935,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               | null
               | undefined) ?? null,
           turnTimeSubmissionsMs:
-            (data.turnTimeSubmissionsMs as Record<string, number> | undefined) ?? undefined,
+            (data.turnTimeSubmissionsMs as
+              | Record<string, number>
+              | undefined) ?? undefined,
         });
       },
       (err) => {
         setError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -854,7 +967,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       },
       (err) => {
         setError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -923,8 +1036,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const currentSelectedDiscardPlayerId = game?.selectedDiscardPlayerId ?? null;
-    const previousSelectedDiscardPlayerId = lastSelectedDiscardPlayerIdRef.current;
+    const currentSelectedDiscardPlayerId =
+      game?.selectedDiscardPlayerId ?? null;
+    const previousSelectedDiscardPlayerId =
+      lastSelectedDiscardPlayerIdRef.current;
     const hasTopDiscard = (game?.discard?.length ?? 0) > 0;
 
     if (!hasInitializedDiscardSelectSoundRef.current) {
@@ -951,7 +1066,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     const action = game.lastTurnAction ?? null;
     const actionKey = String(
-      game.lastTurnActionAt?.toMillis?.() ?? `${game.lastTurnPlayerId ?? "none"}:${action ?? "none"}`
+      game.lastTurnActionAt?.toMillis?.() ??
+        `${game.lastTurnPlayerId ?? "none"}:${action ?? "none"}`,
     );
     if (!hasInitializedActionSoundRef.current) {
       hasInitializedActionSoundRef.current = true;
@@ -978,7 +1094,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const clearType = game.lastClearType ?? null;
     const clearKey = String(
       game.lastClearTypeAt?.toMillis?.() ??
-        `${game.lastTurnPlayerId ?? "none"}:${clearType ?? "none"}`
+        `${game.lastTurnPlayerId ?? "none"}:${clearType ?? "none"}`,
     );
 
     if (!hasInitializedClearSoundRef.current) {
@@ -1006,17 +1122,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const leaderboardQuery = query(collection(db, "leaderboard"), orderBy("score", "asc"));
+    const leaderboardQuery = query(
+      collection(db, "leaderboard"),
+      orderBy("score", "asc"),
+    );
     const unsubscribe = onSnapshot(
       leaderboardQuery,
       (snapshot) => {
         const expiredEntries = snapshot.docs.filter(
-          (entry) => !isLeaderboardEntryActive(entry.data().expiresAt)
+          (entry) => !isLeaderboardEntryActive(entry.data().expiresAt),
         );
         if (expiredEntries.length) {
-          void Promise.all(expiredEntries.map((entry) => deleteDoc(entry.ref))).catch(
-            (err: Error) => setError(err.message)
-          );
+          void Promise.all(
+            expiredEntries.map((entry) => deleteDoc(entry.ref)),
+          ).catch((err: Error) => setError(err.message));
         }
 
         setLeaderboardEntries(
@@ -1027,22 +1146,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               const data = entry.data();
               return {
                 id: entry.id,
-                displayName: (data.displayName as string | undefined) ?? "Anonymous player",
+                displayName:
+                  (data.displayName as string | undefined) ??
+                  "Anonymous player",
                 score: (data.score as number | undefined) ?? 0,
                 gameId: (data.gameId as string | null | undefined) ?? null,
                 playerId: (data.playerId as string | null | undefined) ?? null,
               };
-            })
+            }),
         );
       },
       (err) => {
         setError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, [firebaseReady, isLeaderboardOpen]);
-
 
   useEffect(() => {
     if (!firebaseReady || !gameId) {
@@ -1057,25 +1177,38 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           const data = playerDoc.data();
           return {
             id: playerDoc.id,
-            displayName: (data.displayName as string | undefined) ?? "Anonymous player",
+            displayName:
+              (data.displayName as string | undefined) ?? "Anonymous player",
             isReady: Boolean(data.isReady),
             totalScore: (data.totalScore as number | undefined) ?? undefined,
-            revealedCount: (data.revealedCount as number | undefined) ?? undefined,
-            mistTurnsRemaining: (data.mistTurnsRemaining as number | null | undefined) ?? null,
+            revealedCount:
+              (data.revealedCount as number | undefined) ?? undefined,
+            mistTurnsRemaining:
+              (data.mistTurnsRemaining as number | null | undefined) ?? null,
             sprintTurnsRemaining:
               (data.sprintTurnsRemaining as number | null | undefined) ?? null,
             publicGrid: Array.isArray(data.publicGrid)
               ? (data.publicGrid as Array<Card | null>)
               : undefined,
-            revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
+            revealed: Array.isArray(data.revealed)
+              ? (data.revealed as boolean[])
+              : undefined,
             pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
             pendingDrawSource:
-              (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
-            pointsClearedFromRows: (data.pointsClearedFromRows as number | undefined) ?? 0,
+              (data.pendingDrawSource as
+                | "deck"
+                | "discard"
+                | null
+                | undefined) ?? null,
+            pointsClearedFromRows:
+              (data.pointsClearedFromRows as number | undefined) ?? 0,
             pointsDiscarded: (data.pointsDiscarded as number | undefined) ?? 0,
-            discardedCardCount: (data.discardedCardCount as number | undefined) ?? 0,
-            revealedCardValueTotal: (data.revealedCardValueTotal as number | undefined) ?? 0,
-            revealedCardCount: (data.revealedCardCount as number | undefined) ?? 0,
+            discardedCardCount:
+              (data.discardedCardCount as number | undefined) ?? 0,
+            revealedCardValueTotal:
+              (data.revealedCardValueTotal as number | undefined) ?? 0,
+            revealedCardCount:
+              (data.revealedCardCount as number | undefined) ?? 0,
             itemCardsDrawn: (data.itemCardsDrawn as number | undefined) ?? 0,
             roundSpiked: Boolean(data.roundSpiked),
           };
@@ -1084,7 +1217,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       },
       (err) => {
         setError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -1106,18 +1239,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         }
         const data = snapshot.data();
         setLocalPlayerState({
-          grid: Array.isArray(data.grid) ? (data.grid as Array<Card | null>) : undefined,
-          revealed: Array.isArray(data.revealed) ? (data.revealed as boolean[]) : undefined,
+          grid: Array.isArray(data.grid)
+            ? (data.grid as Array<Card | null>)
+            : undefined,
+          revealed: Array.isArray(data.revealed)
+            ? (data.revealed as boolean[])
+            : undefined,
           pendingDraw: (data.pendingDraw as Card | null | undefined) ?? null,
           pendingDrawSource:
-            (data.pendingDrawSource as "deck" | "discard" | null | undefined) ?? null,
+            (data.pendingDrawSource as "deck" | "discard" | null | undefined) ??
+            null,
           sprintTurnsRemaining:
             (data.sprintTurnsRemaining as number | null | undefined) ?? null,
         });
       },
       (err) => {
         setError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -1135,13 +1273,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         setSpectators(
           snapshot.docs.map((doc) => ({
             id: doc.id,
-            displayName: (doc.data().displayName as string | undefined) ?? "Anonymous spectator",
-          }))
+            displayName:
+              (doc.data().displayName as string | undefined) ??
+              "Anonymous spectator",
+          })),
         );
       },
       (err) => {
         setError(err.message);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -1161,27 +1301,48 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const ordered = game.activePlayerOrder
       .map((playerId) => playerMap.get(playerId))
       .filter((player): player is GamePlayer => Boolean(player));
-    const remaining = players.filter((player) => !game.activePlayerOrder.includes(player.id));
+    const remaining = players.filter(
+      (player) => !game.activePlayerOrder.includes(player.id),
+    );
     return [...ordered, ...remaining];
   }, [game?.activePlayerOrder, players]);
 
   const getItemTargetLabel = (target: ItemSelectionTarget) => {
-    const targetPlayer = orderedPlayers.find((player) => player.id === target.playerId);
-    const isTargetCardRevealed = Boolean(targetPlayer?.revealed?.[target.index]);
-    const targetCard = targetPlayer?.grid?.[target.index] ?? targetPlayer?.publicGrid?.[target.index] ?? null;
+    const targetPlayer = orderedPlayers.find(
+      (player) => player.id === target.playerId,
+    );
+    const isTargetCardRevealed = Boolean(
+      targetPlayer?.revealed?.[target.index],
+    );
+    const targetCard =
+      targetPlayer?.grid?.[target.index] ??
+      targetPlayer?.publicGrid?.[target.index] ??
+      null;
 
-    if (isTargetCardRevealed && targetCard !== null && targetCard !== undefined) {
+    if (
+      isTargetCardRevealed &&
+      targetCard !== null &&
+      targetCard !== undefined
+    ) {
       return getCardLabel(targetCard);
     }
 
-    return <img className="item-panel__target-question" src="/question-mark-icon.png" alt="Hidden card" />;
+    return (
+      <img
+        className="item-panel__target-question"
+        src="/question-mark-icon.png"
+        alt="Hidden card"
+      />
+    );
   };
 
   const displayPlayers = useMemo(() => {
     if (!uid) {
       return orderedPlayers;
     }
-    const localPlayerIndex = orderedPlayers.findIndex((player) => player.id === uid);
+    const localPlayerIndex = orderedPlayers.findIndex(
+      (player) => player.id === uid,
+    );
     if (localPlayerIndex === -1) {
       return orderedPlayers;
     }
@@ -1194,14 +1355,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const currentPlayer = useMemo(
     () =>
       game?.currentPlayerId
-        ? orderedPlayers.find((player) => player.id === game.currentPlayerId) ?? null
+        ? (orderedPlayers.find(
+            (player) => player.id === game.currentPlayerId,
+          ) ?? null)
         : null,
-    [game?.currentPlayerId, orderedPlayers]
+    [game?.currentPlayerId, orderedPlayers],
   );
   const shouldShowAutoFollowWidget = Boolean(
-    uid && game?.status === "playing" && game?.currentPlayerId && autoFollowPreferenceEnabled
+    uid &&
+    game?.status === "playing" &&
+    game?.currentPlayerId &&
+    autoFollowPreferenceEnabled,
   );
-  const isAutoFollowActive = shouldShowAutoFollowWidget && isAutoFollowEnabled && !isAutoFollowSuspended;
+  const isAutoFollowActive =
+    shouldShowAutoFollowWidget && isAutoFollowEnabled && !isAutoFollowSuspended;
 
   useEffect(() => {
     setIsAutoFollowEnabled(autoFollowPreferenceEnabled);
@@ -1256,9 +1423,23 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     };
 
     const playerListContainer = playerListContainerRef.current;
-    const interactionEvents: Array<keyof WindowEventMap> = ["wheel", "touchmove"];
+    const interactionEvents: Array<keyof WindowEventMap> = [
+      "wheel",
+      "touchmove",
+    ];
     const keyboardHandler = (event: KeyboardEvent) => {
-      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Tab"].includes(event.key)) {
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "PageUp",
+          "PageDown",
+          "Home",
+          "End",
+          " ",
+          "Tab",
+        ].includes(event.key)
+      ) {
         handleInteraction();
       }
     };
@@ -1267,9 +1448,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     window.addEventListener("keydown", keyboardHandler, { passive: true });
     interactionEvents.forEach((eventName) => {
       window.addEventListener(eventName, handleInteraction, { passive: true });
-      playerListContainer?.addEventListener(eventName, handleInteraction, { passive: true });
+      playerListContainer?.addEventListener(eventName, handleInteraction, {
+        passive: true,
+      });
     });
-    playerListContainer?.addEventListener("scroll", handleInteraction, { passive: true });
+    playerListContainer?.addEventListener("scroll", handleInteraction, {
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener("scroll", handleInteraction);
@@ -1287,7 +1472,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [shouldShowAutoFollowWidget]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !isAutoFollowActive || !uid || !game?.currentPlayerId) {
+    if (
+      typeof window === "undefined" ||
+      !isAutoFollowActive ||
+      !uid ||
+      !game?.currentPlayerId
+    ) {
       lastAutoFollowAttemptKeyRef.current = null;
       if (autoFollowScrollTimerRef.current !== null) {
         window.clearTimeout(autoFollowScrollTimerRef.current);
@@ -1296,21 +1486,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    const autoFollowTargetPlayerId = game.currentPlayerId === uid ? uid : game.currentPlayerId;
-    const activePlayerElement = playerGridRefs.current[autoFollowTargetPlayerId];
+    const autoFollowTargetPlayerId =
+      game.currentPlayerId === uid ? uid : game.currentPlayerId;
+    const activePlayerElement =
+      playerGridRefs.current[autoFollowTargetPlayerId];
     if (!activePlayerElement) {
       return;
     }
 
     const viewportMargin = 32;
     const activePlayerRect = activePlayerElement.getBoundingClientRect();
-    const containerRect = playerListContainerRef.current?.getBoundingClientRect() ?? null;
-    const visibleTop = containerRect ? Math.max(containerRect.top, viewportMargin) : viewportMargin;
+    const containerRect =
+      playerListContainerRef.current?.getBoundingClientRect() ?? null;
+    const visibleTop = containerRect
+      ? Math.max(containerRect.top, viewportMargin)
+      : viewportMargin;
     const visibleBottom = containerRect
       ? Math.min(containerRect.bottom, window.innerHeight - viewportMargin)
       : window.innerHeight - viewportMargin;
     const isAdequatelyVisible =
-      activePlayerRect.top >= visibleTop && activePlayerRect.bottom <= visibleBottom;
+      activePlayerRect.top >= visibleTop &&
+      activePlayerRect.bottom <= visibleBottom;
     const autoFollowAttemptKey = `${autoFollowTargetPlayerId}:${isAutoFollowActive}`;
 
     if (isAdequatelyVisible) {
@@ -1327,7 +1523,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     autoFollowScrollTimerRef.current = window.setTimeout(() => {
-      autoFollowScrollIgnoreUntilRef.current = Date.now() + (prefersReducedMotion ? 200 : 900);
+      autoFollowScrollIgnoreUntilRef.current =
+        Date.now() + (prefersReducedMotion ? 200 : 900);
       activePlayerElement.scrollIntoView({
         behavior: prefersReducedMotion ? "auto" : "smooth",
         block: prefersReducedMotion ? "nearest" : "center",
@@ -1343,13 +1540,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         autoFollowScrollTimerRef.current = null;
       }
     };
-  }, [displayPlayers, game?.currentPlayerId, isAutoFollowActive, prefersReducedMotion, uid]);
+  }, [
+    displayPlayers,
+    game?.currentPlayerId,
+    isAutoFollowActive,
+    prefersReducedMotion,
+    uid,
+  ]);
 
   const lastTurnSummary = useMemo(() => {
     if (!game || !game.lastTurnPlayerId || !game.lastTurnAction) {
       return "First turn of the game";
     }
-    const lastPlayer = orderedPlayers.find((player) => player.id === game.lastTurnPlayerId);
+    const lastPlayer = orderedPlayers.find(
+      (player) => player.id === game.lastTurnPlayerId,
+    );
     const lastPlayerName = lastPlayer?.displayName ?? "Previous player";
     return `${lastPlayerName} ${game.lastTurnAction}`;
   }, [game, orderedPlayers]);
@@ -1374,12 +1579,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       Array.from(gameId).reduce((hash, char, index) => {
         return hash + char.charCodeAt(0) * (index + 1);
       }, 0),
-    [gameId]
+    [gameId],
   );
   const getDiscardTransformStyle = (
     discardIndex: number,
     discardCount: number,
-    seed: number
+    seed: number,
   ): CSSProperties => {
     if (discardCount <= 0 || discardIndex < 0 || discardIndex >= discardCount) {
       return {};
@@ -1408,17 +1613,19 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     } as CSSProperties;
   };
   const topDiscard =
-    game?.discard && game.discard.length > 0 ? game.discard[game.discard.length - 1] : null;
+    game?.discard && game.discard.length > 0
+      ? game.discard[game.discard.length - 1]
+      : null;
   const hasCardValue = (value: Card | null | undefined): value is Card =>
     value !== null && value !== undefined;
   const hasDiscard = hasCardValue(topDiscard);
   const discardTransformSeed = useMemo(
     () => gameIdHash * 0.013 + (game?.roundNumber ?? 0) * 0.73,
-    [game?.roundNumber, gameIdHash]
+    [game?.roundNumber, gameIdHash],
   );
   const drawTransformSeed = useMemo(
     () => gameIdHash * 0.021 + (game?.roundNumber ?? 0) * 0.41,
-    [game?.roundNumber, gameIdHash]
+    [game?.roundNumber, gameIdHash],
   );
   const discardStackCards = useMemo(() => {
     const discardPile = game?.discard ?? [];
@@ -1431,7 +1638,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         card,
         discardIndex,
         isTopCard: discardIndex === discardPile.length - 1,
-        style: getDiscardTransformStyle(discardIndex, discardPile.length, discardTransformSeed),
+        style: getDiscardTransformStyle(
+          discardIndex,
+          discardPile.length,
+          discardTransformSeed,
+        ),
       };
     });
   }, [discardTransformSeed, game?.discard]);
@@ -1439,7 +1650,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const getDrawTransformStyle = (
     drawIndex: number,
     drawCount: number,
-    seed: number
+    seed: number,
   ): CSSProperties => {
     if (drawCount <= 0 || drawIndex < 0 || drawIndex >= drawCount) {
       return {};
@@ -1479,7 +1690,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return {
         drawIndex,
         isTopCard: drawIndex === drawPile.length - 1,
-        style: getDrawTransformStyle(drawIndex, drawPile.length, drawTransformSeed),
+        style: getDrawTransformStyle(
+          drawIndex,
+          drawPile.length,
+          drawTransformSeed,
+        ),
       };
     });
   }, [drawTransformSeed, game?.deck]);
@@ -1509,10 +1724,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <span className="card-back-image" aria-hidden="true" />
             </button>
           ) : (
-            <div key={`draw-${drawIndex}`} className="card-back-button card-back-button--stack" style={style}>
+            <div
+              key={`draw-${drawIndex}`}
+              className="card-back-button card-back-button--stack"
+              style={style}
+            >
               <span className="card-back-image" aria-hidden="true" />
             </div>
-          )
+          ),
         )}
       </div>
     );
@@ -1558,14 +1777,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <span className="card__value">{getCardLabel(card)}</span>
               )}
             </div>
-          )
+          ),
         )}
       </div>
     );
   };
-  const isCurrentTurn = Boolean(uid && game?.currentPlayerId && uid === game.currentPlayerId);
+  const isCurrentTurn = Boolean(
+    uid && game?.currentPlayerId && uid === game.currentPlayerId,
+  );
   const isSprinting = Boolean(
-    isCurrentTurn && (currentPlayer?.sprintTurnsRemaining ?? 0) > 0
+    isCurrentTurn && (currentPlayer?.sprintTurnsRemaining ?? 0) > 0,
   );
   const isHost = Boolean(uid && game?.hostId && uid === game.hostId);
   const isRoundComplete = game?.status === "round-complete";
@@ -1588,10 +1809,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       game.spikeMode,
       game.spikeItemCount,
       game.spikeRowClear,
-      game.spikeEndGameBonuses
+      game.spikeEndGameBonuses,
     );
   }, [game]);
-  const isLocalPlayer = Boolean(uid && players.some((player) => player.id === uid));
+  const isLocalPlayer = Boolean(
+    uid && players.some((player) => player.id === uid),
+  );
 
   useEffect(() => {
     localTurnTimeMsRef.current = 0;
@@ -1599,7 +1822,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [gameId]);
 
   useEffect(() => {
-    const shouldTrackCurrentTurn = Boolean(uid && isCurrentTurn && isGameActive);
+    const shouldTrackCurrentTurn = Boolean(
+      uid && isCurrentTurn && isGameActive,
+    );
 
     if (shouldTrackCurrentTurn) {
       if (currentTurnStartedAtRef.current === null) {
@@ -1609,7 +1834,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     if (currentTurnStartedAtRef.current !== null) {
-      localTurnTimeMsRef.current += Math.max(0, Date.now() - currentTurnStartedAtRef.current);
+      localTurnTimeMsRef.current += Math.max(
+        0,
+        Date.now() - currentTurnStartedAtRef.current,
+      );
       currentTurnStartedAtRef.current = null;
     }
   }, [isCurrentTurn, isGameActive, uid]);
@@ -1629,13 +1857,18 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     const inProgressTurnMs =
-      currentTurnStartedAtRef.current !== null ? Math.max(0, Date.now() - currentTurnStartedAtRef.current) : 0;
+      currentTurnStartedAtRef.current !== null
+        ? Math.max(0, Date.now() - currentTurnStartedAtRef.current)
+        : 0;
     const totalTurnTimeMs = localTurnTimeMsRef.current + inProgressTurnMs;
 
     submittedTurnTimeGamesRef.current.add(gameId);
     submitEndGameTurnTime(gameId, uid, totalTurnTimeMs).catch((submitError) => {
       submittedTurnTimeGamesRef.current.delete(gameId);
-      const message = submitError instanceof Error ? submitError.message : "Unable to submit turn time.";
+      const message =
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to submit turn time.";
       setActionSyncError(message);
     });
   }, [firebaseReady, game, gameId, isGameComplete, isLocalPlayer, uid]);
@@ -1723,17 +1956,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return orderedPlayers.some((player) => player.roundSpiked);
   }, [isRoundComplete, orderedPlayers]);
   const selectedPlayer = useMemo(
-    () => orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
-    [orderedPlayers]
+    () =>
+      orderedPlayers.find((player) => hasCardValue(player.pendingDraw)) ?? null,
+    [orderedPlayers],
   );
   const selectedDiscardPlayer = useMemo(
     () =>
       game?.selectedDiscardPlayerId
-        ? orderedPlayers.find((player) => player.id === game.selectedDiscardPlayerId) ?? null
+        ? (orderedPlayers.find(
+            (player) => player.id === game.selectedDiscardPlayerId,
+          ) ?? null)
         : null,
-    [game?.selectedDiscardPlayerId, orderedPlayers]
+    [game?.selectedDiscardPlayerId, orderedPlayers],
   );
-  const discardSelectedCard = selectedDiscardPlayer && hasDiscard ? topDiscard : null;
+  const discardSelectedCard =
+    selectedDiscardPlayer && hasDiscard ? topDiscard : null;
   const selectedCardOwnerLabel = selectedPlayer
     ? selectedPlayer.id === uid
       ? "You drew this card"
@@ -1756,12 +1993,20 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       ? "From discard pile"
       : awaitingDrawSourceLabel;
   const pendingDrawnCard = currentPlayer?.pendingDraw ?? null;
-  const pendingItemCard = isItemCard(pendingDrawnCard) ? pendingDrawnCard : null;
+  const pendingItemCard = isItemCard(pendingDrawnCard)
+    ? pendingDrawnCard
+    : null;
   const isPendingItem = pendingItemCard !== null;
   const isResolvingItem =
-    isCurrentTurn && isGameActive && game?.turnPhase === "resolve-item" && isPendingItem;
+    isCurrentTurn &&
+    isGameActive &&
+    game?.turnPhase === "resolve-item" &&
+    isPendingItem;
   const isItemRevealPending =
-    pendingItemReveal && isCurrentTurn && isGameActive && game?.turnPhase === "resolve";
+    pendingItemReveal &&
+    isCurrentTurn &&
+    isGameActive &&
+    game?.turnPhase === "resolve";
   const isRevealRecoveryActive =
     isCurrentTurn &&
     isGameActive &&
@@ -1769,7 +2014,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     !hasCardValue(currentPlayer?.pendingDraw) &&
     !isSprinting;
   const discardSelectionActive =
-    Boolean(game?.selectedDiscardPlayerId) && game?.selectedDiscardPlayerId === uid;
+    Boolean(game?.selectedDiscardPlayerId) &&
+    game?.selectedDiscardPlayerId === uid;
   const canDrawFromDeck =
     isCurrentTurn &&
     isGameActive &&
@@ -1786,8 +2032,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     !isSprinting &&
     !isSubmittingAction &&
     (game?.discard.length ?? 0) > 0;
-  const showDrawnCard = isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
-  const showSelectedCard = hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
+  const showDrawnCard =
+    isCurrentTurn && hasCardValue(currentPlayer?.pendingDraw);
+  const showSelectedCard =
+    hasCardValue(selectedPlayer?.pendingDraw) || discardSelectedCard !== null;
   const selectedCardValue = selectedPlayer?.pendingDraw ?? discardSelectedCard;
   const selectedCardAnimationSignature = showSelectedCard
     ? JSON.stringify({
@@ -1801,18 +2049,26 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       ({
         "--selected-mask-image": `url("/animations/selected.GIF?play=${selectedCardAnimationId}")`,
       }) as CSSProperties,
-    [selectedCardAnimationId]
+    [selectedCardAnimationId],
   );
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const canSelectGridCard =
     isGameActive &&
-    (showDrawnCard || discardSelectionActive || isItemRevealPending || isRevealRecoveryActive) &&
+    (showDrawnCard ||
+      discardSelectionActive ||
+      isItemRevealPending ||
+      isRevealRecoveryActive) &&
     !isResolvingItem &&
     !isSubmittingAction;
-  const itemValueOptions = useMemo(() => Array.from({ length: 16 }, (_, index) => index - 2), []);
+  const itemValueOptions = useMemo(
+    () => Array.from({ length: 16 }, (_, index) => index - 2),
+    [],
+  );
   const pendingItem = isPendingItem ? pendingItemCard : null;
   const itemCode = pendingItem?.code ?? null;
-  const itemName = itemCode ? itemCardDetails[itemCode]?.name ?? itemCode : null;
+  const itemName = itemCode
+    ? (itemCardDetails[itemCode]?.name ?? itemCode)
+    : null;
   const itemTargetsNeeded =
     itemCode === "E" || itemCode === "H"
       ? 2
@@ -1838,7 +2094,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    if (previousSelectedCardSignatureRef.current !== selectedCardAnimationSignature) {
+    if (
+      previousSelectedCardSignatureRef.current !==
+      selectedCardAnimationSignature
+    ) {
       previousSelectedCardSignatureRef.current = selectedCardAnimationSignature;
       setSelectedCardAnimationId((currentId) => currentId + 1);
     }
@@ -1898,7 +2157,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    if (game.currentPlayerId === uid && lastTurnSoundKeyRef.current !== turnKey) {
+    if (
+      game.currentPlayerId === uid &&
+      lastTurnSoundKeyRef.current !== turnKey
+    ) {
       if (isLocalFinalTurn) {
         playSound("/sounds/notifications/final-turn.wav");
       } else {
@@ -1925,7 +2187,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return 0;
     }
     const playerIds = new Set(players.map((player) => player.id));
-    return spectators.filter((spectator) => !playerIds.has(spectator.id)).length;
+    return spectators.filter((spectator) => !playerIds.has(spectator.id))
+      .length;
   }, [players, spectators]);
 
   const spectatorNames = useMemo(() => {
@@ -1943,7 +2206,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return null;
     }
     return (
-      players.find((player) => player.id === game.endingPlayerId)?.displayName ?? "A player"
+      players.find((player) => player.id === game.endingPlayerId)
+        ?.displayName ?? "A player"
     );
   }, [game?.endingPlayerId, players]);
 
@@ -2039,7 +2303,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
 
     endingAnnouncementRef.current = game.endingPlayerId;
-    setToastMessage(`${endingPlayerName} revealed all cards. Everyone gets one final turn!`);
+    setToastMessage(
+      `${endingPlayerName} revealed all cards. Everyone gets one final turn!`,
+    );
     const timeout = window.setTimeout(() => {
       setToastMessage(null);
     }, 5000);
@@ -2054,7 +2320,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    if (dismissedFinalTurnForEndingPlayerId !== game.endingPlayerId && isLocalFinalTurn) {
+    if (
+      dismissedFinalTurnForEndingPlayerId !== game.endingPlayerId &&
+      isLocalFinalTurn
+    ) {
       setIsFinalTurnOverlayOpen(true);
       return;
     }
@@ -2062,7 +2331,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (!isLocalFinalTurn) {
       setIsFinalTurnOverlayOpen(false);
     }
-  }, [dismissedFinalTurnForEndingPlayerId, game?.endingPlayerId, isLocalFinalTurn]);
+  }, [
+    dismissedFinalTurnForEndingPlayerId,
+    game?.endingPlayerId,
+    isLocalFinalTurn,
+  ]);
 
   const handleDismissFinalTurnOverlay = () => {
     if (game?.endingPlayerId) {
@@ -2165,14 +2438,41 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       });
   }, [isGameComplete, orderedPlayers]);
 
+  const localPlayerFinalStanding = useMemo(
+    () => finalScores.findIndex((entry) => entry.id === uid),
+    [finalScores, uid],
+  );
+  const localPlayerSummary = useMemo(
+    () => playerSummaries.find((player) => player.id === uid) ?? null,
+    [playerSummaries, uid],
+  );
+  const earnedXpBreakdown = useMemo(() => {
+    if (localPlayerFinalStanding < 0) {
+      return null;
+    }
+
+    return getTotalEarnedXpBreakdown({
+      finalRank: localPlayerFinalStanding + 1,
+      lobbySize: Math.max(finalScores.length, 2),
+      pointsClearedFromRows: localPlayerSummary?.pointsClearedFromRows ?? 0,
+    });
+  }, [
+    finalScores.length,
+    localPlayerFinalStanding,
+    localPlayerSummary?.pointsClearedFromRows,
+  ]);
+
   const finalStatsRows = useMemo(() => {
     if (!isGameComplete) {
       return [];
     }
 
     return finalScores.map((scoreEntry, index) => {
-      const playerSummary = players.find((player) => player.id === scoreEntry.id);
-      const totalTurnLengthMs = game?.turnTimeSubmissionsMs?.[scoreEntry.id] ?? 0;
+      const playerSummary = players.find(
+        (player) => player.id === scoreEntry.id,
+      );
+      const totalTurnLengthMs =
+        game?.turnTimeSubmissionsMs?.[scoreEntry.id] ?? 0;
       return {
         id: scoreEntry.id,
         rank: index + 1,
@@ -2181,11 +2481,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         totalTurnLength: formatTurnLength(totalTurnLengthMs),
         averageDiscardedCardValue: formatAverageValue(
           playerSummary?.pointsDiscarded ?? 0,
-          playerSummary?.discardedCardCount ?? 0
+          playerSummary?.discardedCardCount ?? 0,
         ),
         averageRevealedCardValue: formatAverageValue(
           playerSummary?.revealedCardValueTotal ?? 0,
-          playerSummary?.revealedCardCount ?? 0
+          playerSummary?.revealedCardCount ?? 0,
         ),
         pointsClearedFromRows: playerSummary?.pointsClearedFromRows ?? 0,
         itemCardsDrawn: playerSummary?.itemCardsDrawn ?? 0,
@@ -2210,16 +2510,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [game?.roundScores, isGameComplete, orderedPlayers]);
 
   const endGameBonuses = useMemo(() => {
-    if (!isGameComplete || !game?.spikeMode || game?.spikeEndGameBonuses === false) {
+    if (
+      !isGameComplete ||
+      !game?.spikeMode ||
+      game?.spikeEndGameBonuses === false
+    ) {
       return [];
     }
 
-    const mostRowsWinnerId = game?.endGameBonusResults?.mostRowsClearedWinnerId ?? null;
-    const lowestDiscardedWinnerId = game?.endGameBonusResults?.lowestDiscardedWinnerId ?? null;
-    const fastestPlayerWinnerId = game?.endGameBonusResults?.fastestPlayerWinnerId ?? null;
+    const mostRowsWinnerId =
+      game?.endGameBonusResults?.mostRowsClearedWinnerId ?? null;
+    const lowestDiscardedWinnerId =
+      game?.endGameBonusResults?.lowestDiscardedWinnerId ?? null;
+    const fastestPlayerWinnerId =
+      game?.endGameBonusResults?.fastestPlayerWinnerId ?? null;
     const getDisplayName = (playerId: string | null) =>
       playerId
-        ? orderedPlayers.find((player) => player.id === playerId)?.displayName ?? "Unknown player"
+        ? (orderedPlayers.find((player) => player.id === playerId)
+            ?.displayName ?? "Unknown player")
         : "No winner";
 
     return [
@@ -2255,9 +2563,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     setRevealedBonusCount(0);
     const timeouts = endGameBonuses.map((_, index) =>
-      window.setTimeout(() => {
-        setRevealedBonusCount(index + 1);
-      }, BONUS_ANNOUNCEMENT_DURATION_MS * (index + 1))
+      window.setTimeout(
+        () => {
+          setRevealedBonusCount(index + 1);
+        },
+        BONUS_ANNOUNCEMENT_DURATION_MS * (index + 1),
+      ),
     );
 
     return () => {
@@ -2292,7 +2603,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const leaderboardQuery = query(leaderboardRef, orderBy("score", "asc"));
       const leaderboardSnapshot = await getDocs(leaderboardQuery);
       const expiredEntries = leaderboardSnapshot.docs.filter(
-        (entry) => !isLeaderboardEntryActive(entry.data().expiresAt)
+        (entry) => !isLeaderboardEntryActive(entry.data().expiresAt),
       );
       if (expiredEntries.length) {
         await Promise.all(expiredEntries.map((entry) => deleteDoc(entry.ref)));
@@ -2329,11 +2640,13 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               gameId,
               playerId: entry.id,
               createdAt: serverTimestamp(),
-              expiresAt: Timestamp.fromMillis(Date.now() + LEADERBOARD_ENTRY_TTL_MS),
+              expiresAt: Timestamp.fromMillis(
+                Date.now() + LEADERBOARD_ENTRY_TTL_MS,
+              ),
             },
-            { merge: true }
-          )
-        )
+            { merge: true },
+          ),
+        ),
       );
     };
 
@@ -2349,7 +2662,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   ]);
 
   useEffect(() => {
-    if (!firebaseReady || !gameId || !uid || isAnonymousUser || !isGameComplete || !finalScores.length) {
+    if (
+      !firebaseReady ||
+      !gameId ||
+      !uid ||
+      isAnonymousUser ||
+      !isGameComplete ||
+      !finalScores.length
+    ) {
       return;
     }
 
@@ -2359,7 +2679,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     userLastFiveGamesUpdateRef.current.add(gameId);
 
     const updateUserLastFiveGames = async () => {
-      const playerPlacement = finalScores.findIndex((entry) => entry.id === uid);
+      const playerPlacement = finalScores.findIndex(
+        (entry) => entry.id === uid,
+      );
       if (playerPlacement < 0) {
         return;
       }
@@ -2370,14 +2692,41 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const existingLastFiveGames = Array.isArray(existingData?.lastFiveGames)
         ? (existingData.lastFiveGames as UserProfileGamePlacement[])
         : [];
+      const existingExperience =
+        typeof existingData?.experience === "number"
+          ? existingData.experience
+          : 0;
+      const earnedXp = getTotalEarnedXpBreakdown({
+        finalRank: playerPlacement + 1,
+        lobbySize: Math.max(finalScores.length, 2),
+        pointsClearedFromRows:
+          playerSummaries.find((player) => player.id === uid)
+            ?.pointsClearedFromRows ?? 0,
+      });
+      const updatedExperience = existingExperience + earnedXp.totalXp;
+      const updatedProgress = getProgressWithinLevel(updatedExperience);
+      const nextLevelMeta = getNextLevelMetadata(updatedExperience);
+
+      setLocalPlayerExperiencePreview({
+        totalExperience: updatedExperience,
+        level: updatedProgress.level,
+        nextLevel: nextLevelMeta.nextLevel,
+        xpRemaining: nextLevelMeta.xpRemaining,
+        showRewardPreview: isNextLevelMultipleOfFive(nextLevelMeta),
+      });
 
       await setDoc(
         userRef,
         {
-          lastFiveGames: clampLastFiveGames([...existingLastFiveGames, playerPlacement + 1]),
+          experience: updatedExperience,
+          level: updatedProgress.level,
+          lastFiveGames: clampLastFiveGames([
+            ...existingLastFiveGames,
+            playerPlacement + 1,
+          ]),
           updatedAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
     };
 
@@ -2385,7 +2734,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       userLastFiveGamesUpdateRef.current.delete(gameId);
       setError(err.message);
     });
-  }, [firebaseReady, finalScores, gameId, isAnonymousUser, isGameComplete, uid]);
+  }, [
+    firebaseReady,
+    finalScores,
+    gameId,
+    isAnonymousUser,
+    isGameComplete,
+    uid,
+  ]);
 
   useEffect(() => {
     if (!canSelectGridCard) {
@@ -2424,7 +2780,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         joinedAt: serverTimestamp(),
         lastSeen: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     ).catch((err: Error) => setError(err.message));
 
     return () => {
@@ -2586,10 +2942,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       let nextTargets: ItemTarget[] = [];
       if (itemTargetsNeeded === 1) {
         const existing = previousTargets[0];
-        nextTargets = existing && isSameTarget(existing, target) ? [] : [target];
+        nextTargets =
+          existing && isSameTarget(existing, target) ? [] : [target];
       } else {
-        if (previousTargets.some((existing) => isSameTarget(existing, target))) {
-          nextTargets = previousTargets.filter((existing) => !isSameTarget(existing, target));
+        if (
+          previousTargets.some((existing) => isSameTarget(existing, target))
+        ) {
+          nextTargets = previousTargets.filter(
+            (existing) => !isSameTarget(existing, target),
+          );
         } else if (previousTargets.length < 2) {
           nextTargets = [...previousTargets, target];
         } else {
@@ -2599,7 +2960,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       if (itemCode === "C") {
         const previousTarget = previousTargets[0];
         const nextTarget = nextTargets[0];
-        if (!previousTarget || !nextTarget || !isSameTarget(previousTarget, nextTarget)) {
+        if (
+          !previousTarget ||
+          !nextTarget ||
+          !isSameTarget(previousTarget, nextTarget)
+        ) {
           setItemValue(null);
         }
       }
@@ -2698,7 +3063,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     let didTimeout = false;
     actionWatchdogTimerRef.current = window.setTimeout(() => {
       didTimeout = true;
-      setActionSyncError("Action is taking longer than expected. Tap Resync turn.");
+      setActionSyncError(
+        "Action is taking longer than expected. Tap Resync turn.",
+      );
     }, 10000);
 
     try {
@@ -2730,22 +3097,31 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const hasPendingDraw = hasCardValue(currentPlayer?.pendingDraw);
     const isDiscardSelectedByLocalPlayer = game.selectedDiscardPlayerId === uid;
     const needsRevealRecovery =
-      game.turnPhase === "resolve" && !hasPendingDraw && !isSprinting && !isResolvingItem;
+      game.turnPhase === "resolve" &&
+      !hasPendingDraw &&
+      !isSprinting &&
+      !isResolvingItem;
 
     if (game.turnPhase === "choose-draw") {
       setToastMessage(
         isDiscardSelectedByLocalPlayer
           ? "Discard selected. Tap one of your cards to swap with discard."
-          : "Tap deck or discard to choose your draw source."
+          : "Tap deck or discard to choose your draw source.",
       );
     } else if (game.turnPhase === "resolve-item" && isResolvingItem) {
-      setToastMessage("Resolve the item using the item panel options below the piles.");
+      setToastMessage(
+        "Resolve the item using the item panel options below the piles.",
+      );
     } else if (isItemRevealPending || needsRevealRecovery) {
-      setToastMessage("Tap an unrevealed card on your grid to reveal and finish your turn.");
+      setToastMessage(
+        "Tap an unrevealed card on your grid to reveal and finish your turn.",
+      );
     } else if (hasPendingDraw) {
       setToastMessage("Tap one of your cards, then choose Trade or Reveal.");
     } else {
-      setToastMessage("Turn synced. Follow the highlighted controls to continue.");
+      setToastMessage(
+        "Turn synced. Follow the highlighted controls to continue.",
+      );
     }
 
     setActionSyncError(null);
@@ -2873,327 +3249,361 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
       {isSnowEnabled ? <SnowfallLayer height={"185%"} /> : null}
 
-    <main className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}>
-      <div className="game-screen__tags">
-        <span className="game-screen__tag" title={lobbyLabel}>
-          {lobbyLabel}
-        </span>
-        <div className="game-screen__tag-tooltip" ref={modeTooltipRef}>
-          <button
-            type="button"
-            className="game-screen__tag game-screen__tag--mode"
-            aria-describedby="game-mode-tooltip"
-            aria-expanded={isModeTooltipOpen}
-            onClick={() => setIsModeTooltipOpen((prev) => !prev)}
-          >
-            {modeLabel}
-          </button>
-          <span
-            id="game-mode-tooltip"
-            role="tooltip"
-            className={`game-screen__tag-tooltip-content${
-              isModeTooltipOpen ? " is-visible" : ""
-            }`}
-          >
-            {modeLabelTitle}
+      <main
+        className={`container game-screen${isCurrentTurn ? " game-screen--current-turn " : ""}`}
+      >
+        <div className="game-screen__tags">
+          <span className="game-screen__tag" title={lobbyLabel}>
+            {lobbyLabel}
           </span>
-        </div>
-      </div>
-      <div className="spectator-count">
-        <button
-          type="button"
-          className="spectator-count__button"
-          aria-label={`Spectators: ${spectatorCount}`}
-          aria-haspopup="dialog"
-          onClick={() => setIsSpectatorModalOpen(true)}
-        >
-          <img className="eye-icon" src="/eye-icon.png"/>
-          <span className="spectator-count__value">{spectatorCount}</span>
-        </button>
-        <button
-          type="button"
-          className="settings-button"
-          aria-label="Open settings"
-          onClick={() => {
-            setIsSettingsOpen(true);
-          }}
-        >
-          <img className="settings-icon" src="/settings-icon.png"/>
-        </button>
-      </div>
-      {isGameComplete ? (
-        <div className="game-complete-actions">
-          <button
-            type="button"
-            className="form-button-full-width"
-            onClick={() => setIsFinalScoresOpen(true)}
-          >
-            View final scores
-          </button>
-        </div>
-      ) : null}
-      {isSpectatorModalOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="spectator-list-title"
-          onClick={() => setIsSpectatorModalOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="sage-eyebrow-text">Spectators</h2>
-            {spectatorNames.length ? (
-              <ul className="player-list">
-                {spectatorNames.map((name, index) => (
-                  <li key={`${name}-${index}`} className="player-list-item">
-                    {name}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No spectators yet.</p>
-            )}
-            <div className="modal__actions">
-              <button className="form-button-full-width" type="button" onClick={() => setIsSpectatorModalOpen(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {isLeaderboardOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="leaderboard-title"
-          onClick={() => setIsLeaderboardOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="leaderboard-title" id="leaderboard-title">Leaderboard</h2>
-            <p>Lowest 10 scores of the season.</p>
-              <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
-            {leaderboardEntries.length ? (
-              <ol className="leaderboard-list">
-                {leaderboardEntries.map((entry, index) => {
-                  const isPodium = index < podiumLabels.length;
-
-                  return (
-                    <li key={entry.id} className="leaderboard-list__item">
-                      {isPodium ? (
-                        <span
-                          className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
-                          aria-label={`${podiumLabels[index]} place`}
-                        >
-                          {podiumLabels[index]}
-                        </span>
-                      ) : (
-                        <span className="leaderboard-list__rank">{index + 1}.</span>
-                      )}
-                      <span className="leaderboard-list__name">{entry.displayName}</span>
-                      <span className="leaderboard-list__score">{entry.score}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : (
-              <p>No scores yet. Finish a game to claim a spot!</p>
-            )}
-            <div className="modal__actions">
-              <button className="form-button-full-width" type="button" onClick={() => setIsLeaderboardOpen(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {isSwapConfirmOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="swap-confirm-title"
-          onClick={() => setIsSwapConfirmOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 id="swap-confirm-title">Confirm swap</h2>
-            <p>You're swapping two cards across players.</p>
-            <div className="item-panel__target-list">
-              {itemTargets.filter(isCardTarget).map((target, index) => (
-                <div key={`${target.playerId}-${target.index}`} className="item-panel__target-pill">
-                  <span className="item-panel__target-order">{index + 1}</span>
-                  <span>{getItemTargetLabel(target)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="modal__actions">
-              <button
-                type="button"
-                className="form-button-full-width"
-                onClick={() => handleUseItem(true)}
-              >
-                Confirm swap
-              </button>
-              <button
-                type="button"
-                className="form-button-full-width"
-                onClick={() => setIsSwapConfirmOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {toastMessage ? (
-        <div className="toast" role="status" aria-live="polite">
-          {toastMessage}
-        </div>
-      ) : null}
-      {shouldShowAutoFollowWidget ? (
-        <div className="auto-follow-widget">
-          <label className="auto-follow-widget__label modal__option-label modal__option-toggle">
-            <span>Auto-Follow</span>
-            <span className="toggle">
-              <input
-                className="toggle__input"
-                type="checkbox"
-                checked={isAutoFollowEnabled}
-                onChange={(event) => {
-                  setIsAutoFollowEnabled(event.target.checked);
-                  setIsAutoFollowSuspended(false);
-                }}
-              />
-              <span className="toggle__track" aria-hidden="true" />
-            </span>
-          </label>
-        </div>
-      ) : null}
-      {isFinalTurnOverlayOpen ? (
-        <div
-          className="final-turn-overlay"
-          role="button"
-          tabIndex={0}
-          aria-label="Dismiss last turn announcement"
-          onClick={handleDismissFinalTurnOverlay}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleDismissFinalTurnOverlay();
-            }
-          }}
-        >
-          <div className="final-turn-overlay__message">
-            <span className="final-turn-triggerer">
-            {`${endingPlayerName ?? "A player"} finished!`}
-            </span>
-            <br/>
-            Last turn
-          </div>
-        </div>
-      ) : null}
-      {isColdOverlayOpen ? (
-        <div
-          className="cold-overlay"
-          role="button"
-          tabIndex={0}
-          aria-label="Dismiss cold bonus message"
-          onClick={handleDismissColdOverlay}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleDismissColdOverlay();
-            }
-          }}
-        >
-          <div className="cold-overlay__message">that's cold</div>
-        </div>
-      ) : null}
-      {isSpikedOverlayOpen ? (
-        <div
-          className="spiked-overlay"
-          role="button"
-          tabIndex={0}
-          aria-label="Dismiss spiked celebration"
-          onClick={handleDismissSpikedOverlay}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleDismissSpikedOverlay();
-            }
-          }}
-        >
-          <div className="spiked-overlay__message">SPIKED</div>
-        </div>
-      ) : null}
-      {isClearingOverlayOpen ? (
-        <div
-          className="clearing-overlay"
-          role="button"
-          tabIndex={0}
-          aria-label="Dismiss clearing celebration"
-          onClick={handleDismissClearingOverlay}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleDismissClearingOverlay();
-            }
-          }}
-        >
-          <div className="clearing-overlay__message">Clearing!</div>
-        </div>
-      ) : null}
-      {isSettingsOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="game-settings-title"
-          onClick={handleCloseSettings}
-        >
-          <div className="modal modal--game-settings" onClick={(event) => event.stopPropagation()}>
+          <div className="game-screen__tag-tooltip" ref={modeTooltipRef}>
             <button
               type="button"
-              className="modal__icon-close"
-              onClick={handleCloseSettings}
-              aria-label="Close game menu"
+              className="game-screen__tag game-screen__tag--mode"
+              aria-describedby="game-mode-tooltip"
+              aria-expanded={isModeTooltipOpen}
+              onClick={() => setIsModeTooltipOpen((prev) => !prev)}
             >
-              ×
+              {modeLabel}
             </button>
-            <h2 id="game-settings-title">Settings</h2>
-                        <button
+            <span
+              id="game-mode-tooltip"
+              role="tooltip"
+              className={`game-screen__tag-tooltip-content${
+                isModeTooltipOpen ? " is-visible" : ""
+              }`}
+            >
+              {modeLabelTitle}
+            </span>
+          </div>
+        </div>
+        <div className="spectator-count">
+          <button
+            type="button"
+            className="spectator-count__button"
+            aria-label={`Spectators: ${spectatorCount}`}
+            aria-haspopup="dialog"
+            onClick={() => setIsSpectatorModalOpen(true)}
+          >
+            <img className="eye-icon" src="/eye-icon.png" />
+            <span className="spectator-count__value">{spectatorCount}</span>
+          </button>
+          <button
+            type="button"
+            className="settings-button"
+            aria-label="Open settings"
+            onClick={() => {
+              setIsSettingsOpen(true);
+            }}
+          >
+            <img className="settings-icon" src="/settings-icon.png" />
+          </button>
+        </div>
+        {isGameComplete ? (
+          <div className="game-complete-actions">
+            <button
               type="button"
-              className="modal__section-dropdown"
-              onClick={() => setIsUxSettingsOpen((current) => !current)}
-              aria-expanded={isUxSettingsOpen}
-              aria-controls="game-menu-ux-settings"
+              className="form-button-full-width"
+              onClick={() => setIsFinalScoresOpen(true)}
             >
-              <span className="modal__section-dropdown-label">Sounds & Display</span>
-              <span aria-hidden="true">{isUxSettingsOpen ? "▾" : "▸"}</span>
+              View final scores
             </button>
-            <div
-              id="game-menu-ux-settings"
-              className={`modal__collapsible ${isUxSettingsOpen ? "modal__collapsible--open" : ""}`}
-              aria-hidden={!isUxSettingsOpen}
-            >
-              <div className="modal__collapsible-content">
-                <div className="modal__option">
-                  <label className="modal__option-label modal__option-toggle">
-                    <span>Dark mode</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={isDarkMode}
-                        onChange={(event) => setPreference("darkMode", event.target.checked)}
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
+          </div>
+        ) : null}
+        {isSpectatorModalOpen ? (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="spectator-list-title"
+            onClick={() => setIsSpectatorModalOpen(false)}
+          >
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <h2 className="sage-eyebrow-text">Spectators</h2>
+              {spectatorNames.length ? (
+                <ul className="player-list">
+                  {spectatorNames.map((name, index) => (
+                    <li key={`${name}-${index}`} className="player-list-item">
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No spectators yet.</p>
+              )}
+              <div className="modal__actions">
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  onClick={() => setIsSpectatorModalOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {isLeaderboardOpen ? (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leaderboard-title"
+            onClick={() => setIsLeaderboardOpen(false)}
+          >
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <h2 className="leaderboard-title" id="leaderboard-title">
+                Leaderboard
+              </h2>
+              <p>Lowest 10 scores of the season.</p>
+              <p className="leaderboard-sub text-xs">
+                Entries expire after 90 days
+              </p>
+              {leaderboardEntries.length ? (
+                <ol className="leaderboard-list">
+                  {leaderboardEntries.map((entry, index) => {
+                    const isPodium = index < podiumLabels.length;
+
+                    return (
+                      <li key={entry.id} className="leaderboard-list__item">
+                        {isPodium ? (
+                          <span
+                            className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
+                            aria-label={`${podiumLabels[index]} place`}
+                          >
+                            {podiumLabels[index]}
+                          </span>
+                        ) : (
+                          <span className="leaderboard-list__rank">
+                            {index + 1}.
+                          </span>
+                        )}
+                        <span className="leaderboard-list__name">
+                          {entry.displayName}
+                        </span>
+                        <span className="leaderboard-list__score">
+                          {entry.score}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <p>No scores yet. Finish a game to claim a spot!</p>
+              )}
+              <div className="modal__actions">
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  onClick={() => setIsLeaderboardOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {isSwapConfirmOpen ? (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="swap-confirm-title"
+            onClick={() => setIsSwapConfirmOpen(false)}
+          >
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <h2 id="swap-confirm-title">Confirm swap</h2>
+              <p>You're swapping two cards across players.</p>
+              <div className="item-panel__target-list">
+                {itemTargets.filter(isCardTarget).map((target, index) => (
+                  <div
+                    key={`${target.playerId}-${target.index}`}
+                    className="item-panel__target-pill"
+                  >
+                    <span className="item-panel__target-order">
+                      {index + 1}
                     </span>
-                  </label>
-                  <p className="modal__option-help">Switch the interface to the dark theme.</p>
-                </div>
-                {/* DO NOT REMOVE LET IT SNOW BUTTON IS TO BE COMMENTED OUT UNTIL WINTER */}
-                {/* <div className="modal__option">
+                    <span>{getItemTargetLabel(target)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="modal__actions">
+                <button
+                  type="button"
+                  className="form-button-full-width"
+                  onClick={() => handleUseItem(true)}
+                >
+                  Confirm swap
+                </button>
+                <button
+                  type="button"
+                  className="form-button-full-width"
+                  onClick={() => setIsSwapConfirmOpen(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {toastMessage ? (
+          <div className="toast" role="status" aria-live="polite">
+            {toastMessage}
+          </div>
+        ) : null}
+        {shouldShowAutoFollowWidget ? (
+          <div className="auto-follow-widget">
+            <label className="auto-follow-widget__label modal__option-label modal__option-toggle">
+              <span>Auto-Follow</span>
+              <span className="toggle">
+                <input
+                  className="toggle__input"
+                  type="checkbox"
+                  checked={isAutoFollowEnabled}
+                  onChange={(event) => {
+                    setIsAutoFollowEnabled(event.target.checked);
+                    setIsAutoFollowSuspended(false);
+                  }}
+                />
+                <span className="toggle__track" aria-hidden="true" />
+              </span>
+            </label>
+          </div>
+        ) : null}
+        {isFinalTurnOverlayOpen ? (
+          <div
+            className="final-turn-overlay"
+            role="button"
+            tabIndex={0}
+            aria-label="Dismiss last turn announcement"
+            onClick={handleDismissFinalTurnOverlay}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleDismissFinalTurnOverlay();
+              }
+            }}
+          >
+            <div className="final-turn-overlay__message">
+              <span className="final-turn-triggerer">
+                {`${endingPlayerName ?? "A player"} finished!`}
+              </span>
+              <br />
+              Last turn
+            </div>
+          </div>
+        ) : null}
+        {isColdOverlayOpen ? (
+          <div
+            className="cold-overlay"
+            role="button"
+            tabIndex={0}
+            aria-label="Dismiss cold bonus message"
+            onClick={handleDismissColdOverlay}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleDismissColdOverlay();
+              }
+            }}
+          >
+            <div className="cold-overlay__message">that's cold</div>
+          </div>
+        ) : null}
+        {isSpikedOverlayOpen ? (
+          <div
+            className="spiked-overlay"
+            role="button"
+            tabIndex={0}
+            aria-label="Dismiss spiked celebration"
+            onClick={handleDismissSpikedOverlay}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleDismissSpikedOverlay();
+              }
+            }}
+          >
+            <div className="spiked-overlay__message">SPIKED</div>
+          </div>
+        ) : null}
+        {isClearingOverlayOpen ? (
+          <div
+            className="clearing-overlay"
+            role="button"
+            tabIndex={0}
+            aria-label="Dismiss clearing celebration"
+            onClick={handleDismissClearingOverlay}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleDismissClearingOverlay();
+              }
+            }}
+          >
+            <div className="clearing-overlay__message">Clearing!</div>
+          </div>
+        ) : null}
+        {isSettingsOpen ? (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-settings-title"
+            onClick={handleCloseSettings}
+          >
+            <div
+              className="modal modal--game-settings"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="modal__icon-close"
+                onClick={handleCloseSettings}
+                aria-label="Close game menu"
+              >
+                ×
+              </button>
+              <h2 id="game-settings-title">Settings</h2>
+              <button
+                type="button"
+                className="modal__section-dropdown"
+                onClick={() => setIsUxSettingsOpen((current) => !current)}
+                aria-expanded={isUxSettingsOpen}
+                aria-controls="game-menu-ux-settings"
+              >
+                <span className="modal__section-dropdown-label">
+                  Sounds & Display
+                </span>
+                <span aria-hidden="true">{isUxSettingsOpen ? "▾" : "▸"}</span>
+              </button>
+              <div
+                id="game-menu-ux-settings"
+                className={`modal__collapsible ${isUxSettingsOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isUxSettingsOpen}
+              >
+                <div className="modal__collapsible-content">
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Dark mode</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isDarkMode}
+                          onChange={(event) =>
+                            setPreference("darkMode", event.target.checked)
+                          }
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Switch the interface to the dark theme.
+                    </p>
+                  </div>
+                  {/* DO NOT REMOVE LET IT SNOW BUTTON IS TO BE COMMENTED OUT UNTIL WINTER */}
+                  {/* <div className="modal__option">
                   <label className="modal__option-label modal__option-toggle">
                     <span>Let it snow</span>
                     <span className="toggle">
@@ -3210,110 +3620,130 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                     Sprinkle a light snowfall across the screen.
                   </p>
                 </div> */}
-                <div className="modal__option">
-                  <label className="modal__option-label modal__option-toggle">
-                    <span>Card sounds</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={isCardSoundsEnabled}
-                        onChange={(event) => setPreference("cardSounds", event.target.checked)}
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
-                    </span>
-                  </label>
-                  <p className="modal__option-help">
-                    Mute card draws, turn alerts, reveal sounds, and swap effects.
-                  </p>
-                </div>
-                <div className="modal__option">
-                  <label className="modal__option-label modal__option-toggle">
-                    <span>Background music</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={isBackgroundMusicEnabled}
-                        onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
-                    </span>
-                  </label>
-                  <p className="modal__option-help">
-                    Play theme music during round breaks and in the lobby.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="modal__section-dropdown"
-              onClick={() => setIsAccessibilitySettingsOpen((current) => !current)}
-              aria-expanded={isAccessibilitySettingsOpen}
-              aria-controls="game-menu-accessibility-settings"
-            >
-              <span className="modal__section-dropdown-label">Accessibility</span>
-              <span aria-hidden="true">{isAccessibilitySettingsOpen ? "▾" : "▸"}</span>
-            </button>
-            <div
-              id="game-menu-accessibility-settings"
-              className={`modal__collapsible ${isAccessibilitySettingsOpen ? "modal__collapsible--open" : ""}`}
-              aria-hidden={!isAccessibilitySettingsOpen}
-            >
-              <div className="modal__collapsible-content">
-                <div className="modal__option">
-                  <label className="modal__option-label modal__option-toggle">
-                    <span>First time tips</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={showFirstTimeTips}
-                        onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
-                    </span>
-                  </label>
-                  <p className="modal__option-help">
-                    Show the quick hints about revealing, replacing, and swapping cards.
-                  </p>
-                </div>
-                <div className="modal__option">
-                  <label className="modal__option-label modal__option-toggle">
-                    <span>Auto-follow active player</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={isAutoFollowEnabled}
-                        onChange={(event) => setPreference("autoFollow", event.target.checked)}
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
-                    </span>
-                  </label>
-                  <p className="modal__option-help">
-                    Automatically follow the active player after scrolling settles.
-                  </p>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Card sounds</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isCardSoundsEnabled}
+                          onChange={(event) =>
+                            setPreference("cardSounds", event.target.checked)
+                          }
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Mute card draws, turn alerts, reveal sounds, and swap
+                      effects.
+                    </p>
+                  </div>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Background music</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isBackgroundMusicEnabled}
+                          onChange={(event) =>
+                            setPreference(
+                              "backgroundMusic",
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Play theme music during round breaks and in the lobby.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+              <button
+                type="button"
+                className="modal__section-dropdown"
+                onClick={() =>
+                  setIsAccessibilitySettingsOpen((current) => !current)
+                }
+                aria-expanded={isAccessibilitySettingsOpen}
+                aria-controls="game-menu-accessibility-settings"
+              >
+                <span className="modal__section-dropdown-label">
+                  Accessibility
+                </span>
+                <span aria-hidden="true">
+                  {isAccessibilitySettingsOpen ? "▾" : "▸"}
+                </span>
+              </button>
+              <div
+                id="game-menu-accessibility-settings"
+                className={`modal__collapsible ${isAccessibilitySettingsOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isAccessibilitySettingsOpen}
+              >
+                <div className="modal__collapsible-content">
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>First time tips</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={showFirstTimeTips}
+                          onChange={(event) =>
+                            setPreference("firstTimeTips", event.target.checked)
+                          }
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Show the quick hints about revealing, replacing, and
+                      swapping cards.
+                    </p>
+                  </div>
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>Auto-follow active player</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={isAutoFollowEnabled}
+                          onChange={(event) =>
+                            setPreference("autoFollow", event.target.checked)
+                          }
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Automatically follow the active player after scrolling
+                      settles.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-            {isCurrentTurn && isGameActive ? (
-              <div className="modal__option">
-                <button
-                  type="button"
-                  className="form-button-full-width"
-                  onClick={handleResyncTurn}
-                  disabled={isSubmittingAction}
-                >
-                  {actionSyncError ? "Retry sync" : "Resync turn"}
-                </button>
-                <p className="modal__option-help">
-                  Sync your turn state if an action appears stuck.
-                </p>
-              </div>
-            ) : null}
+              {isCurrentTurn && isGameActive ? (
+                <div className="modal__option">
+                  <button
+                    type="button"
+                    className="form-button-full-width"
+                    onClick={handleResyncTurn}
+                    disabled={isSubmittingAction}
+                  >
+                    {actionSyncError ? "Retry sync" : "Resync turn"}
+                  </button>
+                  <p className="modal__option-help">
+                    Sync your turn state if an action appears stuck.
+                  </p>
+                </div>
+              ) : null}
               <div className="modal__actions">
                 {isLocalPlayer ? (
                   <button
@@ -3323,429 +3753,527 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                   >
                     Leave game
                   </button>
-              ) : null}
-              <button className="form-button-full-width" type="button" onClick={() => router.push("/")}>
-                Main Menu
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {isGameComplete && isFinalScoresOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="sage-eyebrow-text">Game over</h2>
-            <div className="bonus-announcement-wrap">
-              {revealedBonusCount < endGameBonuses.length ? (
-                <div className="bonus-announcement" key={endGameBonuses[revealedBonusCount]?.id}>
-                  <p className="bonus-announcement__title">
-                    {endGameBonuses[revealedBonusCount]?.title}
-                  </p>
-                  <p className="bonus-announcement__winner">
-                    {endGameBonuses[revealedBonusCount]?.winnerName}
-                  </p>
-                  <p className="bonus-announcement__points">Bonus: -5 points</p>
-                </div>
-              ) : null}
-
-              <ol className="bonus-results-list">
-                {endGameBonuses.slice(0, revealedBonusCount).map((bonus) => (
-                  <li key={bonus.id} className="bonus-results-item">
-                    <span>{bonus.title}</span>
-                    <span>{bonus.winnerName} (-5)</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            {revealedBonusCount >= endGameBonuses.length ? (
-              <div>
-                <div className="game-complete-table-wrap">
-                  <table className="game-complete-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Rank</th>
-                        <th scope="col">Player</th>
-                        <th scope="col">Score</th>
-                        <th scope="col">Time</th>
-                        <th scope="col">Avg discarded card</th>
-                        <th scope="col">Avg revealed card</th>
-                        <th scope="col">Cleared (rows + columns)</th>
-                        <th scope="col">Items</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {finalStatsRows.map((player) => (
-                        <tr key={player.id}>
-                          <td>{player.rank}</td>
-                          <td>{player.displayName}</td>
-                          <td>{player.totalScore}</td>
-                          <td>{player.totalTurnLength}</td>
-                          <td>{player.averageDiscardedCardValue}</td>
-                          <td>{player.averageRevealedCardValue}</td>
-                          <td>{player.pointsClearedFromRows}</td>
-                          <td>{player.itemCardsDrawn}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                ) : null}
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  onClick={() => router.push("/")}
+                >
+                  Main Menu
+                </button>
               </div>
-            ) : null}
-            <div className="modal__actions">
-              <button type="button" className="form-button-full-width" onClick={() => router.push("/")}>
-                Back to main menu
-              </button>
-              <button
-                type="button"
-                className="form-button-full-width"
-                onClick={() => setIsFinalScoresOpen(false)}
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
-      ) : null}
-
-      {game?.status === "round-complete" ? (
-        <section className="game-results">
-          <h2 className="sage-eyebrow-text">Round totals</h2>
-          <ol className="round-score-list">
-            {sortedScores.map((player) => (
-              <li key={player.id} className="round-score-item">
-                <span className="round-score-item__name">
-                  {player.displayName}
-                  {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
-                  {player.isReady ? <span aria-label="Ready"> ✓</span> : null}
-                </span>
-                <span className="round-score-item__score">
-                  {player.roundScore} ({player.totalScore})
-                </span>
-              </li>
-            ))}
-          </ol>
-          <div className="game-results__actions">
-            {isLocalPlayer ? (
-              <div className="game-results__primary-actions">
-                {isLocalPlayerReady ? (
-                  <p className="notice game-results__ready-slot">You are ready for the next round.</p>
-                ) : (
-                  <button
-                    type="button"
-                    className="form-button-full-width game-results__ready-slot"
-                    onClick={handleReadyForNextRound}
+        ) : null}
+        {isGameComplete && isFinalScoresOpen ? (
+          <div className="modal-backdrop" role="dialog" aria-modal="true">
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <h2 className="sage-eyebrow-text">Game over</h2>
+              <div className="bonus-announcement-wrap">
+                {revealedBonusCount < endGameBonuses.length ? (
+                  <div
+                    className="bonus-announcement"
+                    key={endGameBonuses[revealedBonusCount]?.id}
                   >
-                    Ready up
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="form-button-full-width game-results__leave-button"
-                  onClick={handleOpenLeaveGameModal}
-                >
-                  Leave game
-                </button>
-              </div>
-            ) : null}
-            {isHost ? (
-              <button
-                type="button"
-                className="form-button-full-width"
-                onClick={handleStartNextRound}
-                disabled={isStartingNextRound || !allPlayersReady}
-              >
-                {isStartingNextRound ? "Starting next round..." : "Start next round"}
-              </button>
-            ) : (
-              <p className="notice">
-                {allPlayersReady
-                  ? "Waiting for the host to start the next round."
-                  : "Waiting for everyone to ready up."}
-              </p>
-            )}
-          </div>
-        </section>
-      ) : null}
+                    <p className="bonus-announcement__title">
+                      {endGameBonuses[revealedBonusCount]?.title}
+                    </p>
+                    <p className="bonus-announcement__winner">
+                      {endGameBonuses[revealedBonusCount]?.winnerName}
+                    </p>
+                    <p className="bonus-announcement__points">
+                      Bonus: -5 points
+                    </p>
+                  </div>
+                ) : null}
 
-      {isGameComplete && finalRoundScores.length ? (
-        <section className="game-results">
-          <h2 className="sage-eyebrow-text">Final round totals</h2>
-          <ol className="round-score-list">
-            {finalRoundScores.map((player) => (
-              <li key={player.id} className="round-score-item">
-                <span className="round-score-item__name">
-                  {player.displayName}
-                  {player.roundSpiked ? <span className="round-score-item__tag">spiked</span> : null}
-                </span>
-                <span className="round-score-item__score">
-                  {player.roundScore}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      {isLeaveGameModalOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="leave-game-modal-title"
-          onClick={handleCloseLeaveGameModal}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              className="modal__icon-close"
-              onClick={handleCloseLeaveGameModal}
-              aria-label="Close leave game confirmation"
-            >
-              ×
-            </button>
-            <h2 id="leave-game-modal-title">Leave game</h2>
-            <p>
-              Are you sure you want to leave the game? Once you leave you cannot rejoin.
-            </p>
-            <div className="modal__actions">
-              <button
-                type="button"
-                className="form-button-full-width game-results__leave-button"
-                onClick={handleConfirmLeaveGame}
-              >
-                Confirm leave
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showDockedPiles && game?.status !== "round-complete" ? (
-        <div className="game-piles game-piles--dock">
-          <div className="game-pile">
-            <h6>Deck</h6>
-            {renderDrawPile()}
-            <div className="card-tags">
-              <span className="last-turn-summary">{lastTurnSummary}</span>
-            </div>
-          </div>
-          <div className="game-pile">
-            <h6>Discard</h6>
-            {renderDiscardPile()}
-          </div>
-          <div className="game-pile">
-            <h6>Selected card</h6>
-            <div>
-              {showSelectedCard ? (
-                <div
-                  key={`selected-card-dock-${selectedCardAnimationId}`}
-                  className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
-                  style={selectedCardMaskStyle}
-                  aria-label="Selected card"
-                >
-                  {isItemCard(selectedCardValue) ? (
-                    renderItemContent(selectedCardValue.code)
-                  ) : (
-                    <span className="card__value">{selectedCardLabel}</span>
-                  )}
-                </div>
-              ) : (
-                <div className="card card--empty-selected" aria-label="No selected card">
-                  —
-                </div>
-              )}
-              <div className="card-tags">
-                <span className="card-draw-source">{selectedCardOwnerLabel}</span>
-                <span className="card-draw-source">{selectedCardSourceLabel}</span>
+                <ol className="bonus-results-list">
+                  {endGameBonuses.slice(0, revealedBonusCount).map((bonus) => (
+                    <li key={bonus.id} className="bonus-results-item">
+                      <span>{bonus.title}</span>
+                      <span>{bonus.winnerName} (-5)</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <section className="game-board">
-        {(actionSyncError || error) && (
-          <div className="notice" role="status" aria-live="polite">
-            {actionSyncError ? <p>{actionSyncError}</p> : null}
-            {error ? <p>{error}</p> : null}
-          </div>
-        )}
-        <div className="game-piles" ref={gamePilesRef}>
-          <div className="game-pile">
-            <h6>Deck</h6>
-            {renderDrawPile()}
-            <div className="card-tags">
-              <span className="last-turn-summary">{lastTurnSummary}</span>
-            </div>
-          </div>
-          <div className="game-pile">
-            <h6>Discard</h6>
-            {renderDiscardPile()}
-          </div>
-          <div className="game-pile">
-            <h6>Selected card</h6>
-            <>
-              {showSelectedCard ? (
-                <div
-                  key={`selected-card-dock-${selectedCardAnimationId}`}
-                  className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
-                  style={selectedCardMaskStyle}
-                  aria-label="Selected card"
-                >
-                  {isItemCard(selectedCardValue) ? (
-                    renderItemContent(selectedCardValue.code)
-                  ) : (
-                    <span className="card__value">{selectedCardLabel}</span>
-                  )}
-                </div>
-              ) : (
-                <div className="card card--empty-selected" aria-label="No selected card">
-                  —
-                </div>
-              )}
-              <div className="card-tags">
-                <span className="card-draw-source">{selectedCardOwnerLabel}</span>
-                <span className="card-draw-source">{selectedCardSourceLabel}</span>
-              </div>
-            </>
-          </div>
-        </div>
-        {isResolvingItem && itemCode ? (
-          <div className="item-panel" role="status" aria-live="polite">
-            <div className="item-panel__summary">
-              <div>
-                <p className="item-panel__title">{itemName}</p>
-                <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
-              </div>
-            </div>
-            {itemTargetsNeeded > 0 ? (
-              <div className="item-panel__targets">
-                <p className="item-panel__instruction">{itemTargetInstruction}</p>
-                <div className="item-panel__target-list">
-                  {itemTargets.map((target, index) => (
-                    <div
-                      key={`${target.playerId}-${isCardTarget(target) ? target.index : "player"}`}
-                      className="item-panel__target-pill"
-                    >
-                      <span className="item-panel__target-order">{index + 1}</span>
-                      <span>{getItemTargetLabel(target)}</span>
+              {revealedBonusCount >= endGameBonuses.length ? (
+                <div>
+                  {earnedXpBreakdown ? (
+                    <div className="modal__option">
+                      <div className="modal__option-label">
+                        <span>Your XP</span>
+                      </div>
+                      <p className="modal__option-help">
+                        Base {earnedXpBreakdown.baseXp} XP + placement{" "}
+                        {earnedXpBreakdown.placementXp} XP + cleared rows{" "}
+                        {earnedXpBreakdown.clearedRowXp} XP ={" "}
+                        {earnedXpBreakdown.totalXp} XP.
+                      </p>
+                      <p className="modal__option-help">
+                        Placement band: {earnedXpBreakdown.placementBand} ·
+                        player multiplier{" "}
+                        {earnedXpBreakdown.playerCountMultiplier.toFixed(2)}.
+                      </p>
+                      {localPlayerExperiencePreview ? (
+                        <p className="modal__option-help">
+                          Level {localPlayerExperiencePreview.level} ·{" "}
+                          {localPlayerExperiencePreview.totalExperience} total
+                          XP · {localPlayerExperiencePreview.xpRemaining} XP
+                          until level {localPlayerExperiencePreview.nextLevel}
+                          {localPlayerExperiencePreview.showRewardPreview
+                            ? " · reward preview"
+                            : ""}
+                          .
+                        </p>
+                      ) : null}
                     </div>
-                  ))}
+                  ) : null}
+                  <div className="game-complete-table-wrap">
+                    <table className="game-complete-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Rank</th>
+                          <th scope="col">Player</th>
+                          <th scope="col">Score</th>
+                          <th scope="col">Time</th>
+                          <th scope="col">Avg discarded card</th>
+                          <th scope="col">Avg revealed card</th>
+                          <th scope="col">Cleared (rows + columns)</th>
+                          <th scope="col">Items</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {finalStatsRows.map((player) => (
+                          <tr key={player.id}>
+                            <td>{player.rank}</td>
+                            <td>{player.displayName}</td>
+                            <td>{player.totalScore}</td>
+                            <td>{player.totalTurnLength}</td>
+                            <td>{player.averageDiscardedCardValue}</td>
+                            <td>{player.averageRevealedCardValue}</td>
+                            <td>{player.pointsClearedFromRows}</td>
+                            <td>{player.itemCardsDrawn}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="item-panel__instruction">Ready.</p>
-            )}
-            {itemCode === "C" ? (
-              <div className="item-panel__values">
-                <p className="item-panel__instruction">Choose a wild value.</p>
-                <div className="item-value-grid">
-                  {itemValueOptions.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={`item-value-button${
-                        itemValue === value ? " item-value-button--active" : ""
-                      }`}
-                      onClick={() => setItemValue(value)}
-                      disabled={itemTargets.length === 0}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {isCrossPlayerSwap ? (
-              <p className="item-panel__warning">
-                Cross-player swaps require confirmation before applying.
-              </p>
-            ) : null}
-            <div className="item-panel__actions">
-              <button
-                type="button"
-                className="item-panel__action item-panel__action--primary"
-                onClick={() => handleUseItem()}
-                disabled={!canUseItem || isSubmittingAction}
-              >
-                Use item
-              </button>
-              {itemTargets.length > 0 ? (
+              ) : null}
+              <div className="modal__actions">
                 <button
                   type="button"
-                  className="item-panel__action item-panel__action--ghost"
-                  onClick={handleResetItemSelection}
-                  disabled={isSubmittingAction}
+                  className="form-button-full-width"
+                  onClick={() => router.push("/")}
                 >
-                  Clear selection
+                  Back to main menu
                 </button>
-              ) : null}
-              {canDiscardItem ? (
                 <button
                   type="button"
-                  className="item-panel__action item-panel__action--ghost"
-                  onClick={handleDiscardItem}
-                  disabled={isSubmittingAction}
+                  className="form-button-full-width"
+                  onClick={() => setIsFinalScoresOpen(false)}
                 >
-                  Discard spike to reveal
+                  Close
                 </button>
-              ) : null}
-            </div>
-          </div>
-        ) : isItemDrawnByOtherPlayer && itemCode ? (
-          <div className="item-panel" role="status" aria-live="polite">
-            <div className="item-panel__summary">
-              <div>
-                <span className="player-item-panel">{itemOwnerName} drew</span>
-              </div>
-              <div>
-                <p className="item-panel__title">
-                  {itemName}
-                </p>
-                <p className="item-panel__description">{itemDescriptions[itemCode]}</p>
               </div>
             </div>
           </div>
         ) : null}
 
-        <div className="player-grids">
-          <div className="player-grids__list" ref={playerListContainerRef}>
-            {displayPlayers.length ? (
-              displayPlayers.map((player) => {
-                const isActivePlayer = player.id === game?.currentPlayerId;
-                const isLocalPlayer = player.id === uid;
-                return (
-                  <PlayerGrid
-                    key={player.id}
-                    ref={(element) => {
-                      playerGridRefs.current[player.id] = element;
-                    }}
-                    playerId={player.id}
-                    label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
-                    localBadgeLabel={isLocalPlayer ? "YOU" : null}
-                    size={isLocalPlayer ? "main" : "mini"}
-                    isActive={isActivePlayer}
-                    isLocal={isLocalPlayer}
-                    grid={player.grid}
-                    revealed={player.revealed}
-                    mistTurnsRemaining={player.mistTurnsRemaining}
-                    onCardSelect={
-                        isLocalPlayer && canSelectGridCard ? handleSelectGridCard : undefined
+        {game?.status === "round-complete" ? (
+          <section className="game-results">
+            <h2 className="sage-eyebrow-text">Round totals</h2>
+            <ol className="round-score-list">
+              {sortedScores.map((player) => (
+                <li key={player.id} className="round-score-item">
+                  <span className="round-score-item__name">
+                    {player.displayName}
+                    {player.roundSpiked ? (
+                      <span className="round-score-item__tag">spiked</span>
+                    ) : null}
+                    {player.isReady ? <span aria-label="Ready"> ✓</span> : null}
+                  </span>
+                  <span className="round-score-item__score">
+                    {player.roundScore} ({player.totalScore})
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <div className="game-results__actions">
+              {isLocalPlayer ? (
+                <div className="game-results__primary-actions">
+                  {isLocalPlayerReady ? (
+                    <p className="notice game-results__ready-slot">
+                      You are ready for the next round.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      className="form-button-full-width game-results__ready-slot"
+                      onClick={handleReadyForNextRound}
+                    >
+                      Ready up
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="form-button-full-width game-results__leave-button"
+                    onClick={handleOpenLeaveGameModal}
+                  >
+                    Leave game
+                  </button>
+                </div>
+              ) : null}
+              {isHost ? (
+                <button
+                  type="button"
+                  className="form-button-full-width"
+                  onClick={handleStartNextRound}
+                  disabled={isStartingNextRound || !allPlayersReady}
+                >
+                  {isStartingNextRound
+                    ? "Starting next round..."
+                    : "Start next round"}
+                </button>
+              ) : (
+                <p className="notice">
+                  {allPlayersReady
+                    ? "Waiting for the host to start the next round."
+                    : "Waiting for everyone to ready up."}
+                </p>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {isGameComplete && finalRoundScores.length ? (
+          <section className="game-results">
+            <h2 className="sage-eyebrow-text">Final round totals</h2>
+            <ol className="round-score-list">
+              {finalRoundScores.map((player) => (
+                <li key={player.id} className="round-score-item">
+                  <span className="round-score-item__name">
+                    {player.displayName}
+                    {player.roundSpiked ? (
+                      <span className="round-score-item__tag">spiked</span>
+                    ) : null}
+                  </span>
+                  <span className="round-score-item__score">
+                    {player.roundScore}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+
+        {isLeaveGameModalOpen ? (
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leave-game-modal-title"
+            onClick={handleCloseLeaveGameModal}
+          >
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className="modal__icon-close"
+                onClick={handleCloseLeaveGameModal}
+                aria-label="Close leave game confirmation"
+              >
+                ×
+              </button>
+              <h2 id="leave-game-modal-title">Leave game</h2>
+              <p>
+                Are you sure you want to leave the game? Once you leave you
+                cannot rejoin.
+              </p>
+              <div className="modal__actions">
+                <button
+                  type="button"
+                  className="form-button-full-width game-results__leave-button"
+                  onClick={handleConfirmLeaveGame}
+                >
+                  Confirm leave
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showDockedPiles && game?.status !== "round-complete" ? (
+          <div className="game-piles game-piles--dock">
+            <div className="game-pile">
+              <h6>Deck</h6>
+              {renderDrawPile()}
+              <div className="card-tags">
+                <span className="last-turn-summary">{lastTurnSummary}</span>
+              </div>
+            </div>
+            <div className="game-pile">
+              <h6>Discard</h6>
+              {renderDiscardPile()}
+            </div>
+            <div className="game-pile">
+              <h6>Selected card</h6>
+              <div>
+                {showSelectedCard ? (
+                  <div
+                    key={`selected-card-dock-${selectedCardAnimationId}`}
+                    className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                    style={selectedCardMaskStyle}
+                    aria-label="Selected card"
+                  >
+                    {isItemCard(selectedCardValue) ? (
+                      renderItemContent(selectedCardValue.code)
+                    ) : (
+                      <span className="card__value">{selectedCardLabel}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="card card--empty-selected"
+                    aria-label="No selected card"
+                  >
+                    —
+                  </div>
+                )}
+                <div className="card-tags">
+                  <span className="card-draw-source">
+                    {selectedCardOwnerLabel}
+                  </span>
+                  <span className="card-draw-source">
+                    {selectedCardSourceLabel}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <section className="game-board">
+          {(actionSyncError || error) && (
+            <div className="notice" role="status" aria-live="polite">
+              {actionSyncError ? <p>{actionSyncError}</p> : null}
+              {error ? <p>{error}</p> : null}
+            </div>
+          )}
+          <div className="game-piles" ref={gamePilesRef}>
+            <div className="game-pile">
+              <h6>Deck</h6>
+              {renderDrawPile()}
+              <div className="card-tags">
+                <span className="last-turn-summary">{lastTurnSummary}</span>
+              </div>
+            </div>
+            <div className="game-pile">
+              <h6>Discard</h6>
+              {renderDiscardPile()}
+            </div>
+            <div className="game-pile">
+              <h6>Selected card</h6>
+              <>
+                {showSelectedCard ? (
+                  <div
+                    key={`selected-card-dock-${selectedCardAnimationId}`}
+                    className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                    style={selectedCardMaskStyle}
+                    aria-label="Selected card"
+                  >
+                    {isItemCard(selectedCardValue) ? (
+                      renderItemContent(selectedCardValue.code)
+                    ) : (
+                      <span className="card__value">{selectedCardLabel}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="card card--empty-selected"
+                    aria-label="No selected card"
+                  >
+                    —
+                  </div>
+                )}
+                <div className="card-tags">
+                  <span className="card-draw-source">
+                    {selectedCardOwnerLabel}
+                  </span>
+                  <span className="card-draw-source">
+                    {selectedCardSourceLabel}
+                  </span>
+                </div>
+              </>
+            </div>
+          </div>
+          {isResolvingItem && itemCode ? (
+            <div className="item-panel" role="status" aria-live="polite">
+              <div className="item-panel__summary">
+                <div>
+                  <p className="item-panel__title">{itemName}</p>
+                  <p className="item-panel__description">
+                    {itemDescriptions[itemCode]}
+                  </p>
+                </div>
+              </div>
+              {itemTargetsNeeded > 0 ? (
+                <div className="item-panel__targets">
+                  <p className="item-panel__instruction">
+                    {itemTargetInstruction}
+                  </p>
+                  <div className="item-panel__target-list">
+                    {itemTargets.map((target, index) => (
+                      <div
+                        key={`${target.playerId}-${isCardTarget(target) ? target.index : "player"}`}
+                        className="item-panel__target-pill"
+                      >
+                        <span className="item-panel__target-order">
+                          {index + 1}
+                        </span>
+                        <span>{getItemTargetLabel(target)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="item-panel__instruction">Ready.</p>
+              )}
+              {itemCode === "C" ? (
+                <div className="item-panel__values">
+                  <p className="item-panel__instruction">
+                    Choose a wild value.
+                  </p>
+                  <div className="item-value-grid">
+                    {itemValueOptions.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`item-value-button${
+                          itemValue === value
+                            ? " item-value-button--active"
+                            : ""
+                        }`}
+                        onClick={() => setItemValue(value)}
+                        disabled={itemTargets.length === 0}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {isCrossPlayerSwap ? (
+                <p className="item-panel__warning">
+                  Cross-player swaps require confirmation before applying.
+                </p>
+              ) : null}
+              <div className="item-panel__actions">
+                <button
+                  type="button"
+                  className="item-panel__action item-panel__action--primary"
+                  onClick={() => handleUseItem()}
+                  disabled={!canUseItem || isSubmittingAction}
+                >
+                  Use item
+                </button>
+                {itemTargets.length > 0 ? (
+                  <button
+                    type="button"
+                    className="item-panel__action item-panel__action--ghost"
+                    onClick={handleResetItemSelection}
+                    disabled={isSubmittingAction}
+                  >
+                    Clear selection
+                  </button>
+                ) : null}
+                {canDiscardItem ? (
+                  <button
+                    type="button"
+                    className="item-panel__action item-panel__action--ghost"
+                    onClick={handleDiscardItem}
+                    disabled={isSubmittingAction}
+                  >
+                    Discard spike to reveal
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : isItemDrawnByOtherPlayer && itemCode ? (
+            <div className="item-panel" role="status" aria-live="polite">
+              <div className="item-panel__summary">
+                <div>
+                  <span className="player-item-panel">
+                    {itemOwnerName} drew
+                  </span>
+                </div>
+                <div>
+                  <p className="item-panel__title">{itemName}</p>
+                  <p className="item-panel__description">
+                    {itemDescriptions[itemCode]}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="player-grids">
+            <div className="player-grids__list" ref={playerListContainerRef}>
+              {displayPlayers.length ? (
+                displayPlayers.map((player) => {
+                  const isActivePlayer = player.id === game?.currentPlayerId;
+                  const isLocalPlayer = player.id === uid;
+                  return (
+                    <PlayerGrid
+                      key={player.id}
+                      ref={(element) => {
+                        playerGridRefs.current[player.id] = element;
+                      }}
+                      playerId={player.id}
+                      label={`${player.displayName}${player.isReady ? " ✓" : ""}`}
+                      localBadgeLabel={isLocalPlayer ? "YOU" : null}
+                      size={isLocalPlayer ? "main" : "mini"}
+                      isActive={isActivePlayer}
+                      isLocal={isLocalPlayer}
+                      grid={player.grid}
+                      revealed={player.revealed}
+                      mistTurnsRemaining={player.mistTurnsRemaining}
+                      onCardSelect={
+                        isLocalPlayer && canSelectGridCard
+                          ? handleSelectGridCard
+                          : undefined
                       }
-                    activeActionIndex={isLocalPlayer ? activeActionIndex : null}
-                    onReplace={isLocalPlayer && showDrawActions ? handleReplace : undefined}
-                    onReveal={
-                        isLocalPlayer && showDrawActions && !isSprinting ? handleReveal : undefined
+                      activeActionIndex={
+                        isLocalPlayer ? activeActionIndex : null
                       }
-                    onCancel={isLocalPlayer && showDrawActions ? handleCancelMenu : undefined}
-                    revealSelectionActive={
-                        isLocalPlayer && (isItemRevealPending || isRevealRecoveryActive) && !isSprinting
+                      onReplace={
+                        isLocalPlayer && showDrawActions
+                          ? handleReplace
+                          : undefined
                       }
-                    disableActionControls={isLocalPlayer && isSubmittingAction}
-                    onPlayerSelect={undefined}
-                    isPlayerSelected={false}
-                    itemSelection={
-                        isLocalPlayer && isCurrentTurn && itemCardSelectionActive
+                      onReveal={
+                        isLocalPlayer && showDrawActions && !isSprinting
+                          ? handleReveal
+                          : undefined
+                      }
+                      onCancel={
+                        isLocalPlayer && showDrawActions
+                          ? handleCancelMenu
+                          : undefined
+                      }
+                      revealSelectionActive={
+                        isLocalPlayer &&
+                        (isItemRevealPending || isRevealRecoveryActive) &&
+                        !isSprinting
+                      }
+                      disableActionControls={
+                        isLocalPlayer && isSubmittingAction
+                      }
+                      onPlayerSelect={undefined}
+                      isPlayerSelected={false}
+                      itemSelection={
+                        isLocalPlayer &&
+                        isCurrentTurn &&
+                        itemCardSelectionActive
                           ? {
                               active: true,
                               targets: itemCardTargets,
@@ -3753,20 +4281,17 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                             }
                           : undefined
                       }
-                    runningTotal={player.totalScore ?? 0}
-                  />
-                );
-              })
-            ) : (
-              <p>No players yet.</p>
-            )}
+                      runningTotal={player.totalScore ?? 0}
+                    />
+                  );
+                })
+              ) : (
+                <p>No players yet.</p>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
-
-    </main>
-
+        </section>
+      </main>
     </>
-
   );
 }
