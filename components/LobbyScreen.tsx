@@ -47,8 +47,9 @@ export default function LobbyScreen() {
     snow: isSnowEnabled,
     autoFollow: isAutoFollowEnabled,
   } = preferences;
-  const [isProfileSectionOpen, setIsProfileSectionOpen] = useState(true);
-  const [isPreferencesSectionOpen, setIsPreferencesSectionOpen] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useState(true);
+  const [isUiPreferencesOpen, setIsUiPreferencesOpen] = useState(false);
+  const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -260,17 +261,17 @@ export default function LobbyScreen() {
               <button
                 type="button"
                 className="modal__section-dropdown"
-                onClick={() => setIsProfileSectionOpen((current) => !current)}
-                aria-expanded={isProfileSectionOpen}
+                onClick={() => setIsProfileOpen((current) => !current)}
+                aria-expanded={isProfileOpen}
                 aria-controls="main-menu-profile-settings"
               >
                 <span className="modal__section-dropdown-label">Profile</span>
-                <span aria-hidden="true">{isProfileSectionOpen ? "▾" : "▸"}</span>
+                <span aria-hidden="true">{isProfileOpen ? "▾" : "▸"}</span>
               </button>
               <div
                 id="main-menu-profile-settings"
-                className={`modal__collapsible ${isProfileSectionOpen ? "modal__collapsible--open" : ""}`}
-                aria-hidden={!isProfileSectionOpen}
+                className={`modal__collapsible ${isProfileOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isProfileOpen}
               >
                 <div className="modal__collapsible-content">
                   {canEditProfile ? (
@@ -340,37 +341,19 @@ export default function LobbyScreen() {
               <button
                 type="button"
                 className="modal__section-dropdown"
-                onClick={() => setIsPreferencesSectionOpen((current) => !current)}
-                aria-expanded={isPreferencesSectionOpen}
-                aria-controls="main-menu-preferences-settings"
+                onClick={() => setIsUiPreferencesOpen((current) => !current)}
+                aria-expanded={isUiPreferencesOpen}
+                aria-controls="main-menu-ui-preferences"
               >
-                <span className="modal__section-dropdown-label">Preferences</span>
-                <span aria-hidden="true">{isPreferencesSectionOpen ? "▾" : "▸"}</span>
+                <span className="modal__section-dropdown-label">UI Preferences</span>
+                <span aria-hidden="true">{isUiPreferencesOpen ? "▾" : "▸"}</span>
               </button>
               <div
-                id="main-menu-preferences-settings"
-                className={`modal__collapsible ${isPreferencesSectionOpen ? "modal__collapsible--open" : ""}`}
-                aria-hidden={!isPreferencesSectionOpen}
+                id="main-menu-ui-preferences"
+                className={`modal__collapsible ${isUiPreferencesOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isUiPreferencesOpen}
               >
                 <div className="modal__collapsible-content">
-                  <div className="modal__option">
-                    <label className="modal__option-label modal__option-toggle">
-                      <span>First time tips</span>
-                      <span className="toggle">
-                        <input
-                          className="toggle__input"
-                          type="checkbox"
-                          checked={showFirstTimeTips}
-                          onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
-                        />
-                        <span className="toggle__track" aria-hidden="true" />
-                      </span>
-                    </label>
-                    <p className="modal__option-help">
-                      Show the quick hints about revealing, replacing, and swapping cards.
-                    </p>
-                  </div>
-                  <h3 className="modal__section-title">UI Preferences</h3>
                   <div className="modal__option">
                     <label className="modal__option-label modal__option-toggle">
                       <span>Dark mode</span>
@@ -435,6 +418,41 @@ export default function LobbyScreen() {
                     </label>
                     <p className="modal__option-help">
                       Play theme music during round breaks and in the lobby.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal__section-dropdown"
+                onClick={() => setIsAccessibilityOpen((current) => !current)}
+                aria-expanded={isAccessibilityOpen}
+                aria-controls="main-menu-accessibility-settings"
+              >
+                <span className="modal__section-dropdown-label">Accessibility</span>
+                <span aria-hidden="true">{isAccessibilityOpen ? "▾" : "▸"}</span>
+              </button>
+              <div
+                id="main-menu-accessibility-settings"
+                className={`modal__collapsible ${isAccessibilityOpen ? "modal__collapsible--open" : ""}`}
+                aria-hidden={!isAccessibilityOpen}
+              >
+                <div className="modal__collapsible-content">
+                  <div className="modal__option">
+                    <label className="modal__option-label modal__option-toggle">
+                      <span>First time tips</span>
+                      <span className="toggle">
+                        <input
+                          className="toggle__input"
+                          type="checkbox"
+                          checked={showFirstTimeTips}
+                          onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true" />
+                      </span>
+                    </label>
+                    <p className="modal__option-help">
+                      Show the quick hints about revealing, replacing, and swapping cards.
                     </p>
                   </div>
                   <div className="modal__option">
