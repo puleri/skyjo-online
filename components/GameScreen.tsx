@@ -62,8 +62,7 @@ import {
   type UserProfileGamePlacement,
 } from "../lib/userProfile";
 import {
-  getNextLevelMetadata,
-  getProgressWithinLevel,
+  applyEarnedExperience,
   getTotalEarnedXpBreakdown,
   isNextLevelMultipleOfFive,
 } from "../lib/progression";
@@ -297,10 +296,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const [localPlayerExperiencePreview, setLocalPlayerExperiencePreview] =
     useState<{
-      totalExperience: number;
-      level: number;
-      nextLevel: number | null;
-      xpRemaining: number;
+      currentLevel: number;
+      xpGainedTowardCurrentLevel: number;
+      xpRequiredForCurrentLevel: number;
+      xpRemainingToNextLevel: number;
+      nextLevel: number;
       showRewardPreview: boolean;
     } | null>(null);
   const players = useMemo<GamePlayer[]>(() => {
@@ -2692,6 +2692,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const existingLastFiveGames = Array.isArray(existingData?.lastFiveGames)
         ? (existingData.lastFiveGames as UserProfileGamePlacement[])
         : [];
+      const existingLevel =
+        typeof existingData?.level === "number" ? existingData.level : 1;
       const existingExperience =
         typeof existingData?.experience === "number"
           ? existingData.experience
@@ -2703,23 +2705,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           playerSummaries.find((player) => player.id === uid)
             ?.pointsClearedFromRows ?? 0,
       });
-      const updatedExperience = existingExperience + earnedXp.totalXp;
-      const updatedProgress = getProgressWithinLevel(updatedExperience);
-      const nextLevelMeta = getNextLevelMetadata(updatedExperience);
+      const updatedProgress = applyEarnedExperience(
+        existingLevel,
+        existingExperience,
+        earnedXp.totalXp,
+      );
 
       setLocalPlayerExperiencePreview({
-        totalExperience: updatedExperience,
-        level: updatedProgress.level,
-        nextLevel: nextLevelMeta.nextLevel,
-        xpRemaining: nextLevelMeta.xpRemaining,
-        showRewardPreview: isNextLevelMultipleOfFive(nextLevelMeta),
+        currentLevel: updatedProgress.currentLevel,
+        xpGainedTowardCurrentLevel:
+          updatedProgress.xpGainedTowardCurrentLevel,
+        xpRequiredForCurrentLevel: updatedProgress.xpRequiredForCurrentLevel,
+        xpRemainingToNextLevel: updatedProgress.xpRemainingToNextLevel,
+        nextLevel: updatedProgress.nextLevel,
+        showRewardPreview: isNextLevelMultipleOfFive(updatedProgress.nextLevel),
       });
 
       await setDoc(
         userRef,
         {
-          experience: updatedExperience,
-          level: updatedProgress.level,
+          experience: updatedProgress.xpGainedTowardCurrentLevel,
+          level: updatedProgress.currentLevel,
           lastFiveGames: clampLastFiveGames([
             ...existingLastFiveGames,
             playerPlacement + 1,
@@ -3816,10 +3822,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       </p>
                       {localPlayerExperiencePreview ? (
                         <p className="modal__option-help">
-                          Level {localPlayerExperiencePreview.level} ·{" "}
-                          {localPlayerExperiencePreview.totalExperience} total
-                          XP · {localPlayerExperiencePreview.xpRemaining} XP
-                          until level {localPlayerExperiencePreview.nextLevel}
+                          Level {localPlayerExperiencePreview.currentLevel} ·{" "}
+                          {localPlayerExperiencePreview.xpGainedTowardCurrentLevel} /{" "}
+                          {localPlayerExperiencePreview.xpRequiredForCurrentLevel} XP this level ·{" "}
+                          {localPlayerExperiencePreview.xpRemainingToNextLevel} XP until level {localPlayerExperiencePreview.nextLevel}
                           {localPlayerExperiencePreview.showRewardPreview
                             ? " · reward preview"
                             : ""}
