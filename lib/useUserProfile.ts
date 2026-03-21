@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import {
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -40,13 +41,44 @@ type UseUserProfileState = {
 
 async function ensureUserProfile(user: User) {
   const userRef = doc(db, "users", user.uid);
+  const userSnapshot = await getDoc(userRef);
   const defaultProfile = defaultUserProfile(user);
+
+  if (!userSnapshot.exists()) {
+    await setDoc(userRef, {
+      ...defaultProfile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  const existingProfile = userSnapshot.data();
 
   await setDoc(
     userRef,
     {
-      ...defaultProfile,
-      createdAt: serverTimestamp(),
+      ...(typeof existingProfile.displayName === "string" ? {} : { displayName: user.displayName }),
+      ...(typeof existingProfile.email === "string" ? {} : { email: user.email }),
+      ...(typeof existingProfile.photoURL === "string" ? {} : { photoURL: user.photoURL }),
+      ...(Array.isArray(existingProfile.friends) ? {} : { friends: defaultProfile.friends }),
+      ...(Array.isArray(existingProfile.lastFiveGames)
+        ? {}
+        : { lastFiveGames: defaultProfile.lastFiveGames }),
+      ...(existingProfile.settingsPreferences &&
+      typeof existingProfile.settingsPreferences === "object"
+        ? {}
+        : { settingsPreferences: defaultProfile.settingsPreferences }),
+      ...(typeof existingProfile.level === "number" ? {} : { level: defaultProfile.level }),
+      ...(typeof existingProfile.experience === "number"
+        ? {}
+        : { experience: defaultProfile.experience }),
+      ...(Array.isArray(existingProfile.unlockedSpells)
+        ? {}
+        : { unlockedSpells: defaultProfile.unlockedSpells }),
+      ...(Array.isArray(existingProfile.rewardedGameIds)
+        ? {}
+        : { rewardedGameIds: defaultProfile.rewardedGameIds }),
       updatedAt: serverTimestamp(),
     },
     { merge: true }
