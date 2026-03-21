@@ -37,9 +37,6 @@ import {
 } from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
 
-const heroBannerLight = "/images/misty-hero-banner.png";
-const heroBannerDark = "/images/misty-hero-banner-darkmode.png";
-
 type LeaderboardEntry = {
   id: string;
   displayName: string;
@@ -98,7 +95,6 @@ export default function LobbyScreen() {
   const [xpReplayRunId, setXpReplayRunId] = useState(0);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
-  const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
   const firebaseReady = isFirebaseConfigured;
   const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const settingsCloseButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -458,9 +454,14 @@ export default function LobbyScreen() {
     <main>
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
       <img
-        className="welcome-div"
-        src={heroBannerSrc}
-        alt="Misty Hero Banner"
+        className="welcome-div welcome-div-light"
+        src="/images/misty-hero-banner.png"
+        alt=""
+      />
+      <img
+        className="welcome-div welcome-div-dark"
+        src="/images/misty-hero-banner-darkmode.png"
+        alt=""
       />
 
       <div className="container">
