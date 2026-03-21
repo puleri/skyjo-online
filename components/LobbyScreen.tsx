@@ -8,7 +8,14 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CSSProperties,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
@@ -380,7 +387,13 @@ export default function LobbyScreen() {
                         </div>
                         <div
                           className="profile-progression"
+                          data-profile-open={isProfileOpen ? "true" : "false"}
                           aria-label={`Level ${experienceProgress.currentLevel} progression`}
+                          style={
+                            {
+                              "--profile-progress-width": `${experienceProgress.progressPercent}%`,
+                            } as CSSProperties
+                          }
                         >
                           <div className="profile-progression__bar-row">
                             <span className="profile-progression__level-label">
@@ -400,9 +413,6 @@ export default function LobbyScreen() {
                             >
                               <span
                                 className="profile-progression__fill"
-                                style={{
-                                  width: `${experienceProgress.progressPercent}%`,
-                                }}
                               />
                             </div>
                             <span className="profile-progression__level-label">
