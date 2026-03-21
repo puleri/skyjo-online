@@ -538,17 +538,10 @@ export default function LobbyScreen() {
             onClick={() => setIsSettingsOpen(false)}
           >
             <div className="modal" onClick={(event) => event.stopPropagation()}>
-              <h2 id="main-menu-settings-title">Settings</h2>
-              <p>Update your profile and preferences.</p>
               {isProfileLoading ? (
                 <p className="notice">Loading account settings…</p>
               ) : null}
-              {!isProfileLoading && isSignedIn && !isAnonymousUser ? (
-                <p className="notice">
-                  Signed in as{" "}
-                  {resolvedProfileName || authEmail || "Anonymous player"}.
-                </p>
-              ) : null}
+              
               {profileError ? (
                 <p className="notice">Profile error: {profileError}</p>
               ) : null}
