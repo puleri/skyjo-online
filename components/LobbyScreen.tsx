@@ -87,10 +87,17 @@ export default function LobbyScreen() {
   >([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [playbackSegmentIndex, setPlaybackSegmentIndex] = useState(0);
-  const [displayedFillPercent, setDisplayedFillPercent] = useState(0);
+  const [displayedPercent, setDisplayedPercent] = useState(0);
+  const [progressTransitionDurationMs, setProgressTransitionDurationMs] =
+    useState(0);
+  const [progressTransitionTiming, setProgressTransitionTiming] = useState(
+    "ease",
+  );
   const [displayedLeftLevel, setDisplayedLeftLevel] = useState(1);
   const [displayedRightLevel, setDisplayedRightLevel] = useState(2);
   const [hasCompletedPlayback, setHasCompletedPlayback] = useState(false);
+  const playbackTimeoutRef = useRef<number | null>(null);
+  const playbackFrameRef = useRef<number | null>(null);
   const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
   const firebaseReady = isFirebaseConfigured;
   const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -248,7 +255,7 @@ export default function LobbyScreen() {
     ? {
         currentLevel: displayedLeftLevel,
         nextLevel: displayedRightLevel,
-        progressPercent: displayedFillPercent,
+        progressPercent: displayedPercent,
         xpGainedTowardCurrentLevel: activePlaybackSegment.startXp,
         xpRequiredForCurrentLevel: activePlaybackSegment.xpRequiredForLevel,
         xpRemainingToNextLevel: Math.max(
@@ -275,7 +282,9 @@ export default function LobbyScreen() {
   useEffect(() => {
     if (!isSettingsOpen || !isProfileOpen || xpPlayback.length === 0) {
       setPlaybackSegmentIndex(0);
-      setDisplayedFillPercent(finalProgress.progressPercent);
+      setDisplayedPercent(finalProgress.progressPercent);
+      setProgressTransitionDurationMs(0);
+      setProgressTransitionTiming("ease");
       setDisplayedLeftLevel(finalProgress.currentLevel);
       setDisplayedRightLevel(finalProgress.nextLevel);
       setHasCompletedPlayback(xpPlayback.length === 0);
@@ -286,7 +295,9 @@ export default function LobbyScreen() {
     setPlaybackSegmentIndex(0);
     setDisplayedLeftLevel(firstSegment.labelCurrentLevel);
     setDisplayedRightLevel(firstSegment.labelNextLevel);
-    setDisplayedFillPercent(firstSegment.startPercent);
+    setDisplayedPercent(firstSegment.startPercent);
+    setProgressTransitionDurationMs(0);
+    setProgressTransitionTiming("ease");
     setHasCompletedPlayback(false);
   }, [
     finalProgress.currentLevel,
@@ -298,40 +309,85 @@ export default function LobbyScreen() {
   ]);
 
   useEffect(() => {
-    if (
-      !isSettingsOpen ||
-      !isProfileOpen ||
-      hasCompletedPlayback ||
-      !activePlaybackSegment
-    ) {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const frameId = window.requestAnimationFrame(() => {
-      setDisplayedLeftLevel(activePlaybackSegment.labelCurrentLevel);
-      setDisplayedRightLevel(activePlaybackSegment.labelNextLevel);
-      setDisplayedFillPercent(activePlaybackSegment.endPercent);
+    if (playbackTimeoutRef.current !== null) {
+      window.clearTimeout(playbackTimeoutRef.current);
+      playbackTimeoutRef.current = null;
+    }
+    if (playbackFrameRef.current !== null) {
+      window.cancelAnimationFrame(playbackFrameRef.current);
+      playbackFrameRef.current = null;
+    }
+
+    if (!isSettingsOpen || !isProfileOpen) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches || hasCompletedPlayback || !activePlaybackSegment) {
+      if (mediaQuery.matches) {
+        setHasCompletedPlayback(true);
+        setDisplayedLeftLevel(finalProgress.currentLevel);
+        setDisplayedRightLevel(finalProgress.nextLevel);
+        setDisplayedPercent(finalProgress.progressPercent);
+        setProgressTransitionDurationMs(0);
+        setProgressTransitionTiming("ease");
+      }
+      return;
+    }
+
+    const isLastSegment = playbackSegmentIndex === xpPlayback.length - 1;
+    setDisplayedLeftLevel(activePlaybackSegment.labelCurrentLevel);
+    setDisplayedRightLevel(activePlaybackSegment.labelNextLevel);
+    setDisplayedPercent(activePlaybackSegment.startPercent);
+    setProgressTransitionDurationMs(0);
+    setProgressTransitionTiming("ease");
+
+    playbackFrameRef.current = window.requestAnimationFrame(() => {
+      setProgressTransitionDurationMs(activePlaybackSegment.durationMs);
+      setProgressTransitionTiming(
+        isLastSegment ? "cubic-bezier(0.22, 1, 0.36, 1)" : "ease",
+      );
+      setDisplayedPercent(activePlaybackSegment.endPercent);
+      playbackFrameRef.current = null;
     });
 
-    const timeoutId = window.setTimeout(() => {
+    playbackTimeoutRef.current = window.setTimeout(() => {
+      playbackTimeoutRef.current = null;
+
       if (playbackSegmentIndex >= xpPlayback.length - 1) {
         setHasCompletedPlayback(true);
         setDisplayedLeftLevel(finalProgress.currentLevel);
         setDisplayedRightLevel(finalProgress.nextLevel);
-        setDisplayedFillPercent(finalProgress.progressPercent);
+        setDisplayedPercent(finalProgress.progressPercent);
+        setProgressTransitionDurationMs(0);
+        setProgressTransitionTiming("ease-out");
         return;
       }
 
       const nextSegment = xpPlayback[playbackSegmentIndex + 1];
+      if (activePlaybackSegment.endPercent >= 100) {
+        setDisplayedLeftLevel(nextSegment.labelCurrentLevel);
+        setDisplayedRightLevel(nextSegment.labelNextLevel);
+        setProgressTransitionDurationMs(0);
+        setProgressTransitionTiming("ease");
+        setDisplayedPercent(0);
+      }
       setPlaybackSegmentIndex((current) => current + 1);
-      setDisplayedLeftLevel(nextSegment.labelCurrentLevel);
-      setDisplayedRightLevel(nextSegment.labelNextLevel);
-      setDisplayedFillPercent(nextSegment.startPercent);
     }, activePlaybackSegment.durationMs);
 
     return () => {
-      window.cancelAnimationFrame(frameId);
-      window.clearTimeout(timeoutId);
+      if (playbackTimeoutRef.current !== null) {
+        window.clearTimeout(playbackTimeoutRef.current);
+        playbackTimeoutRef.current = null;
+      }
+      if (playbackFrameRef.current !== null) {
+        window.cancelAnimationFrame(playbackFrameRef.current);
+        playbackFrameRef.current = null;
+      }
     };
   }, [
     activePlaybackSegment,
@@ -503,7 +559,9 @@ export default function LobbyScreen() {
                           aria-label={`Level ${displayedProgress.currentLevel} progression`}
                           style={
                             {
-                              "--profile-progress-width": `${displayedProgress.progressPercent}%`,
+                              "--profile-progress-width": `${displayedPercent}%`,
+                              "--profile-progress-duration": `${progressTransitionDurationMs}ms`,
+                              "--profile-progress-easing": progressTransitionTiming,
                             } as CSSProperties
                           }
                         >

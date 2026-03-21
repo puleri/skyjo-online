@@ -624,6 +624,8 @@ section {
 
 .profile-progression {
   --profile-progress-width: 0%;
+  --profile-progress-duration: 0ms;
+  --profile-progress-easing: ease;
   display: grid;
   gap: 10px;
   margin-top: 10px;
@@ -656,29 +658,17 @@ section {
 .profile-progression__fill {
   display: block;
   height: 100%;
+  width: var(--profile-progress-width);
   border-radius: inherit;
   background: linear-gradient(90deg, #7ebd92 0%, #b6dd88 100%);
-  width: var(--profile-progress-width);
-  transform: scaleX(0);
-  transform-origin: left center;
-  opacity: 0;
-  will-change: transform, opacity;
-  transition:
-    width 360ms ease,
-    transform 360ms ease,
-    opacity 220ms ease;
-}
-
-.profile-progression[data-profile-open="true"] .profile-progression__fill {
-  transform: scaleX(1);
   opacity: 1;
+  will-change: width;
+  transition: width var(--profile-progress-duration) var(--profile-progress-easing);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .profile-progression__fill {
     transition: none;
-    transform: none;
-    opacity: 1;
   }
 }
 
