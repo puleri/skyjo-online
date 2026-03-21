@@ -664,6 +664,7 @@ section {
   opacity: 0;
   will-change: transform, opacity;
   transition:
+    width 360ms ease,
     transform 360ms ease,
     opacity 220ms ease;
 }

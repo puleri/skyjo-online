@@ -28,9 +28,12 @@ import {
 } from "../lib/firebase";
 import { useUserProfile } from "../lib/useUserProfile";
 import {
+  buildXpAnimationSegments,
   getStoredLevelProgress,
   getStoredLifetimeExperience,
   isNextLevelMultipleOfFive,
+  type StoredLevelProgress,
+  type XpAnimationSegment,
 } from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
 
@@ -83,6 +86,11 @@ export default function LobbyScreen() {
     LeaderboardEntry[]
   >([]);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [playbackSegmentIndex, setPlaybackSegmentIndex] = useState(0);
+  const [displayedFillPercent, setDisplayedFillPercent] = useState(0);
+  const [displayedLeftLevel, setDisplayedLeftLevel] = useState(1);
+  const [displayedRightLevel, setDisplayedRightLevel] = useState(2);
+  const [hasCompletedPlayback, setHasCompletedPlayback] = useState(false);
   const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
   const firebaseReady = isFirebaseConfigured;
   const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -213,13 +221,43 @@ export default function LobbyScreen() {
     [recentPlacements],
   );
   const canEditProfile = isSignedIn && !isAnonymousUser && Boolean(profile);
-  const experienceProgress = useMemo(
+  const finalProgress = useMemo<StoredLevelProgress>(
     () => getStoredLevelProgress(profile?.level ?? 1, profile?.experience ?? 0),
     [profile?.experience, profile?.level],
   );
-  const showRewardPreview = isNextLevelMultipleOfFive(
-    experienceProgress.nextLevel,
+  const xpPlayback = useMemo<XpAnimationSegment[]>(() => {
+    if (!profile?.lastXpGainAnimation) {
+      return [];
+    }
+
+    const { fromLevel, fromExperience, toLevel, toExperience } =
+      profile.lastXpGainAnimation;
+
+    return buildXpAnimationSegments(
+      fromLevel,
+      fromExperience,
+      toLevel,
+      toExperience,
+    );
+  }, [profile?.lastXpGainAnimation]);
+  const activePlaybackSegment = xpPlayback[playbackSegmentIndex] ?? null;
+  const isPlaybackActive = Boolean(
+    xpPlayback.length && !hasCompletedPlayback && activePlaybackSegment,
   );
+  const displayedProgress = isPlaybackActive
+    ? {
+        currentLevel: displayedLeftLevel,
+        nextLevel: displayedRightLevel,
+        progressPercent: displayedFillPercent,
+        xpGainedTowardCurrentLevel: activePlaybackSegment.startXp,
+        xpRequiredForCurrentLevel: activePlaybackSegment.xpRequiredForLevel,
+        xpRemainingToNextLevel: Math.max(
+          0,
+          activePlaybackSegment.xpRequiredForLevel - activePlaybackSegment.startXp,
+        ),
+      }
+    : finalProgress;
+  const showRewardPreview = isNextLevelMultipleOfFive(finalProgress.nextLevel);
   const totalLifetimeXp = useMemo(
     () =>
       getStoredLifetimeExperience(
@@ -229,9 +267,83 @@ export default function LobbyScreen() {
     [profile?.experience, profile?.level],
   );
   const progressionHelperText =
-    `${experienceProgress.xpGainedTowardCurrentLevel} / ` +
-    `${experienceProgress.xpRequiredForCurrentLevel} XP this level · ` +
+    `${finalProgress.xpGainedTowardCurrentLevel} / ` +
+    `${finalProgress.xpRequiredForCurrentLevel} XP this level · ` +
     `${totalLifetimeXp} lifetime XP`;
+
+
+  useEffect(() => {
+    if (!isSettingsOpen || !isProfileOpen || xpPlayback.length === 0) {
+      setPlaybackSegmentIndex(0);
+      setDisplayedFillPercent(finalProgress.progressPercent);
+      setDisplayedLeftLevel(finalProgress.currentLevel);
+      setDisplayedRightLevel(finalProgress.nextLevel);
+      setHasCompletedPlayback(xpPlayback.length === 0);
+      return;
+    }
+
+    const firstSegment = xpPlayback[0];
+    setPlaybackSegmentIndex(0);
+    setDisplayedLeftLevel(firstSegment.labelCurrentLevel);
+    setDisplayedRightLevel(firstSegment.labelNextLevel);
+    setDisplayedFillPercent(firstSegment.startPercent);
+    setHasCompletedPlayback(false);
+  }, [
+    finalProgress.currentLevel,
+    finalProgress.nextLevel,
+    finalProgress.progressPercent,
+    isProfileOpen,
+    isSettingsOpen,
+    xpPlayback,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isSettingsOpen ||
+      !isProfileOpen ||
+      hasCompletedPlayback ||
+      !activePlaybackSegment
+    ) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setDisplayedLeftLevel(activePlaybackSegment.labelCurrentLevel);
+      setDisplayedRightLevel(activePlaybackSegment.labelNextLevel);
+      setDisplayedFillPercent(activePlaybackSegment.endPercent);
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      if (playbackSegmentIndex >= xpPlayback.length - 1) {
+        setHasCompletedPlayback(true);
+        setDisplayedLeftLevel(finalProgress.currentLevel);
+        setDisplayedRightLevel(finalProgress.nextLevel);
+        setDisplayedFillPercent(finalProgress.progressPercent);
+        return;
+      }
+
+      const nextSegment = xpPlayback[playbackSegmentIndex + 1];
+      setPlaybackSegmentIndex((current) => current + 1);
+      setDisplayedLeftLevel(nextSegment.labelCurrentLevel);
+      setDisplayedRightLevel(nextSegment.labelNextLevel);
+      setDisplayedFillPercent(nextSegment.startPercent);
+    }, activePlaybackSegment.durationMs);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    activePlaybackSegment,
+    finalProgress.currentLevel,
+    finalProgress.nextLevel,
+    finalProgress.progressPercent,
+    hasCompletedPlayback,
+    isProfileOpen,
+    isSettingsOpen,
+    playbackSegmentIndex,
+    xpPlayback,
+  ]);
 
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -388,48 +500,48 @@ export default function LobbyScreen() {
                         <div
                           className="profile-progression"
                           data-profile-open={isProfileOpen ? "true" : "false"}
-                          aria-label={`Level ${experienceProgress.currentLevel} progression`}
+                          aria-label={`Level ${displayedProgress.currentLevel} progression`}
                           style={
                             {
-                              "--profile-progress-width": `${experienceProgress.progressPercent}%`,
+                              "--profile-progress-width": `${displayedProgress.progressPercent}%`,
                             } as CSSProperties
                           }
                         >
                           <div className="profile-progression__bar-row">
                             <span className="profile-progression__level-label">
-                              Lv. {experienceProgress.currentLevel}
+                              Lv. {displayedProgress.currentLevel}
                             </span>
                             <div
                               className="profile-progression__bar"
                               role="progressbar"
                               aria-valuemin={0}
                               aria-valuemax={
-                                experienceProgress.xpRequiredForCurrentLevel
+                                displayedProgress.xpRequiredForCurrentLevel
                               }
                               aria-valuenow={
-                                experienceProgress.xpGainedTowardCurrentLevel
+                                displayedProgress.xpGainedTowardCurrentLevel
                               }
-                              aria-valuetext={`${experienceProgress.xpGainedTowardCurrentLevel} of ${experienceProgress.xpRequiredForCurrentLevel} XP toward level ${experienceProgress.nextLevel}`}
+                              aria-valuetext={`${displayedProgress.xpGainedTowardCurrentLevel} of ${displayedProgress.xpRequiredForCurrentLevel} XP toward level ${displayedProgress.nextLevel}`}
                             >
                               <span
                                 className="profile-progression__fill"
                               />
                             </div>
                             <span className="profile-progression__level-label">
-                              Lv. {experienceProgress.nextLevel}
+                              Lv. {displayedProgress.nextLevel}
                             </span>
                           </div>
                           <p className="modal__option-help">
                             {progressionHelperText}
                           </p>
                           <p className="modal__option-help">
-                            {experienceProgress.xpRemainingToNextLevel} XP until
-                            level {experienceProgress.nextLevel}.
+                            {finalProgress.xpRemainingToNextLevel} XP until
+                            level {finalProgress.nextLevel}.
                           </p>
                           {showRewardPreview ? (
                             <div
                               className="profile-progression__reward-preview"
-                              aria-label={`Reward preview for level ${experienceProgress.nextLevel}`}
+                              aria-label={`Reward preview for level ${finalProgress.nextLevel}`}
                             >
                               <div
                                 className="profile-progression__reward-cardback"
@@ -437,7 +549,7 @@ export default function LobbyScreen() {
                               />
                               <div>
                                 <p className="profile-progression__reward-title">
-                                  Level {experienceProgress.nextLevel} reward
+                                  Level {finalProgress.nextLevel} reward
                                   preview
                                 </p>
                                 <p className="modal__option-help">
