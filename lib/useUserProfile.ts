@@ -79,6 +79,10 @@ async function ensureUserProfile(user: User) {
       ...(Array.isArray(existingProfile.rewardedGameIds)
         ? {}
         : { rewardedGameIds: defaultProfile.rewardedGameIds }),
+      ...(existingProfile.lastXpGainAnimation &&
+      typeof existingProfile.lastXpGainAnimation === "object"
+        ? {}
+        : { lastXpGainAnimation: defaultProfile.lastXpGainAnimation }),
       updatedAt: serverTimestamp(),
     },
     { merge: true }

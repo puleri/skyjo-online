@@ -61,6 +61,7 @@ import {
 import {
   clampLastFiveGames,
   type UserProfileGamePlacement,
+  type UserProfileLastXpGainAnimation,
 } from "../lib/userProfile";
 import {
   applyEarnedExperience,
@@ -322,6 +323,15 @@ async function updateCompletedGameProfile({
       existingLevel,
       updatedProgress.currentLevel,
     );
+    const lastXpGainAnimation: UserProfileLastXpGainAnimation = {
+      gameId,
+      awardedXp: updatedProgress.awardedXp,
+      fromLevel: existingLevel,
+      fromExperience: existingExperience,
+      toLevel: updatedProgress.currentLevel,
+      toExperience: updatedProgress.xpGainedTowardCurrentLevel,
+      playedAt: new Date().toISOString(),
+    };
 
     transaction.set(
       userRef,
@@ -336,6 +346,7 @@ async function updateCompletedGameProfile({
           playerPlacement + 1,
         ]),
         rewardedGameIds: [...rewardedGameIds, gameId],
+        lastXpGainAnimation,
         updatedAt: serverTimestamp(),
       },
       { merge: true },
