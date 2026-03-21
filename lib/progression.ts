@@ -174,6 +174,13 @@ export function applyEarnedExperience(
   );
 }
 
+export function getStoredLifetimeExperience(level: number, experience: number) {
+  const progress = getStoredLevelProgress(level, experience);
+  return (
+    getXpRequiredForLevel(progress.currentLevel) +
+    progress.xpGainedTowardCurrentLevel
+  );
+}
 
 export function getRewardUnlockIdForLevel(level: number) {
   const normalizedLevel = normalizeLevel(level);

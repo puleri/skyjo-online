@@ -22,6 +22,7 @@ import {
 import { useUserProfile } from "../lib/useUserProfile";
 import {
   getStoredLevelProgress,
+  getStoredLifetimeExperience,
   isNextLevelMultipleOfFive,
 } from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
@@ -212,6 +213,18 @@ export default function LobbyScreen() {
   const showRewardPreview = isNextLevelMultipleOfFive(
     experienceProgress.nextLevel,
   );
+  const totalLifetimeXp = useMemo(
+    () =>
+      getStoredLifetimeExperience(
+        profile?.level ?? 1,
+        profile?.experience ?? 0,
+      ),
+    [profile?.experience, profile?.level],
+  );
+  const progressionHelperText =
+    `${experienceProgress.xpGainedTowardCurrentLevel} / ` +
+    `${experienceProgress.xpRequiredForCurrentLevel} XP this level · ` +
+    `${totalLifetimeXp} lifetime XP`;
 
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -363,24 +376,68 @@ export default function LobbyScreen() {
                       </div>
                       <div className="modal__option">
                         <div className="modal__option-label">
-                          <span>Level</span>
+                          <span>Progression</span>
                         </div>
-                        <p className="modal__option-help">
-                          Level {experienceProgress.currentLevel}.
-                        </p>
-                        <p className="modal__option-help">
-                          {experienceProgress.xpGainedTowardCurrentLevel} /{" "}
-                          {experienceProgress.xpRequiredForCurrentLevel} XP in
-                          the current level.
-                        </p>
-                        <p className="modal__option-help">
-                          {experienceProgress.xpRemainingToNextLevel} XP
-                          remaining until level {experienceProgress.nextLevel}
-                          {showRewardPreview
-                            ? " · Reward preview unlocked"
-                            : ""}
-                          .
-                        </p>
+                        <div
+                          className="profile-progression"
+                          aria-label={`Level ${experienceProgress.currentLevel} progression`}
+                        >
+                          <div className="profile-progression__bar-row">
+                            <span className="profile-progression__level-label">
+                              Lv. {experienceProgress.currentLevel}
+                            </span>
+                            <div
+                              className="profile-progression__bar"
+                              role="progressbar"
+                              aria-valuemin={0}
+                              aria-valuemax={
+                                experienceProgress.xpRequiredForCurrentLevel
+                              }
+                              aria-valuenow={
+                                experienceProgress.xpGainedTowardCurrentLevel
+                              }
+                              aria-valuetext={`${experienceProgress.xpGainedTowardCurrentLevel} of ${experienceProgress.xpRequiredForCurrentLevel} XP toward level ${experienceProgress.nextLevel}`}
+                            >
+                              <span
+                                className="profile-progression__fill"
+                                style={{
+                                  width: `${experienceProgress.progressPercent}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="profile-progression__level-label">
+                              Lv. {experienceProgress.nextLevel}
+                            </span>
+                          </div>
+                          <p className="modal__option-help">
+                            {progressionHelperText}
+                          </p>
+                          <p className="modal__option-help">
+                            {experienceProgress.xpRemainingToNextLevel} XP until
+                            level {experienceProgress.nextLevel}.
+                          </p>
+                          {showRewardPreview ? (
+                            <div
+                              className="profile-progression__reward-preview"
+                              aria-label={`Reward preview for level ${experienceProgress.nextLevel}`}
+                            >
+                              <div
+                                className="profile-progression__reward-cardback"
+                                aria-hidden="true"
+                              />
+                              <div>
+                                <p className="profile-progression__reward-title">
+                                  Level {experienceProgress.nextLevel} reward
+                                  preview
+                                </p>
+                                <p className="modal__option-help">
+                                  Reach this milestone to unlock the next
+                                  cardback reward.
+                                </p>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="modal__option">
                         <div className="modal__option-label">
