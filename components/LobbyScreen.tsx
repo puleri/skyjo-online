@@ -96,6 +96,9 @@ export default function LobbyScreen() {
   const [displayedRightLevel, setDisplayedRightLevel] = useState(2);
   const [hasCompletedPlayback, setHasCompletedPlayback] = useState(false);
   const [xpReplayRunId, setXpReplayRunId] = useState(0);
+  const [playbackAnnouncement, setPlaybackAnnouncement] = useState<
+    string | null
+  >(null);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
   const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
@@ -295,6 +298,10 @@ export default function LobbyScreen() {
   const xpReplayStatusText = latestXpAnimation
     ? `+${latestXpAnimation.awardedXp} XP from your last game`
     : null;
+  const displayedProgressionHelperText =
+    isPlaybackActive && playbackAnnouncement
+      ? playbackAnnouncement
+      : progressionHelperText;
 
   useEffect(() => {
     if (
@@ -310,6 +317,7 @@ export default function LobbyScreen() {
       setDisplayedLeftLevel(finalProgress.currentLevel);
       setDisplayedRightLevel(finalProgress.nextLevel);
       setHasCompletedPlayback(xpPlayback.length === 0);
+      setPlaybackAnnouncement(null);
       return;
     }
 
@@ -321,6 +329,7 @@ export default function LobbyScreen() {
     setProgressTransitionDurationMs(0);
     setProgressTransitionTiming("ease");
     setHasCompletedPlayback(false);
+    setPlaybackAnnouncement(null);
   }, [
     finalProgress.currentLevel,
     finalProgress.nextLevel,
@@ -359,22 +368,22 @@ export default function LobbyScreen() {
         setDisplayedPercent(finalProgress.progressPercent);
         setProgressTransitionDurationMs(0);
         setProgressTransitionTiming("ease");
+        setPlaybackAnnouncement(null);
       }
       return;
     }
 
-    const isLastSegment = playbackSegmentIndex === xpPlayback.length - 1;
+    const dramaticEasing = "cubic-bezier(0.65, 0, 0.35, 1)";
+    const boundaryPauseMs = activePlaybackSegment.isLevelUpBoundary ? 280 : 0;
     setDisplayedLeftLevel(activePlaybackSegment.labelCurrentLevel);
     setDisplayedRightLevel(activePlaybackSegment.labelNextLevel);
     setDisplayedPercent(activePlaybackSegment.startPercent);
     setProgressTransitionDurationMs(0);
-    setProgressTransitionTiming("ease");
+    setProgressTransitionTiming("linear");
 
     playbackFrameRef.current = window.requestAnimationFrame(() => {
       setProgressTransitionDurationMs(activePlaybackSegment.durationMs);
-      setProgressTransitionTiming(
-        isLastSegment ? "cubic-bezier(0.22, 1, 0.36, 1)" : "ease",
-      );
+      setProgressTransitionTiming(dramaticEasing);
       setDisplayedPercent(activePlaybackSegment.endPercent);
       playbackFrameRef.current = null;
     });
@@ -384,6 +393,7 @@ export default function LobbyScreen() {
 
       if (playbackSegmentIndex >= xpPlayback.length - 1) {
         setHasCompletedPlayback(true);
+        setPlaybackAnnouncement(null);
         setDisplayedLeftLevel(finalProgress.currentLevel);
         setDisplayedRightLevel(finalProgress.nextLevel);
         setDisplayedPercent(finalProgress.progressPercent);
@@ -393,14 +403,24 @@ export default function LobbyScreen() {
       }
 
       const nextSegment = xpPlayback[playbackSegmentIndex + 1];
-      if (activePlaybackSegment.endPercent >= 100) {
+      if (activePlaybackSegment.isLevelUpBoundary) {
+        setPlaybackAnnouncement(
+          `Level up! Lv. ${activePlaybackSegment.labelCurrentLevel} → Lv. ${nextSegment.labelCurrentLevel}`,
+        );
         setDisplayedLeftLevel(nextSegment.labelCurrentLevel);
         setDisplayedRightLevel(nextSegment.labelNextLevel);
         setProgressTransitionDurationMs(0);
-        setProgressTransitionTiming("ease");
+        setProgressTransitionTiming("linear");
         setDisplayedPercent(0);
+      } else {
+        setPlaybackAnnouncement(null);
       }
-      setPlaybackSegmentIndex((current) => current + 1);
+
+      playbackTimeoutRef.current = window.setTimeout(() => {
+        playbackTimeoutRef.current = null;
+        setPlaybackAnnouncement(null);
+        setPlaybackSegmentIndex((current) => current + 1);
+      }, boundaryPauseMs);
     }, activePlaybackSegment.durationMs);
 
     return () => {
@@ -615,7 +635,7 @@ export default function LobbyScreen() {
                             </span>
                           </div>
                           <p className="modal__option-help">
-                            {progressionHelperText}
+                            {displayedProgressionHelperText}
                           </p>
                           {xpReplayStatusText ? (
                             <div className="profile-progression__replay-row">
