@@ -96,6 +96,9 @@ export default function LobbyScreen() {
   const [displayedLeftLevel, setDisplayedLeftLevel] = useState(1);
   const [displayedRightLevel, setDisplayedRightLevel] = useState(2);
   const [hasCompletedPlayback, setHasCompletedPlayback] = useState(false);
+  const [hasPlayedXpAnimationForGameId, setHasPlayedXpAnimationForGameId] =
+    useState<string | null>(null);
+  const [xpReplayRunId, setXpReplayRunId] = useState(0);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
   const heroBannerSrc = isDarkMode ? heroBannerDark : heroBannerLight;
@@ -232,13 +235,14 @@ export default function LobbyScreen() {
     () => getStoredLevelProgress(profile?.level ?? 1, profile?.experience ?? 0),
     [profile?.experience, profile?.level],
   );
+  const latestXpAnimation = profile?.lastXpGainAnimation ?? null;
+  const latestXpAnimationGameId = latestXpAnimation?.gameId ?? null;
   const xpPlayback = useMemo<XpAnimationSegment[]>(() => {
-    if (!profile?.lastXpGainAnimation) {
+    if (!latestXpAnimation) {
       return [];
     }
 
-    const { fromLevel, fromExperience, toLevel, toExperience } =
-      profile.lastXpGainAnimation;
+    const { fromLevel, fromExperience, toLevel, toExperience } = latestXpAnimation;
 
     return buildXpAnimationSegments(
       fromLevel,
@@ -246,10 +250,19 @@ export default function LobbyScreen() {
       toLevel,
       toExperience,
     );
-  }, [profile?.lastXpGainAnimation]);
+  }, [latestXpAnimation]);
   const activePlaybackSegment = xpPlayback[playbackSegmentIndex] ?? null;
+  const canReplayLatestXpAnimation = Boolean(latestXpAnimationGameId && xpPlayback.length);
+  const shouldAutoPlayXpAnimation = Boolean(
+    latestXpAnimationGameId &&
+      xpPlayback.length &&
+      hasPlayedXpAnimationForGameId !== latestXpAnimationGameId,
+  );
   const isPlaybackActive = Boolean(
-    xpPlayback.length && !hasCompletedPlayback && activePlaybackSegment,
+    shouldAutoPlayXpAnimation &&
+      xpPlayback.length &&
+      !hasCompletedPlayback &&
+      activePlaybackSegment,
   );
   const displayedProgress = isPlaybackActive
     ? {
@@ -277,10 +290,28 @@ export default function LobbyScreen() {
     `${finalProgress.xpGainedTowardCurrentLevel} / ` +
     `${finalProgress.xpRequiredForCurrentLevel} XP this level · ` +
     `${totalLifetimeXp} lifetime XP`;
-
+  const xpReplayStatusText = latestXpAnimation
+    ? `+${latestXpAnimation.awardedXp} XP from your last game`
+    : null;
 
   useEffect(() => {
-    if (!isSettingsOpen || !isProfileOpen || xpPlayback.length === 0) {
+    if (
+      latestXpAnimationGameId &&
+      hasPlayedXpAnimationForGameId &&
+      hasPlayedXpAnimationForGameId !== latestXpAnimationGameId
+    ) {
+      setHasCompletedPlayback(false);
+      setXpReplayRunId(0);
+    }
+  }, [hasPlayedXpAnimationForGameId, latestXpAnimationGameId]);
+
+  useEffect(() => {
+    if (
+      !isSettingsOpen ||
+      !isProfileOpen ||
+      xpPlayback.length === 0 ||
+      !shouldAutoPlayXpAnimation
+    ) {
       setPlaybackSegmentIndex(0);
       setDisplayedPercent(finalProgress.progressPercent);
       setProgressTransitionDurationMs(0);
@@ -305,7 +336,9 @@ export default function LobbyScreen() {
     finalProgress.progressPercent,
     isProfileOpen,
     isSettingsOpen,
+    shouldAutoPlayXpAnimation,
     xpPlayback,
+    xpReplayRunId,
   ]);
 
   useEffect(() => {
@@ -322,7 +355,7 @@ export default function LobbyScreen() {
       playbackFrameRef.current = null;
     }
 
-    if (!isSettingsOpen || !isProfileOpen) {
+    if (!isSettingsOpen || !isProfileOpen || !shouldAutoPlayXpAnimation) {
       return;
     }
 
@@ -330,6 +363,9 @@ export default function LobbyScreen() {
     if (mediaQuery.matches || hasCompletedPlayback || !activePlaybackSegment) {
       if (mediaQuery.matches) {
         setHasCompletedPlayback(true);
+        if (latestXpAnimationGameId) {
+          setHasPlayedXpAnimationForGameId(latestXpAnimationGameId);
+        }
         setDisplayedLeftLevel(finalProgress.currentLevel);
         setDisplayedRightLevel(finalProgress.nextLevel);
         setDisplayedPercent(finalProgress.progressPercent);
@@ -360,6 +396,9 @@ export default function LobbyScreen() {
 
       if (playbackSegmentIndex >= xpPlayback.length - 1) {
         setHasCompletedPlayback(true);
+        if (latestXpAnimationGameId) {
+          setHasPlayedXpAnimationForGameId(latestXpAnimationGameId);
+        }
         setDisplayedLeftLevel(finalProgress.currentLevel);
         setDisplayedRightLevel(finalProgress.nextLevel);
         setDisplayedPercent(finalProgress.progressPercent);
@@ -397,7 +436,9 @@ export default function LobbyScreen() {
     hasCompletedPlayback,
     isProfileOpen,
     isSettingsOpen,
+    latestXpAnimationGameId,
     playbackSegmentIndex,
+    shouldAutoPlayXpAnimation,
     xpPlayback,
   ]);
 
@@ -591,6 +632,37 @@ export default function LobbyScreen() {
                           </div>
                           <p className="modal__option-help">
                             {progressionHelperText}
+                          </p>
+                          {xpReplayStatusText ? (
+                            <div className="profile-progression__replay-row">
+                              <p className="modal__option-help profile-progression__replay-text">
+                                {xpReplayStatusText}
+                                {canReplayLatestXpAnimation &&
+                                hasPlayedXpAnimationForGameId ===
+                                  latestXpAnimationGameId
+                                  ? " Replay available for this session."
+                                  : " Will replay automatically the first time you open this profile this session."}
+                              </p>
+                              {canReplayLatestXpAnimation ? (
+                                <button
+                                  type="button"
+                                  className="profile-progression__replay-button"
+                                  onClick={() => {
+                                    setHasCompletedPlayback(false);
+                                    setPlaybackSegmentIndex(0);
+                                    setXpReplayRunId((current) => current + 1);
+                                    if (latestXpAnimationGameId) {
+                                      setHasPlayedXpAnimationForGameId(null);
+                                    }
+                                  }}
+                                >
+                                  Replay
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          <p className="modal__option-help">
+                            When the replay is unavailable, this bar keeps showing your saved final progress.
                           </p>
                           <p className="modal__option-help">
                             {finalProgress.xpRemainingToNextLevel} XP until
