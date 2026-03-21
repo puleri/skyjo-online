@@ -672,6 +672,40 @@ section {
   }
 }
 
+
+.profile-progression__replay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profile-progression__replay-text {
+  margin: 0;
+  flex: 1 1 220px;
+}
+
+.profile-progression__replay-button {
+  border: 1px solid rgba(31, 41, 51, 0.16);
+  background: transparent;
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-progression__replay-button:hover {
+  background: color-mix(in srgb, var(--color-surface-alt) 72%, white 28%);
+}
+
+.profile-progression__replay-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary, #7ebd92) 72%, white 28%);
+  outline-offset: 2px;
+}
 .profile-progression__reward-preview {
   display: flex;
   align-items: center;
