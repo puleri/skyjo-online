@@ -10,6 +10,17 @@ export type UserProfileSettings = Preferences;
 
 export type UserProfileGamePlacement = number;
 
+export type UserProfileLastXpGainAnimation = {
+  gameId: string;
+  awardedXp: number;
+  fromLevel: number;
+  fromExperience: number;
+  toLevel: number;
+  toExperience: number;
+  playedAt?: UserProfileTimestamp;
+  dismissed?: boolean;
+};
+
 export type UserProfile = {
   uid: string;
   displayName: string | null;
@@ -22,6 +33,7 @@ export type UserProfile = {
   experience: number;
   unlockedSpells: string[];
   rewardedGameIds?: string[];
+  lastXpGainAnimation?: UserProfileLastXpGainAnimation | null;
   createdAt: UserProfileTimestamp;
   updatedAt: UserProfileTimestamp;
 };
@@ -75,6 +87,7 @@ export function defaultUserProfile(authUser: UserProfileAuthFields): UserProfile
     experience: 0,
     unlockedSpells: [],
     rewardedGameIds: [],
+    lastXpGainAnimation: null,
     createdAt: null,
     updatedAt: null,
   };
@@ -90,6 +103,10 @@ export function mergeUserProfile(
     friends: [...(updates.friends ?? current.friends)],
     unlockedSpells: [...(updates.unlockedSpells ?? current.unlockedSpells)],
     rewardedGameIds: [...(updates.rewardedGameIds ?? current.rewardedGameIds ?? [])],
+    lastXpGainAnimation:
+      updates.lastXpGainAnimation === undefined
+        ? current.lastXpGainAnimation ?? null
+        : updates.lastXpGainAnimation,
     lastFiveGames: clampLastFiveGames(updates.lastFiveGames ?? current.lastFiveGames),
     settingsPreferences: {
       ...createDefaultUserSettings(),
