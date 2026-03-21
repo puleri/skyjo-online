@@ -55,6 +55,19 @@ export type EarnedXpBreakdown = {
   playerCountMultiplier: number;
 };
 
+export type XpAnimationSegment = {
+  level: number;
+  startXp: number;
+  endXp: number;
+  xpRequiredForLevel: number;
+  startPercent: number;
+  endPercent: number;
+  isLevelUpBoundary: boolean;
+  durationMs: number;
+  labelCurrentLevel: number;
+  labelNextLevel: number;
+};
+
 export type ExperienceAwardPreview = StoredLevelProgress & {
   awardedXp: number;
   previousLevel: number;
@@ -170,6 +183,101 @@ export function getStoredLevelProgress(
             ),
           ),
   };
+}
+
+function getProgressPercent(xpValue: number, xpRequiredForLevel: number) {
+  if (xpRequiredForLevel <= 0) {
+    return 100;
+  }
+
+  return Math.min(100, Math.max(0, (xpValue / xpRequiredForLevel) * 100));
+}
+
+function getSegmentDurationMs({
+  xpDelta,
+  xpRequiredForLevel,
+  isFinalSegment,
+  isPassThroughSegment,
+}: {
+  xpDelta: number;
+  xpRequiredForLevel: number;
+  isFinalSegment: boolean;
+  isPassThroughSegment: boolean;
+}) {
+  const safeXpRequiredForLevel = Math.max(1, xpRequiredForLevel);
+  const ratio = Math.min(1, Math.max(0, xpDelta / safeXpRequiredForLevel));
+
+  if (isPassThroughSegment) {
+    return Math.round(500 + ratio * 200);
+  }
+
+  if (isFinalSegment) {
+    return Math.round(700 + ratio * 200);
+  }
+
+  return Math.round(600 + ratio * 300);
+}
+
+export function buildXpAnimationSegments(
+  fromLevel: number,
+  fromExperience: number,
+  toLevel: number,
+  toExperience: number,
+): XpAnimationSegment[] {
+  const startProgress = getStoredLevelProgress(fromLevel, fromExperience);
+  const endProgress = getStoredLevelProgress(toLevel, toExperience);
+
+  if (
+    endProgress.currentLevel < startProgress.currentLevel ||
+    (endProgress.currentLevel === startProgress.currentLevel &&
+      endProgress.xpGainedTowardCurrentLevel <
+        startProgress.xpGainedTowardCurrentLevel)
+  ) {
+    return [];
+  }
+
+  const segments: XpAnimationSegment[] = [];
+
+  for (
+    let level = startProgress.currentLevel;
+    level <= endProgress.currentLevel;
+    level += 1
+  ) {
+    const isStartLevel = level === startProgress.currentLevel;
+    const isEndLevel = level === endProgress.currentLevel;
+    const xpRequiredForLevel = getXpRequiredForCurrentLevel(level);
+    const startXp = isStartLevel ? startProgress.xpGainedTowardCurrentLevel : 0;
+    const endXp = isEndLevel
+      ? endProgress.xpGainedTowardCurrentLevel
+      : xpRequiredForLevel;
+
+    if (endXp <= startXp) {
+      continue;
+    }
+
+    const isPassThroughSegment = !isStartLevel && !isEndLevel;
+    const isFinalSegment = isEndLevel;
+
+    segments.push({
+      level,
+      startXp,
+      endXp,
+      xpRequiredForLevel,
+      startPercent: getProgressPercent(startXp, xpRequiredForLevel),
+      endPercent: getProgressPercent(endXp, xpRequiredForLevel),
+      isLevelUpBoundary: !isEndLevel,
+      durationMs: getSegmentDurationMs({
+        xpDelta: endXp - startXp,
+        xpRequiredForLevel,
+        isFinalSegment,
+        isPassThroughSegment,
+      }),
+      labelCurrentLevel: level,
+      labelNextLevel: level + 1,
+    });
+  }
+
+  return segments;
 }
 
 export function applyEarnedExperience(
@@ -337,9 +445,7 @@ export function getTotalEarnedXpBreakdown({
   const placementBand = getPlacementBand(finalRank, lobbySize);
   const playerCountMultiplier = getPlayerCountMultiplier(lobbySize);
   const placementBaseXp = PLACEMENT_BAND_XP[placementBand];
-  const placementXp = Math.round(
-    placementBaseXp * playerCountMultiplier,
-  );
+  const placementXp = Math.round(placementBaseXp * playerCountMultiplier);
   const clearedRowXp = getClearedRowXp(pointsClearedFromRows);
   const normalizedBaseXp = clampNonNegative(baseXp);
 
