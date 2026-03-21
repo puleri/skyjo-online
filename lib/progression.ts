@@ -47,11 +47,20 @@ export type NextLevelMeta = {
 
 export type EarnedXpBreakdown = {
   baseXp: number;
+  placementBaseXp: number;
   placementXp: number;
   clearedRowXp: number;
   totalXp: number;
   placementBand: PlacementBand;
   playerCountMultiplier: number;
+};
+
+export type ExperienceAwardPreview = StoredLevelProgress & {
+  awardedXp: number;
+  previousLevel: number;
+  leveledUp: boolean;
+  unlockedRewardLevels: number[];
+  showRewardPreview: boolean;
 };
 
 function clampNonNegative(value: number) {
@@ -327,18 +336,52 @@ export function getTotalEarnedXpBreakdown({
 }): EarnedXpBreakdown {
   const placementBand = getPlacementBand(finalRank, lobbySize);
   const playerCountMultiplier = getPlayerCountMultiplier(lobbySize);
+  const placementBaseXp = PLACEMENT_BAND_XP[placementBand];
   const placementXp = Math.round(
-    PLACEMENT_BAND_XP[placementBand] * playerCountMultiplier,
+    placementBaseXp * playerCountMultiplier,
   );
   const clearedRowXp = getClearedRowXp(pointsClearedFromRows);
   const normalizedBaseXp = clampNonNegative(baseXp);
 
   return {
     baseXp: normalizedBaseXp,
+    placementBaseXp,
     placementXp,
     clearedRowXp,
     totalXp: normalizedBaseXp + placementXp + clearedRowXp,
     placementBand,
     playerCountMultiplier,
+  };
+}
+
+export function getExperienceAwardPreview(
+  level: number,
+  experience: number,
+  awardedXp: number,
+): ExperienceAwardPreview {
+  const previousLevel = normalizeLevel(level);
+  const normalizedAwardedXp = clampNonNegative(awardedXp);
+  const updatedProgress = applyEarnedExperience(
+    previousLevel,
+    experience,
+    normalizedAwardedXp,
+  );
+  const unlockedRewardLevels = getNewlyUnlockedRewardIds(
+    previousLevel,
+    updatedProgress.currentLevel,
+  )
+    .map((rewardId) => {
+      const matchedLevel = /^level-(\d+)-reward$/.exec(rewardId)?.[1];
+      return matchedLevel ? Number.parseInt(matchedLevel, 10) : null;
+    })
+    .filter((levelValue): levelValue is number => Number.isFinite(levelValue));
+
+  return {
+    ...updatedProgress,
+    awardedXp: normalizedAwardedXp,
+    previousLevel,
+    leveledUp: updatedProgress.currentLevel > previousLevel,
+    unlockedRewardLevels,
+    showRewardPreview: isNextLevelMultipleOfFive(updatedProgress.nextLevel),
   };
 }
