@@ -63,9 +63,10 @@ import {
   type UserProfileGamePlacement,
 } from "../lib/userProfile";
 import {
-  getExperienceAwardPreview,
+  applyEarnedExperience,
   getNewlyUnlockedRewardIds,
   getTotalEarnedXpBreakdown,
+  isNextLevelMultipleOfFive,
 } from "../lib/progression";
 
 type GameScreenProps = {
@@ -195,6 +196,46 @@ type LocalPlayerExperiencePreview = {
   showRewardPreview: boolean;
 };
 
+function buildExperienceAwardPreview(
+  level: number,
+  experience: number,
+  awardedXp: number,
+): LocalPlayerExperiencePreview {
+  const previousLevel = Number.isFinite(level)
+    ? Math.max(1, Math.floor(level))
+    : 1;
+  const normalizedAwardedXp = Number.isFinite(awardedXp)
+    ? Math.max(0, Math.floor(awardedXp))
+    : 0;
+  const updatedProgress = applyEarnedExperience(
+    previousLevel,
+    experience,
+    normalizedAwardedXp,
+  );
+  const unlockedRewardLevels = getNewlyUnlockedRewardIds(
+    previousLevel,
+    updatedProgress.currentLevel,
+  )
+    .map((rewardId) => {
+      const matchedLevel = /^level-(\d+)-reward$/.exec(rewardId)?.[1];
+      return matchedLevel ? Number.parseInt(matchedLevel, 10) : null;
+    })
+    .filter((levelValue): levelValue is number => Number.isFinite(levelValue));
+
+  return {
+    awardedXp: normalizedAwardedXp,
+    previousLevel,
+    currentLevel: updatedProgress.currentLevel,
+    xpGainedTowardCurrentLevel: updatedProgress.xpGainedTowardCurrentLevel,
+    xpRequiredForCurrentLevel: updatedProgress.xpRequiredForCurrentLevel,
+    xpRemainingToNextLevel: updatedProgress.xpRemainingToNextLevel,
+    nextLevel: updatedProgress.nextLevel,
+    leveledUp: updatedProgress.currentLevel > previousLevel,
+    unlockedRewardLevels,
+    showRewardPreview: isNextLevelMultipleOfFive(updatedProgress.nextLevel),
+  };
+}
+
 async function updateCompletedGameProfile({
   gameId,
   finalScores,
@@ -238,7 +279,7 @@ async function updateCompletedGameProfile({
         typeof existingData?.experience === "number"
           ? existingData.experience
           : 0;
-      const existingProgress = getExperienceAwardPreview(
+      const existingProgress = buildExperienceAwardPreview(
         existingLevel,
         existingExperience,
         0,
@@ -264,13 +305,15 @@ async function updateCompletedGameProfile({
     const existingLevel =
       typeof existingData?.level === "number" ? existingData.level : 1;
     const existingExperience =
-      typeof existingData?.experience === "number" ? existingData.experience : 0;
+      typeof existingData?.experience === "number"
+        ? existingData.experience
+        : 0;
     const existingUnlockedSpells = Array.isArray(existingData?.unlockedSpells)
       ? existingData.unlockedSpells.filter(
           (rewardId): rewardId is string => typeof rewardId === "string",
         )
       : [];
-    const updatedProgress = getExperienceAwardPreview(
+    const updatedProgress = buildExperienceAwardPreview(
       existingLevel,
       existingExperience,
       earnedXp.totalXp,
@@ -3922,7 +3965,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                         </span>
                       </p>
                       <p className="modal__option-help">
-                        Cleared-row XP: {earnedXpBreakdown.clearedRowXp}
+                        Cleared-points XP: {earnedXpBreakdown.clearedRowXp}
                       </p>
                       <p className="modal__option-help">
                         Total XP gained: {earnedXpBreakdown.totalXp}

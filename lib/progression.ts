@@ -1,5 +1,5 @@
 export const DEFAULT_MATCH_BASE_XP = 50;
-export const CLEARED_ROW_XP_MULTIPLIER = 5;
+export const CLEARED_ROW_XP_MULTIPLIER = 2;
 export const REWARD_UNLOCK_LEVEL_INTERVAL = 5;
 
 // Level number -> cumulative XP required to be at that level.
