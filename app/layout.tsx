@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import ThemeSync from "../components/ThemeSync";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -44,6 +45,19 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
+const themeBootstrapScript = `(() => {
+  try {
+    const darkMode = window.localStorage.getItem("misty-dark-mode");
+    if (darkMode === "true") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  } catch {
+    document.documentElement.removeAttribute("data-theme");
+  }
+})();`;
+
 export default function RootLayout({
   children,
 }: {
@@ -52,6 +66,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {themeBootstrapScript}
+        </Script>
         <SpeedInsights />
         <ThemeSync>{children}</ThemeSync>
         <ServiceWorkerRegistration />

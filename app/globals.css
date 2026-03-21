@@ -2291,6 +2291,22 @@ small {
   padding: 0 34px 12px 34px;
 }
 
+.welcome-div-light {
+  display: block;
+}
+
+.welcome-div-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .welcome-div-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .welcome-div-dark {
+  display: block;
+}
+
 .welcome-div {
   width: 100vw;
   height: auto;
