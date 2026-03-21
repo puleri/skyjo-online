@@ -63,10 +63,9 @@ import {
   type UserProfileGamePlacement,
 } from "../lib/userProfile";
 import {
-  applyEarnedExperience,
+  getExperienceAwardPreview,
   getNewlyUnlockedRewardIds,
   getTotalEarnedXpBreakdown,
-  isNextLevelMultipleOfFive,
 } from "../lib/progression";
 
 type GameScreenProps = {
@@ -184,11 +183,15 @@ type FinalScoreEntry = {
 };
 
 type LocalPlayerExperiencePreview = {
+  awardedXp: number;
+  previousLevel: number;
   currentLevel: number;
   xpGainedTowardCurrentLevel: number;
   xpRequiredForCurrentLevel: number;
   xpRemainingToNextLevel: number;
   nextLevel: number;
+  leveledUp: boolean;
+  unlockedRewardLevels: number[];
   showRewardPreview: boolean;
 };
 
@@ -235,19 +238,23 @@ async function updateCompletedGameProfile({
         typeof existingData?.experience === "number"
           ? existingData.experience
           : 0;
-      const existingProgress = applyEarnedExperience(
+      const existingProgress = getExperienceAwardPreview(
         existingLevel,
         existingExperience,
         0,
       );
       return {
+        awardedXp: existingProgress.awardedXp,
+        previousLevel: existingProgress.previousLevel,
         currentLevel: existingProgress.currentLevel,
         xpGainedTowardCurrentLevel:
           existingProgress.xpGainedTowardCurrentLevel,
         xpRequiredForCurrentLevel: existingProgress.xpRequiredForCurrentLevel,
         xpRemainingToNextLevel: existingProgress.xpRemainingToNextLevel,
         nextLevel: existingProgress.nextLevel,
-        showRewardPreview: isNextLevelMultipleOfFive(existingProgress.nextLevel),
+        leveledUp: existingProgress.leveledUp,
+        unlockedRewardLevels: existingProgress.unlockedRewardLevels,
+        showRewardPreview: existingProgress.showRewardPreview,
       } satisfies LocalPlayerExperiencePreview;
     }
 
@@ -263,7 +270,7 @@ async function updateCompletedGameProfile({
           (rewardId): rewardId is string => typeof rewardId === "string",
         )
       : [];
-    const updatedProgress = applyEarnedExperience(
+    const updatedProgress = getExperienceAwardPreview(
       existingLevel,
       existingExperience,
       earnedXp.totalXp,
@@ -292,12 +299,16 @@ async function updateCompletedGameProfile({
     );
 
     return {
+      awardedXp: updatedProgress.awardedXp,
+      previousLevel: updatedProgress.previousLevel,
       currentLevel: updatedProgress.currentLevel,
       xpGainedTowardCurrentLevel: updatedProgress.xpGainedTowardCurrentLevel,
       xpRequiredForCurrentLevel: updatedProgress.xpRequiredForCurrentLevel,
       xpRemainingToNextLevel: updatedProgress.xpRemainingToNextLevel,
       nextLevel: updatedProgress.nextLevel,
-      showRewardPreview: isNextLevelMultipleOfFive(updatedProgress.nextLevel),
+      leveledUp: updatedProgress.leveledUp,
+      unlockedRewardLevels: updatedProgress.unlockedRewardLevels,
+      showRewardPreview: updatedProgress.showRewardPreview,
     } satisfies LocalPlayerExperiencePreview;
   });
 }
@@ -2581,6 +2592,21 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     localPlayerFinalStanding,
     localPlayerSummary?.pointsClearedFromRows,
   ]);
+  const unlockedRewardMessage = useMemo(() => {
+    if (!localPlayerExperiencePreview?.unlockedRewardLevels.length) {
+      return null;
+    }
+
+    const rewardLevels = localPlayerExperiencePreview.unlockedRewardLevels.map(
+      (level) => `Level ${level}`,
+    );
+
+    if (rewardLevels.length === 1) {
+      return `${rewardLevels[0]} reward unlocked`;
+    }
+
+    return `${rewardLevels.join(", ")} rewards unlocked`;
+  }, [localPlayerExperiencePreview?.unlockedRewardLevels]);
 
   const finalStatsRows = useMemo(() => {
     if (!isGameComplete) {
@@ -3885,27 +3911,50 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                         <span>Your XP</span>
                       </div>
                       <p className="modal__option-help">
-                        Base {earnedXpBreakdown.baseXp} XP + placement{" "}
-                        {earnedXpBreakdown.placementXp} XP + cleared rows{" "}
-                        {earnedXpBreakdown.clearedRowXp} XP ={" "}
-                        {earnedXpBreakdown.totalXp} XP.
+                        Base XP: {earnedXpBreakdown.baseXp}
                       </p>
                       <p className="modal__option-help">
-                        Placement band: {earnedXpBreakdown.placementBand} ·
-                        player multiplier{" "}
-                        {earnedXpBreakdown.playerCountMultiplier.toFixed(2)}.
+                        Placement XP: {earnedXpBreakdown.placementBaseXp} ×{" "}
+                        {earnedXpBreakdown.playerCountMultiplier.toFixed(2)} ={" "}
+                        {earnedXpBreakdown.placementXp}{" "}
+                        <span style={{ textTransform: "capitalize" }}>
+                          ({earnedXpBreakdown.placementBand})
+                        </span>
+                      </p>
+                      <p className="modal__option-help">
+                        Cleared-row XP: {earnedXpBreakdown.clearedRowXp}
+                      </p>
+                      <p className="modal__option-help">
+                        Total XP gained: {earnedXpBreakdown.totalXp}
                       </p>
                       {localPlayerExperiencePreview ? (
-                        <p className="modal__option-help">
-                          Level {localPlayerExperiencePreview.currentLevel} ·{" "}
-                          {localPlayerExperiencePreview.xpGainedTowardCurrentLevel} /{" "}
-                          {localPlayerExperiencePreview.xpRequiredForCurrentLevel} XP this level ·{" "}
-                          {localPlayerExperiencePreview.xpRemainingToNextLevel} XP until level {localPlayerExperiencePreview.nextLevel}
-                          {localPlayerExperiencePreview.showRewardPreview
-                            ? " · reward preview"
-                            : ""}
-                          .
-                        </p>
+                        <>
+                          <p className="modal__option-help">
+                            {localPlayerExperiencePreview.leveledUp
+                              ? `Level up! ${localPlayerExperiencePreview.previousLevel} → ${localPlayerExperiencePreview.currentLevel}.`
+                              : `Level ${localPlayerExperiencePreview.currentLevel}.`}{" "}
+                            {localPlayerExperiencePreview.xpGainedTowardCurrentLevel} /{" "}
+                            {
+                              localPlayerExperiencePreview.xpRequiredForCurrentLevel
+                            }{" "}
+                            XP this level ·{" "}
+                            {localPlayerExperiencePreview.xpRemainingToNextLevel}{" "}
+                            XP until level{" "}
+                            {localPlayerExperiencePreview.nextLevel}.
+                          </p>
+                          {unlockedRewardMessage ? (
+                            <p className="modal__option-help">
+                              {unlockedRewardMessage}.
+                            </p>
+                          ) : null}
+                          {!unlockedRewardMessage &&
+                          localPlayerExperiencePreview.showRewardPreview ? (
+                            <p className="modal__option-help">
+                              Level {localPlayerExperiencePreview.nextLevel}{" "}
+                              unlocks the next reward.
+                            </p>
+                          ) : null}
+                        </>
                       ) : null}
                     </div>
                   ) : null}
