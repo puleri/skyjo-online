@@ -631,33 +631,7 @@ export default function LobbyScreen() {
                           <p className="modal__option-help">
                             {displayedProgressionHelperText}
                           </p>
-                          {xpReplayStatusText ? (
-                            <div className="profile-progression__replay-row">
-                              <p className="modal__option-help profile-progression__replay-text">
-                                {xpReplayStatusText}
-                                {canReplayLatestXpAnimation
-                                  ? " Replays automatically whenever you open this profile."
-                                  : " This profile will show your saved final progress until a new replay is available."}
-                              </p>
-                              {canReplayLatestXpAnimation ? (
-                                <button
-                                  type="button"
-                                  className="profile-progression__replay-button"
-                                  onClick={() => {
-                                    setHasCompletedPlayback(false);
-                                    setPlaybackSegmentIndex(0);
-                                    setXpReplayRunId((current) => current + 1);
-                                  }}
-                                >
-                                  Replay
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : null}
-                          <p className="modal__option-help">
-                            When the replay is unavailable, this bar keeps
-                            showing your saved final progress.
-                          </p>
+                         
                           <p className="modal__option-help">
                             {finalProgress.xpRemainingToNextLevel} XP until
                             level {finalProgress.nextLevel}.
