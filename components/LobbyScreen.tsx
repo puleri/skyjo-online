@@ -539,14 +539,23 @@ export default function LobbyScreen() {
         return;
       }
 
-      const classiqueConfig: PreGameConfig = {
-        gameType: "classic",
-        spikeMode: false,
-        spikeItemCount: "none",
-        spikeRowClear: false,
-        spikeEndGameBonuses: false,
-        targetScore,
-      };
+      const classiqueConfig: PreGameConfig = isQuickplay
+        ? {
+            gameType: "spike",
+            spikeMode: true,
+            spikeItemCount: "high",
+            spikeRowClear: true,
+            spikeEndGameBonuses: true,
+            targetScore,
+          }
+        : {
+            gameType: "classic",
+            spikeMode: false,
+            spikeItemCount: "none",
+            spikeRowClear: false,
+            spikeEndGameBonuses: false,
+            targetScore,
+          };
 
       if (isQuickplay) {
         setIsCreatingQuickplayParty(true);
@@ -605,14 +614,23 @@ export default function LobbyScreen() {
         players: 1,
         assignedGlyphs: [hostGlyph],
         availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
-        preGameConfig: {
-          gameType: "classic",
-          spikeMode: false,
-          spikeItemCount: "none",
-          spikeRowClear: false,
-          spikeEndGameBonuses: false,
-          targetScore,
-        },
+        preGameConfig: isQuickplay
+          ? {
+              gameType: "spike",
+              spikeMode: true,
+              spikeItemCount: "high",
+              spikeRowClear: true,
+              spikeEndGameBonuses: true,
+              targetScore,
+            }
+          : {
+              gameType: "classic",
+              spikeMode: false,
+              spikeItemCount: "none",
+              spikeRowClear: false,
+              spikeEndGameBonuses: false,
+              targetScore,
+            },
         isPrivate: true,
       });
 
