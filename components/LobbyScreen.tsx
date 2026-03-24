@@ -231,6 +231,7 @@ export default function LobbyScreen() {
     [recentPlacements],
   );
   const canEditProfile = isSignedIn && (isAnonymousUser || Boolean(profile));
+  const shouldShowProfileStats = !isAnonymousUser;
   const finalProgress = useMemo<StoredLevelProgress>(
     () => getStoredLevelProgress(profile?.level ?? 1, profile?.experience ?? 0),
     [profile?.experience, profile?.level],
@@ -624,108 +625,112 @@ export default function LobbyScreen() {
                           completed games.
                         </p>
                       </div>
-                      <div className="modal__option">
-                        <div className="modal__option-label">
-                          <span>Progression</span>
-                        </div>
-                        <div
-                          className="profile-progression"
-                          data-profile-open={isProfileOpen ? "true" : "false"}
-                          aria-label={`Level ${displayedProgress.currentLevel} progression`}
-                          style={
-                            {
-                              "--profile-progress-width": `${displayedPercent}%`,
-                              "--profile-progress-duration": `${progressTransitionDurationMs}ms`,
-                              "--profile-progress-easing":
-                                progressTransitionTiming,
-                            } as CSSProperties
-                          }
-                        >
-                          <div className="profile-progression__bar-row">
-                            <span className="profile-progression__level-label">
-                              Lv. {displayedProgress.currentLevel}
-                            </span>
-                            <div
-                              className="profile-progression__bar"
-                              role="progressbar"
-                              aria-valuemin={0}
-                              aria-valuemax={
-                                displayedProgress.xpRequiredForCurrentLevel
-                              }
-                              aria-valuenow={
-                                displayedProgress.xpGainedTowardCurrentLevel
-                              }
-                              aria-valuetext={`${displayedProgress.xpGainedTowardCurrentLevel} of ${displayedProgress.xpRequiredForCurrentLevel} XP toward level ${displayedProgress.nextLevel}`}
-                            >
-                              <span className="profile-progression__fill" />
+                      {shouldShowProfileStats ? (
+                        <>
+                          <div className="modal__option">
+                            <div className="modal__option-label">
+                              <span>Progression</span>
                             </div>
-                            <span className="profile-progression__level-label">
-                              Lv. {displayedProgress.nextLevel}
-                            </span>
-                          </div>
-                          <p className="modal__option-help">
-                            {displayedProgressionHelperText}
-                          </p>
-                         
-                          <p className="modal__option-help">
-                            {finalProgress.xpRemainingToNextLevel} XP until
-                            level {finalProgress.nextLevel}.
-                          </p>
-                          {showRewardPreview ? (
                             <div
-                              className="profile-progression__reward-preview"
-                              aria-label={`Reward preview for level ${finalProgress.nextLevel}`}
+                              className="profile-progression"
+                              data-profile-open={isProfileOpen ? "true" : "false"}
+                              aria-label={`Level ${displayedProgress.currentLevel} progression`}
+                              style={
+                                {
+                                  "--profile-progress-width": `${displayedPercent}%`,
+                                  "--profile-progress-duration": `${progressTransitionDurationMs}ms`,
+                                  "--profile-progress-easing":
+                                    progressTransitionTiming,
+                                } as CSSProperties
+                              }
                             >
-                              <div
-                                className="profile-progression__reward-cardback"
-                                aria-hidden="true"
-                              />
-                              <div>
-                                <p className="profile-progression__reward-title">
-                                  Level {finalProgress.nextLevel} reward preview
-                                </p>
-                                <p className="modal__option-help">
-                                  Reach this milestone to unlock the next
-                                  cardback reward.
-                                </p>
+                              <div className="profile-progression__bar-row">
+                                <span className="profile-progression__level-label">
+                                  Lv. {displayedProgress.currentLevel}
+                                </span>
+                                <div
+                                  className="profile-progression__bar"
+                                  role="progressbar"
+                                  aria-valuemin={0}
+                                  aria-valuemax={
+                                    displayedProgress.xpRequiredForCurrentLevel
+                                  }
+                                  aria-valuenow={
+                                    displayedProgress.xpGainedTowardCurrentLevel
+                                  }
+                                  aria-valuetext={`${displayedProgress.xpGainedTowardCurrentLevel} of ${displayedProgress.xpRequiredForCurrentLevel} XP toward level ${displayedProgress.nextLevel}`}
+                                >
+                                  <span className="profile-progression__fill" />
+                                </div>
+                                <span className="profile-progression__level-label">
+                                  Lv. {displayedProgress.nextLevel}
+                                </span>
                               </div>
+                              <p className="modal__option-help">
+                                {displayedProgressionHelperText}
+                              </p>
+
+                              <p className="modal__option-help">
+                                {finalProgress.xpRemainingToNextLevel} XP until
+                                level {finalProgress.nextLevel}.
+                              </p>
+                              {showRewardPreview ? (
+                                <div
+                                  className="profile-progression__reward-preview"
+                                  aria-label={`Reward preview for level ${finalProgress.nextLevel}`}
+                                >
+                                  <div
+                                    className="profile-progression__reward-cardback"
+                                    aria-hidden="true"
+                                  />
+                                  <div>
+                                    <p className="profile-progression__reward-title">
+                                      Level {finalProgress.nextLevel} reward preview
+                                    </p>
+                                    <p className="modal__option-help">
+                                      Reach this milestone to unlock the next
+                                      cardback reward.
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="modal__option">
-                        <div className="modal__option-label">
-                          <span>Last 5 Results</span>
-                        </div>
-                        {recentPlacements.length ? (
-                          <>
-                            <div
-                              className="profile-results-list"
-                              aria-label={`Last 5 results: ${recentPlacementSummary}`}
-                            >
-                              {recentPlacements.map((placement, index) => {
-                                const badgeTone =
-                                  placement <= 3 ? placement : 4;
-                                return (
-                                  <span
-                                    key={`${placement}-${index}`}
-                                    className={`profile-results-badge profile-results-badge--${badgeTone}`}
-                                  >
-                                    {formatPlacementLabel(placement)}
-                                  </span>
-                                );
-                              })}
+                          </div>
+                          <div className="modal__option">
+                            <div className="modal__option-label">
+                              <span>Last 5 Results</span>
                             </div>
-                            <p className="modal__option-help">
-                              Recent finishes: {recentPlacementSummary}.
-                            </p>
-                          </>
-                        ) : (
-                          <p className="modal__option-help">
-                            No completed games yet.
-                          </p>
-                        )}
-                      </div>
+                            {recentPlacements.length ? (
+                              <>
+                                <div
+                                  className="profile-results-list"
+                                  aria-label={`Last 5 results: ${recentPlacementSummary}`}
+                                >
+                                  {recentPlacements.map((placement, index) => {
+                                    const badgeTone =
+                                      placement <= 3 ? placement : 4;
+                                    return (
+                                      <span
+                                        key={`${placement}-${index}`}
+                                        className={`profile-results-badge profile-results-badge--${badgeTone}`}
+                                      >
+                                        {formatPlacementLabel(placement)}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                                <p className="modal__option-help">
+                                  Recent finishes: {recentPlacementSummary}.
+                                </p>
+                              </>
+                            ) : (
+                              <p className="modal__option-help">
+                                No completed games yet.
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      ) : null}
                       {profileSaveMessage ? (
                         <p className="notice">{profileSaveMessage}</p>
                       ) : null}
