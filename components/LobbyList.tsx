@@ -17,7 +17,6 @@ import {
   type UpdateData,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { readStoredUsername, resolvePlayerDisplayName, useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
@@ -33,6 +32,7 @@ type Lobby = {
   name: string;
   status: string;
   players: number;
+  source: "party" | "lobby";
 };
 
 type LobbyPreview = {
@@ -43,6 +43,7 @@ type LobbyPreview = {
   spikeRowClear?: boolean;
   spikeEndGameBonuses?: boolean;
   players: string[];
+  source: "party" | "lobby";
 };
 
 const LOBBIES_PER_PAGE = 5;
@@ -62,9 +63,9 @@ export default function LobbyList() {
   const [previewCache, setPreviewCache] = useState<Record<string, LobbyPreview>>({});
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [joinSuccess, setJoinSuccess] = useState<string | null>(null);
   const { uid, displayName, profileDisplayName, error: authError } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
-  const router = useRouter();
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -78,30 +79,47 @@ export default function LobbyList() {
 
     setIsLoading(true);
     setHasNextPage(false);
-    const lobbyQuery = cursor
+    const partyQuery = cursor
       ? query(
-        collection(db, "lobbies"),
+        collection(db, "parties"),
         orderBy("createdAt", "desc"),
         startAfter(cursor),
         limit(LOBBIES_PER_PAGE)
       )
       : query(
-        collection(db, "lobbies"),
+        collection(db, "parties"),
         orderBy("createdAt", "desc"),
         limit(LOBBIES_PER_PAGE)
       );
     let isCancelled = false;
     const unsubscribe = onSnapshot(
-      lobbyQuery,
+      partyQuery,
       async (snapshot) => {
-        const nextLobbies = snapshot.docs
+        let nextLobbies: Lobby[] = snapshot.docs
           .filter((doc) => !Boolean(doc.data().isPrivate))
           .map((doc) => ({
             id: doc.id,
             name: doc.data().name ?? "Untitled lobby",
             status: doc.data().status ?? "open",
-            players: doc.data().playerCount ?? doc.data().players ?? 0,
+            players:
+              doc.data().playerCount ??
+              (Array.isArray(doc.data().memberIds) ? doc.data().memberIds.length : 0),
+            source: "party" as const,
           }));
+        if (!nextLobbies.length && pageIndex === 0) {
+          const legacySnapshot = await getDocs(
+            query(collection(db, "lobbies"), orderBy("createdAt", "desc"), limit(LOBBIES_PER_PAGE))
+          );
+          nextLobbies = legacySnapshot.docs
+            .filter((doc) => !Boolean(doc.data().isPrivate))
+            .map((doc) => ({
+              id: doc.id,
+              name: doc.data().name ?? "Untitled lobby",
+              status: doc.data().status ?? "open",
+              players: doc.data().playerCount ?? doc.data().players ?? 0,
+              source: "lobby" as const,
+            }));
+        }
         if (isCancelled) {
           return;
         }
@@ -124,7 +142,7 @@ export default function LobbyList() {
         try {
           const nextPageSnapshot = await getDocs(
             query(
-              collection(db, "lobbies"),
+              collection(db, "parties"),
               orderBy("createdAt", "desc"),
               startAfter(lastDoc),
               limit(1)
@@ -191,8 +209,13 @@ export default function LobbyList() {
     setIsPreviewLoading(true);
     setPreviewError(null);
     try {
-      const lobbyRef = doc(db, "lobbies", lobby.id);
-      const playersRef = collection(db, "lobbies", lobby.id, "players");
+      const lobbyRef = doc(db, lobby.source === "party" ? "parties" : "lobbies", lobby.id);
+      const playersRef = collection(
+        db,
+        lobby.source === "party" ? "parties" : "lobbies",
+        lobby.id,
+        lobby.source === "party" ? "partyMembers" : "players"
+      );
       const [lobbySnapshot, playersSnapshot] = await Promise.all([
         getDoc(lobbyRef),
         getDocs(playersRef),
@@ -212,6 +235,7 @@ export default function LobbyList() {
         players: playersSnapshot.docs.map(
           (player) => player.data().displayName ?? "Anonymous player"
         ),
+        source: lobby.source,
       };
       setPreviewCache((current) => ({ ...current, [lobby.id]: preview }));
     } catch (err) {
@@ -228,7 +252,7 @@ export default function LobbyList() {
     void fetchLobbyPreview(lobby);
   };
 
-  const handleJoin = async (lobbyId: string) => {
+  const handleJoin = async (lobbyId: string, source: "party" | "lobby") => {
     if (!uid) {
       setError("Unable to join a lobby without a signed-in user.");
       return;
@@ -236,6 +260,7 @@ export default function LobbyList() {
 
     closePreview();
     setJoiningLobbyId(lobbyId);
+    setJoinSuccess(null);
     setError(null);
     try {
       const resolvedName = resolvePlayerDisplayName({
@@ -243,17 +268,22 @@ export default function LobbyList() {
         authDisplayName: displayName,
         storedDisplayName: readStoredUsername(),
       });
-      const lobbyRef = doc(db, "lobbies", lobbyId);
-      const playerRef = doc(db, "lobbies", lobbyId, "players", uid);
+      const partyRef = doc(db, "parties", lobbyId);
+      const partyMemberRef = doc(db, "parties", lobbyId, "partyMembers", uid);
+      const legacyLobbyRef = doc(db, "lobbies", lobbyId);
       await runTransaction(db, async (transaction) => {
-        const lobbySnapshot = await transaction.get(lobbyRef);
-        if (!lobbySnapshot.exists()) {
-          throw new Error("This lobby no longer exists.");
+        const partySnapshot = await transaction.get(partyRef);
+        const legacyLobbySnapshot = source === "lobby" ? await transaction.get(legacyLobbyRef) : null;
+        if (!partySnapshot.exists() && !legacyLobbySnapshot?.exists()) {
+          throw new Error("This party no longer exists.");
         }
 
-        const lobbyData = lobbySnapshot.data();
+        const lobbyData = partySnapshot.exists() ? partySnapshot.data() : legacyLobbySnapshot?.data();
+        if (!lobbyData) {
+          throw new Error("Party data is unavailable.");
+        }
         const playerDisplayName = resolvedName;
-        const existingPlayerSnapshot = await transaction.get(playerRef);
+        const existingPlayerSnapshot = await transaction.get(partyMemberRef);
         const isHost = (lobbyData.hostId as string | undefined) === uid;
         const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
           ? lobbyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
@@ -303,8 +333,10 @@ export default function LobbyList() {
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
           playerCount: nextPlayerIds.length,
+          memberIds: nextPlayerIds,
           playerIds: nextPlayerIds,
           playerNames: nextPlayerNames,
+          updatedAt: serverTimestamp(),
         };
         if (isHost) {
           lobbyUpdates.hostDisplayName = playerDisplayName;
@@ -317,18 +349,27 @@ export default function LobbyList() {
         }
 
         if (isExistingPlayer) {
-          transaction.update(playerRef, { displayName: playerDisplayName });
+          transaction.update(partyMemberRef, { displayName: playerDisplayName, updatedAt: serverTimestamp() });
         } else {
-          transaction.set(playerRef, {
+          transaction.set(partyMemberRef, {
             displayName: playerDisplayName,
+            photoURL: null,
             joinedAt: serverTimestamp(),
-            isReady: false,
-            glyph,
+            isHost,
           });
         }
-        transaction.update(lobbyRef, lobbyUpdates);
+        if (partySnapshot.exists()) {
+          transaction.update(partyRef, lobbyUpdates);
+        } else {
+          transaction.set(partyRef, {
+            ...lobbyData,
+            ...lobbyUpdates,
+            activeGameId: (lobbyData.gameId as string | undefined) ?? null,
+            createdAt: (lobbyData.createdAt as DocumentData | undefined) ?? serverTimestamp(),
+          });
+        }
       });
-      router.push(`/lobby/${lobbyId}`);
+      setJoinSuccess("Joined party successfully.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
@@ -416,7 +457,7 @@ export default function LobbyList() {
                   className={buttonClassName}
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleJoin(lobby.id);
+                    handleJoin(lobby.id, lobby.source);
                   }}
                   disabled={isLoading || !uid || joiningLobbyId === lobby.id}
                 >
@@ -448,6 +489,7 @@ export default function LobbyList() {
           </button>
         </div>
       ) : null}
+      {joinSuccess ? <p className="notice">{joinSuccess}</p> : null}
       {isPreviewOpen ? (
         <div
           className="modal-backdrop"

@@ -2,7 +2,6 @@
 
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   readStoredUsername,
   resolvePlayerDisplayName,
@@ -21,11 +20,11 @@ export default function CreateLobbyForm() {
   const [isPrivateLobby, setIsPrivateLobby] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isJoiningLobby, setIsJoiningLobby] = useState(false);
+  const [isCreatingParty, setIsCreatingParty] = useState(false);
+  const [createdPartyName, setCreatedPartyName] = useState<string | null>(null);
   const [savedDisplayName, setSavedDisplayName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { uid, displayName, profileDisplayName } = useAnonymousAuth();
-  const router = useRouter();
   const firebaseReady = isFirebaseConfigured;
   const spikeItemCountOptions: { value: SpikeItemCount; label: string }[] = [
     { value: "none", label: "None" },
@@ -81,16 +80,19 @@ export default function CreateLobbyForm() {
         storedDisplayName: readStoredUsername(),
       });
       const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
-      const lobbyRef = await addDoc(collection(db, "lobbies"), {
+      const partyRef = await addDoc(collection(db, "parties"), {
         name: name.trim(),
+        hostId: uid,
+        memberIds: [uid],
+        activeGameId: null,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         status: "open",
-        players: 1,
         playerCount: 1,
+        hostDisplayName: resolvedName,
         playerIds: [uid],
         playerNames: [resolvedName],
-        hostId: uid,
-        hostDisplayName: resolvedName,
+        players: 1,
         assignedGlyphs: [hostGlyph],
         availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
         spikeMode: true,
@@ -99,22 +101,23 @@ export default function CreateLobbyForm() {
         spikeEndGameBonuses,
         isPrivate: isPrivateLobby,
       });
-      setIsJoiningLobby(true);
+      setIsCreatingParty(true);
       await new Promise<void>((resolve) => {
         window.setTimeout(() => resolve(), 1000);
       });
-      await setDoc(doc(db, "lobbies", lobbyRef.id, "players", uid), {
+      await setDoc(doc(db, "parties", partyRef.id, "partyMembers", uid), {
         displayName: resolvedName,
+        photoURL: null,
         joinedAt: serverTimestamp(),
-        isReady: false,
-        glyph: hostGlyph,
+        isHost: true,
       });
+      setIsCreatingParty(false);
+      setCreatedPartyName(name.trim());
       setName("");
-      router.push(`/lobby/${lobbyRef.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
-      setIsJoiningLobby(false);
+      setIsCreatingParty(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -176,11 +179,14 @@ export default function CreateLobbyForm() {
         <p className="notice">Save your player name above before creating a lobby.</p>
       ) : null}
       {error ? <p className="notice">{error}</p> : null}
-      {isJoiningLobby ? (
+      {createdPartyName ? (
+        <p className="notice">Party “{createdPartyName}” created. Share your invite link to add players.</p>
+      ) : null}
+      {isCreatingParty ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="join-lobby-title">
           <div className="modal">
-            <h2 className="leaderboard-title" id="join-lobby-title">Lobby ready</h2>
-            <p className="leaderboard-sub">Joining your new lobby…</p>
+            <h2 className="leaderboard-title" id="join-lobby-title">Party ready</h2>
+            <p className="leaderboard-sub">Saving your party…</p>
           </div>
         </div>
       ) : null}
