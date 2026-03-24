@@ -2648,6 +2648,7 @@ small {
 .unauth-step-stack {
   position: relative;
   display: grid;
+  align-items: start;
 }
 
 .unauth-step {
