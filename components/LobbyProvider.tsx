@@ -14,25 +14,14 @@ import {
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured } from "../lib/firebase";
+import { useRouter } from "next/navigation";
 import {
-  createMistyDeck,
-  shuffleDeck,
-  shuffleDeckWithDelayedSwapCards,
-  type Card,
-  type SpikeItemCount,
-} from "../lib/game/deck";
-
-export type GameType = "classic" | "spike";
-
-export type PreGameConfig = {
-  gameType: GameType;
-  spikeMode: boolean;
-  spikeItemCount: SpikeItemCount;
-  spikeRowClear: boolean;
-  spikeEndGameBonuses: boolean;
-};
-
-export const MIN_PARTY_SIZE_TO_START = 2;
+  MIN_PARTY_SIZE_TO_START,
+  isValidPreGameConfig,
+  startPartyGameAction,
+  type GameType,
+  type PreGameConfig,
+} from "../lib/partyActions";
 
 type Party = {
   id: string;
@@ -66,7 +55,10 @@ type PartyContextValue = {
 
 const PartyContext = createContext<PartyContextValue | null>(null);
 
-function coerceSpikeItemCount(value: unknown): SpikeItemCount {
+export { MIN_PARTY_SIZE_TO_START, isValidPreGameConfig };
+export type { GameType, PreGameConfig };
+
+function coerceSpikeItemCount(value: unknown): PreGameConfig["spikeItemCount"] {
   return value === "none" || value === "low" || value === "medium" || value === "high"
     ? value
     : "low";
@@ -108,22 +100,6 @@ function toPreGameConfig(data: Record<string, unknown>): PreGameConfig | null {
   };
 }
 
-export function isValidPreGameConfig(config: PreGameConfig | null | undefined) {
-  if (!config) {
-    return false;
-  }
-  if (config.gameType !== "classic" && config.gameType !== "spike") {
-    return false;
-  }
-  if (config.spikeMode !== (config.gameType === "spike")) {
-    return false;
-  }
-  if (!["none", "low", "medium", "high"].includes(config.spikeItemCount)) {
-    return false;
-  }
-  return typeof config.spikeRowClear === "boolean" && typeof config.spikeEndGameBonuses === "boolean";
-}
-
 function toParty(id: string, data: Record<string, unknown>): Party {
   return {
     id,
@@ -147,6 +123,7 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingParty, setLoadingParty] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (!isFirebaseConfigured || !uid) {
@@ -334,124 +311,21 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       throw new Error("Only the host can start the game.");
     }
 
-    const partyRef = doc(db, "parties", partyId);
-    const gameRef = doc(collection(db, "games"));
-
-    await runTransaction(db, async (transaction) => {
-      const partySnap = await transaction.get(partyRef);
-      if (!partySnap.exists()) {
-        throw new Error("Party not found.");
-      }
-
-      const partyData = partySnap.data() as Record<string, unknown>;
-      if (partyData.hostId !== uid) {
-        throw new Error("Only the host can start the game.");
-      }
-
-      const parsedPreGameConfig = toPreGameConfig(partyData);
-      if (!isValidPreGameConfig(parsedPreGameConfig)) {
-        throw new Error("Host must configure game settings before starting.");
-      }
-      const preGameConfig = parsedPreGameConfig as PreGameConfig;
-
-      const playerSnapshot = await getDocs(
-        query(collection(db, "parties", partyId, "partyMembers"), orderBy("joinedAt", "asc")),
-      );
-      if (playerSnapshot.size < MIN_PARTY_SIZE_TO_START) {
-        throw new Error(`Add at least ${MIN_PARTY_SIZE_TO_START} players before starting.`);
-      }
-
-      const playerOrder = playerSnapshot.docs.map((playerDoc) => playerDoc.id);
-      const { spikeMode, spikeItemCount, spikeRowClear, spikeEndGameBonuses } = preGameConfig;
-
-      let shuffledDeck: Card[] = shuffleDeck(createMistyDeck());
-      const playerGrids = new Map<string, number[]>();
-      playerOrder.forEach((playerId) => {
-        const grid: number[] = [];
-        for (let i = 0; i < 12; i += 1) {
-          const card = shuffledDeck.pop();
-          if (typeof card !== "number") {
-            throw new Error("Not enough cards to deal opening hands.");
-          }
-          grid.push(card);
-        }
-        playerGrids.set(playerId, grid);
-      });
-
-      if (spikeMode) {
-        shuffledDeck = shuffleDeckWithDelayedSwapCards(shuffledDeck, spikeItemCount, playerOrder.length);
-      }
-
-      const discardCard = shuffledDeck.pop();
-      if (discardCard === undefined) {
-        throw new Error("Deck is empty after dealing.");
-      }
-
-      const startingPlayerId = playerOrder[Math.floor(Math.random() * playerOrder.length)] ?? playerOrder[0];
-
-      transaction.set(gameRef, {
-        status: "playing",
-        partyId,
-        hostId: uid,
-        roundNumber: 1,
-        currentPlayerId: startingPlayerId,
-        activePlayerOrder: playerOrder,
-        turnPhase: "choose-draw",
-        deck: shuffledDeck,
-        discard: [discardCard],
-        graveyard: [],
-        spikeMode,
-        ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
-        lastTurnPlayerId: null,
-        lastTurnAction: null,
-        lastTurnActionAt: null,
-        createdAt: serverTimestamp(),
-      });
-
-      playerSnapshot.docs.forEach((playerDoc, index) => {
-        const initialRevealed = Array.from({ length: 12 }, () => false);
-        const displayName = (playerDoc.data().displayName as string | undefined) ?? "Anonymous player";
-
-        transaction.set(doc(db, "games", gameRef.id, "players", playerDoc.id), {
-          displayName,
-          seatIndex: index,
-          isReady: false,
-          roundScore: 0,
-          totalScore: 0,
-          pointsClearedFromRows: 0,
-          pointsDiscarded: 0,
-          discardedCardCount: 0,
-          revealedCardValueTotal: 0,
-          revealedCardCount: 0,
-          itemCardsDrawn: 0,
-          revealed: initialRevealed,
-          publicGrid: Array.from({ length: 12 }, () => null),
-          revealedCount: 0,
-        });
-
-        transaction.set(doc(db, "games", gameRef.id, "playerStates", playerDoc.id), {
-          grid: playerGrids.get(playerDoc.id) ?? [],
-          revealed: initialRevealed,
-          pendingDraw: null,
-          pendingDrawSource: null,
-          totalScore: 0,
-          pointsClearedFromRows: 0,
-          pointsDiscarded: 0,
-          discardedCardCount: 0,
-          revealedCardValueTotal: 0,
-          revealedCardCount: 0,
-          itemCardsDrawn: 0,
-        });
-      });
-
-      transaction.update(partyRef, {
-        status: "in-game",
-        activeGameId: gameRef.id,
-        gameId: gameRef.id,
-        updatedAt: serverTimestamp(),
-      });
+    await startPartyGameAction({
+      db,
+      partyId,
+      callerUid: uid,
     });
   }, [party, partyId, uid]);
+
+
+  useEffect(() => {
+    if (!party?.activeGameId) {
+      return;
+    }
+
+    router.push(`/game/${party.activeGameId}`);
+  }, [party?.activeGameId, router]);
 
   const value = useMemo<PartyContextValue>(
     () => ({
