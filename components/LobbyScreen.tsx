@@ -42,6 +42,7 @@ import {
   type XpAnimationSegment,
 } from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
+import { MIN_PARTY_SIZE_TO_START, type PreGameConfig, useParty } from "./LobbyProvider";
 
 type LeaderboardEntry = {
   id: string;
@@ -117,6 +118,7 @@ export default function LobbyScreen() {
   const wasSettingsOpen = useRef(false);
   const wasLeaderboardOpen = useRef(false);
   const { uid } = useAnonymousAuth();
+  const { partyId, party, members, isHost, startGame, setPreGameConfig } = useParty();
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -507,6 +509,40 @@ export default function LobbyScreen() {
       return;
     }
 
+    if (partyId && party) {
+      if (!isHost) {
+        setClassiqueError("Only the party host can start Classique.");
+        return;
+      }
+
+      if (members.length < MIN_PARTY_SIZE_TO_START) {
+        setClassiqueError(`Need at least ${MIN_PARTY_SIZE_TO_START} players to start Classique.`);
+        return;
+      }
+
+      const classiqueConfig: PreGameConfig = {
+        gameType: "classic",
+        spikeMode: false,
+        spikeItemCount: "none",
+        spikeRowClear: false,
+        spikeEndGameBonuses: false,
+      };
+
+      setIsCreatingClassiqueParty(true);
+      setClassiqueError(null);
+      try {
+        await setPreGameConfig(classiqueConfig);
+        await startGame();
+      } catch (error) {
+        setClassiqueError(
+          error instanceof Error ? error.message : "Unable to start a Classique game right now.",
+        );
+      } finally {
+        setIsCreatingClassiqueParty(false);
+      }
+      return;
+    }
+
     const resolvedName = resolvePlayerDisplayName({
       profileDisplayName: profile?.displayName ?? null,
       authDisplayName,
@@ -532,11 +568,11 @@ export default function LobbyScreen() {
         assignedGlyphs: [hostGlyph],
         availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
         preGameConfig: {
-          gameType: "spike",
-          spikeMode: true,
-          spikeItemCount: "high",
-          spikeRowClear: true,
-          spikeEndGameBonuses: true,
+          gameType: "classic",
+          spikeMode: false,
+          spikeItemCount: "none",
+          spikeRowClear: false,
+          spikeEndGameBonuses: false,
         },
         isPrivate: true,
       });
