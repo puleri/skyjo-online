@@ -29,7 +29,7 @@ import {
   discardAndRevealPendingDraw,
   discardItemForReveal,
   drawFromDeck,
-  leaveGame,
+  leavePartyGame,
   drawFromDiscard,
   revealAfterDiscard,
   readyForNextRound,
@@ -77,6 +77,7 @@ type GameScreenProps = {
 type GameMeta = {
   status: string;
   lobbyId: string | null;
+  partyId: string | null;
   currentPlayerId: string | null;
   activePlayerOrder: string[];
   deck: Card[];
@@ -1069,6 +1070,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         setGame({
           status: (data.status as string | undefined) ?? "pending",
           lobbyId: (data.lobbyId as string | null | undefined) ?? null,
+          partyId: (data.partyId as string | null | undefined) ?? null,
           currentPlayerId: (data.currentPlayerId as string | undefined) ?? null,
           activePlayerOrder: Array.isArray(data.activePlayerOrder)
             ? (data.activePlayerOrder as string[])
@@ -3319,7 +3321,39 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     setError(null);
     try {
-      await leaveGame(gameId, uid);
+      await leavePartyGame(gameId, uid, {
+        partyId: game?.partyId ?? null,
+        mode: "self-only",
+      });
+      handleCloseLeaveGameModal();
+      handleCloseSettings();
+      router.push("/");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
+  };
+
+  const handleConfirmLeaveWithParty = async () => {
+    if (!uid) {
+      setError("Sign in to leave the game.");
+      return;
+    }
+    if (!gameId) {
+      setError("Missing game ID.");
+      return;
+    }
+    if (!game?.partyId) {
+      setError("This game is not tied to a party.");
+      return;
+    }
+
+    setError(null);
+    try {
+      await leavePartyGame(gameId, uid, {
+        partyId: game.partyId,
+        mode: "whole-party",
+      });
       handleCloseLeaveGameModal();
       handleCloseSettings();
       router.push("/");
@@ -4172,18 +4206,44 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 ×
               </button>
               <h2 id="leave-game-modal-title">Leave game</h2>
-              <p>
-                Are you sure you want to leave the game? Once you leave you
-                cannot rejoin.
-              </p>
+              {isHost && game?.partyId ? (
+                <p>
+                  You are the party host. Do you want to leave only yourself,
+                  or bring the whole party out of the game?
+                </p>
+              ) : (
+                <p>
+                  Are you sure you want to leave the game? Once you leave you
+                  cannot rejoin.
+                </p>
+              )}
               <div className="modal__actions">
-                <button
-                  type="button"
-                  className="form-button-full-width game-results__leave-button"
-                  onClick={handleConfirmLeaveGame}
-                >
-                  Confirm leave
-                </button>
+                {isHost && game?.partyId ? (
+                  <>
+                    <button
+                      type="button"
+                      className="form-button-full-width game-results__leave-button"
+                      onClick={handleConfirmLeaveGame}
+                    >
+                      Leave only me
+                    </button>
+                    <button
+                      type="button"
+                      className="form-button-full-width game-results__leave-button"
+                      onClick={handleConfirmLeaveWithParty}
+                    >
+                      Leave with party
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="form-button-full-width game-results__leave-button"
+                    onClick={handleConfirmLeaveGame}
+                  >
+                    Confirm leave
+                  </button>
+                )}
               </div>
             </div>
           </div>
