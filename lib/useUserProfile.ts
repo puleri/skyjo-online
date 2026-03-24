@@ -3,6 +3,7 @@
 import {
   getAuth,
   onAuthStateChanged,
+  signOut,
   updateProfile as updateAuthProfile,
   type User,
 } from "firebase/auth";
@@ -37,6 +38,7 @@ type UseUserProfileState = {
   isSignedIn: boolean;
   isAnonymousUser: boolean;
   updateProfile: (updates: UserProfileUpdate) => Promise<void>;
+  signOutUser: () => Promise<void>;
 };
 
 async function ensureUserProfile(user: User) {
@@ -239,6 +241,11 @@ export function useUserProfile(): UseUserProfileState {
     }
   }, []);
 
+  const signOutUser = useCallback(async () => {
+    const auth = getAuth(app);
+    await signOut(auth);
+  }, []);
+
   return {
     profile,
     loading,
@@ -248,5 +255,6 @@ export function useUserProfile(): UseUserProfileState {
     isSignedIn,
     isAnonymousUser,
     updateProfile,
+    signOutUser,
   };
 }

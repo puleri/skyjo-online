@@ -60,6 +60,7 @@ export default function LobbyScreen() {
     isSignedIn,
     isAnonymousUser,
     updateProfile,
+    signOutUser,
   } = useUserProfile();
   const {
     firstTimeTips: showFirstTimeTips,
@@ -217,6 +218,9 @@ export default function LobbyScreen() {
     profile?.displayName?.trim() ||
     authDisplayName?.trim() ||
     "Anonymous player";
+  const persistedProfileName =
+    profile?.displayName?.trim() || authDisplayName?.trim() || "";
+  const hasDisplayNameChanged = profileName.trim() !== persistedProfileName;
   const recentPlacements = profile?.lastFiveGames ?? [];
   const recentPlacementSummary = useMemo(
     () =>
@@ -451,6 +455,11 @@ export default function LobbyScreen() {
       return;
     }
 
+    if (!hasDisplayNameChanged) {
+      setProfileSaveMessage("Your display name is already up to date.");
+      return;
+    }
+
     try {
       setIsSavingProfile(true);
       setProfileSaveMessage(null);
@@ -464,6 +473,18 @@ export default function LobbyScreen() {
       );
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      setIsSettingsOpen(false);
+      setProfileSaveMessage(null);
+    } catch (error) {
+      setProfileSaveMessage(
+        error instanceof Error ? error.message : "Unable to sign out right now.",
+      );
     }
   };
 
@@ -572,17 +593,31 @@ export default function LobbyScreen() {
                         >
                           <span>Display name</span>
                         </label>
-                        <input
-                          id="settings-profile-name"
-                          className="form-card-font modal__text-input"
-                          type="text"
-                          value={profileName}
-                          onChange={(event) =>
-                            setProfileName(event.target.value)
-                          }
-                          placeholder={authDisplayName ?? "Skye"}
-                          disabled={isProfileLoading || isSavingProfile}
-                        />
+                        <div className="modal__text-input-row">
+                          <input
+                            id="settings-profile-name"
+                            className="form-card-font modal__text-input"
+                            type="text"
+                            value={profileName}
+                            onChange={(event) =>
+                              setProfileName(event.target.value)
+                            }
+                            placeholder={authDisplayName ?? "Skye"}
+                            disabled={isProfileLoading || isSavingProfile}
+                          />
+                          <button
+                            className="modal__inline-save-button"
+                            type="submit"
+                            disabled={
+                              !profileName.trim() ||
+                              !hasDisplayNameChanged ||
+                              isProfileLoading ||
+                              isSavingProfile
+                            }
+                          >
+                            {isSavingProfile ? "Saving…" : "Save"}
+                          </button>
+                        </div>
                         <p className="modal__option-help">
                           Choose the name other players see in lobbies and
                           completed games.
@@ -690,22 +725,18 @@ export default function LobbyScreen() {
                           </p>
                         )}
                       </div>
-                      <div className="modal__actions">
-                        <button
-                          className="form-button-full-width"
-                          type="submit"
-                          disabled={
-                            !profileName.trim() ||
-                            isProfileLoading ||
-                            isSavingProfile
-                          }
-                        >
-                          {isSavingProfile ? "Saving…" : "Save profile"}
-                        </button>
-                      </div>
                       {profileSaveMessage ? (
                         <p className="notice">{profileSaveMessage}</p>
                       ) : null}
+                      <div className="modal__actions modal__actions--stacked">
+                        <button
+                          type="button"
+                          className="modal__sign-out-button"
+                          onClick={() => void handleSignOut()}
+                        >
+                          Sign out
+                        </button>
+                      </div>
                     </form>
                   ) : isSignedIn && !isAnonymousUser ? (
                     <div className="modal__option">
