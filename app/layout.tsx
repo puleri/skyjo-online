@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import ThemeSync from "../components/ThemeSync";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
+import LobbyProvider from "../components/LobbyProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const APP_NAME = "Misty";
@@ -70,7 +71,7 @@ export default function RootLayout({
           {themeBootstrapScript}
         </Script>
         <SpeedInsights />
-        <ThemeSync>{children}</ThemeSync>
+        <LobbyProvider><ThemeSync>{children}</ThemeSync></LobbyProvider>
         <ServiceWorkerRegistration />
       </body>
     </html>

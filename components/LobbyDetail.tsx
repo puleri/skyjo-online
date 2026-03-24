@@ -26,6 +26,7 @@ import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 import SnowfallLayer from "./SnowfallLayer";
+import { useParty } from "./LobbyProvider";
 
 type LobbyPlayer = {
   id: string;
@@ -85,9 +86,30 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const { uid, error: authError } = useAnonymousAuth();
+  const {
+    partyId: activePartyId,
+    party: activeParty,
+    members: activePartyMembers,
+    startGame: startPartyGame,
+    invite: inviteToParty,
+    setActivePartyId,
+  } = useParty();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
+  const shouldUseSharedParty = Boolean(activePartyId === lobbyId && activeParty);
 
+
+  useEffect(() => {
+    if (!uid || !lobbyId) {
+      return;
+    }
+
+    if (activePartyId === lobbyId) {
+      return;
+    }
+
+    void setActivePartyId(lobbyId).catch(() => undefined);
+  }, [activePartyId, lobbyId, setActivePartyId, uid]);
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -177,7 +199,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   // }, []);
 
   useEffect(() => {
-    if (!firebaseReady || !lobbyId) {
+    if (!firebaseReady || !lobbyId || shouldUseSharedParty) {
       return;
     }
 
@@ -199,10 +221,10 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady, lobbyId]);
+  }, [firebaseReady, lobbyId, shouldUseSharedParty]);
 
   useEffect(() => {
-    if (!firebaseReady || !lobbyId) {
+    if (!firebaseReady || !lobbyId || shouldUseSharedParty) {
       return;
     }
 
@@ -230,7 +252,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady, lobbyId]);
+  }, [firebaseReady, lobbyId, shouldUseSharedParty]);
 
   useEffect(() => {
     if (authError) {
@@ -238,22 +260,50 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     }
   }, [authError]);
 
-  useEffect(() => {
-    if (lobby?.gameId) {
-      router.push(`/game/${lobby.gameId}`);
+  const displayedPlayers = useMemo(
+    () =>
+      shouldUseSharedParty
+        ? activePartyMembers.map((member) => ({
+          id: member.id,
+          displayName: member.displayName,
+          isReady: true,
+          glyph: "player-glyph-sun",
+        }))
+        : players,
+    [activePartyMembers, players, shouldUseSharedParty]
+  );
+  const displayedLobby = useMemo<LobbyMeta | null>(() => {
+    if (!shouldUseSharedParty || !activeParty) {
+      return lobby;
     }
-  }, [lobby?.gameId, router]);
+
+    return {
+      hostId: activeParty.hostId,
+      gameId: activeParty.activeGameId,
+      status: activeParty.status,
+      spikeMode: activeParty.spikeMode,
+      spikeItemCount: activeParty.spikeItemCount,
+      spikeRowClear: activeParty.spikeRowClear,
+      spikeEndGameBonuses: activeParty.spikeEndGameBonuses,
+    };
+  }, [activeParty, lobby, shouldUseSharedParty]);
+
+  useEffect(() => {
+    if (displayedLobby?.gameId) {
+      router.push(`/game/${displayedLobby.gameId}`);
+    }
+  }, [displayedLobby?.gameId, router]);
 
   const currentPlayer = useMemo(
-    () => (uid ? players.find((player) => player.id === uid) ?? null : null),
-    [players, uid]
+    () => (uid ? displayedPlayers.find((player) => player.id === uid) ?? null : null),
+    [displayedPlayers, uid]
   );
-  const isHost = Boolean(uid && lobby?.hostId && uid === lobby.hostId);
+  const isHost = Boolean(uid && displayedLobby?.hostId && uid === displayedLobby.hostId);
   const hostPlayer = useMemo(
-    () => (lobby?.hostId ? players.find((player) => player.id === lobby.hostId) ?? null : null),
-    [players, lobby?.hostId]
+    () => (displayedLobby?.hostId ? displayedPlayers.find((player) => player.id === displayedLobby.hostId) ?? null : null),
+    [displayedLobby?.hostId, displayedPlayers]
   );
-  const allPlayersReady = players.length > 0 && players.every((player) => player.isReady);
+  const allPlayersReady = displayedPlayers.length > 0 && displayedPlayers.every((player) => player.isReady);
   const inviteLink =
     typeof window === "undefined" ? "" : `${window.location.origin}/invite/${lobbyId}`;
   const lobbySceneStyle = useMemo(() => {
@@ -272,7 +322,11 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
     setInviteStatus(null);
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      if (shouldUseSharedParty) {
+        await inviteToParty();
+      } else {
+        await navigator.clipboard.writeText(inviteLink);
+      }
       setInviteStatus("Invite link copied!");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to copy invite link.";
@@ -322,6 +376,11 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     setIsStarting(true);
     setError(null);
     try {
+      if (shouldUseSharedParty) {
+        await startPartyGame();
+        return;
+      }
+
       const lobbyRef = doc(db, "lobbies", lobbyId);
       const gameRef = doc(collection(db, "games"));
       await runTransaction(db, async (transaction) => {

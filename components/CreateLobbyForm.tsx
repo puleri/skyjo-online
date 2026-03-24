@@ -111,6 +111,11 @@ export default function CreateLobbyForm() {
         joinedAt: serverTimestamp(),
         isHost: true,
       });
+      await setDoc(
+        doc(db, "users", uid),
+        { activePartyId: partyRef.id, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
       setIsCreatingParty(false);
       setCreatedPartyName(name.trim());
       setName("");

@@ -11,6 +11,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   startAfter,
   type DocumentData,
   type QueryDocumentSnapshot,
@@ -369,6 +370,11 @@ export default function LobbyList() {
           });
         }
       });
+      await setDoc(
+        doc(db, "users", uid),
+        { activePartyId: lobbyId, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
       setJoinSuccess("Joined party successfully.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
