@@ -60,6 +60,7 @@ export default function LobbyScreen() {
     isSignedIn,
     isAnonymousUser,
     updateProfile,
+    signInWithGoogleSso,
     signOutUser,
   } = useUserProfile();
   const {
@@ -229,7 +230,7 @@ export default function LobbyScreen() {
         .join(", "),
     [recentPlacements],
   );
-  const canEditProfile = isSignedIn && !isAnonymousUser && Boolean(profile);
+  const canEditProfile = isSignedIn && (isAnonymousUser || Boolean(profile));
   const finalProgress = useMemo<StoredLevelProgress>(
     () => getStoredLevelProgress(profile?.level ?? 1, profile?.experience ?? 0),
     [profile?.experience, profile?.level],
@@ -728,6 +729,22 @@ export default function LobbyScreen() {
                       {profileSaveMessage ? (
                         <p className="notice">{profileSaveMessage}</p>
                       ) : null}
+                      {isAnonymousUser ? (
+                        <div className="modal__actions modal__actions--stacked">
+                          <button
+                            type="button"
+                            className="modal__sign-out-button"
+                            onClick={() => void signInWithGoogleSso()}
+                          >
+                            Sign in with Google
+                          </button>
+                          <p className="modal__option-help">
+                            Sign in with Google to save your profile, keep your
+                            match history, and see your last 5 games across
+                            devices.
+                          </p>
+                        </div>
+                      ) : null}
                       <div className="modal__actions modal__actions--stacked">
                         <button
                           type="button"
@@ -747,6 +764,13 @@ export default function LobbyScreen() {
                     </div>
                   ) : (
                     <div className="modal__option">
+                      <button
+                        type="button"
+                        className="modal__sign-out-button"
+                        onClick={() => void signInWithGoogleSso()}
+                      >
+                        Sign in with Google
+                      </button>
                       <p className="modal__option-help">
                         Sign in with Google to save your profile, keep your
                         match history, and see your last 5 games across devices.
