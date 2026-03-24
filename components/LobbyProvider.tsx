@@ -40,6 +40,7 @@ type Party = {
 type PartyMember = {
   id: string;
   displayName: string;
+  photoURL: string | null;
   isHost: boolean;
   joinedAt?: unknown;
 };
@@ -133,6 +134,7 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
         snapshot.docs.map((memberDoc) => ({
           id: memberDoc.id,
           displayName: (memberDoc.data().displayName as string | undefined) ?? "Anonymous player",
+          photoURL: (memberDoc.data().photoURL as string | undefined) ?? null,
           isHost: Boolean(memberDoc.data().isHost),
           joinedAt: memberDoc.data().joinedAt,
         })),
