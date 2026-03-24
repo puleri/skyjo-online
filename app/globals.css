@@ -2706,7 +2706,40 @@ small {
   visibility: hidden;
 }
 
+.home-view-transition {
+  min-height: 100%;
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease,
+    filter 260ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.home-view-transition--idle {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.home-view-transition--exiting {
+  opacity: 0;
+  transform: translateY(10px) scale(0.99);
+  filter: blur(3px);
+}
+
+.home-view-transition--entering {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .home-view-transition {
+    transition-duration: 1ms;
+    transform: none;
+    filter: none;
+  }
+
   .unauth-step {
     transition-duration: 1ms;
     transition-delay: 0ms;
