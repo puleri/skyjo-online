@@ -82,31 +82,33 @@ export default function UnauthenticatedHome() {
           ) : (
             <form onSubmit={handleAnonymousNameSave}>
               <p>To continue, create the name other players will see you as.</p>
-              <div className="label-input-grid">
-                <label className="form-card-font" htmlFor="unauth-home-username">
+              <div className="unauth-name-field">
+                <label className="form-card-font unauth-name-label" htmlFor="unauth-home-username">
                   Name
                 </label>
-                <input
-                  id="unauth-home-username"
-                  value={username}
-                  className="form-card-font remaining-grid"
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="Skye"
-                />
+                <div className="unauth-name-controls">
+                  <input
+                    id="unauth-home-username"
+                    value={username}
+                    className="form-card-font unauth-name-input"
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="Skye"
+                  />
+                  <button
+                    className="form-card-font unauth-save-button"
+                    type="submit"
+                    disabled={!username.trim()}
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
               <button
-                className="form-button-full-width form-card-font mt-20"
-                type="submit"
-                disabled={!username.trim()}
-              >
-                Save
-              </button>
-              <button
-                className="form-button-full-width form-card-font mt-20"
+                className="form-card-font unauth-back-button mt-20"
                 type="button"
                 onClick={() => setEntryStep("method-selection")}
               >
-                Back
+                ← Back
               </button>
               {savedName ? <p className="notice">Saved as {savedName}.</p> : null}
             </form>

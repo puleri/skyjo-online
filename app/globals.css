@@ -2645,6 +2645,67 @@ small {
   scale: .99
 }
 
+.unauth-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.unauth-name-label {
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.unauth-name-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.unauth-name-input {
+  flex: 1 1 auto;
+}
+
+.unauth-save-button {
+  width: auto;
+  min-width: 78px;
+  padding: 8px 12px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  border: 1px solid #4545457f;
+  border-radius: 6px;
+  background-color: #8D9F8F;
+  color: var(--color-dark);
+}
+
+.unauth-save-button:hover:not(:disabled) {
+  background-color: #7A8B7A;
+}
+
+.unauth-save-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.unauth-back-button {
+  display: inline;
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  letter-spacing: 1px;
+  font-size: 16px;
+  text-decoration: underline;
+}
+
+.unauth-back-button:hover {
+  background: none;
+  box-shadow: none;
+  transform: none;
+  scale: 1;
+}
+
 .ready {
     opacity: 0.6;
     font-style: oblique;
