@@ -19,6 +19,7 @@ export default function UnauthenticatedHome() {
   const [entryStep, setEntryStep] = useState<AuthEntryStep>("method-selection");
   const [username, setUsername] = useState("");
   const [savedName, setSavedName] = useState<string | null>(null);
+  const [isGoogleSsoPending, setIsGoogleSsoPending] = useState(false);
 
   const { uid, error, signInAsAnonymous, signInWithGoogleSso } = useAnonymousAuth();
 
@@ -32,6 +33,21 @@ export default function UnauthenticatedHome() {
 
   const handleContinueWithoutSignIn = () => {
     setEntryStep("anonymous-name");
+  };
+
+  const handleGoogleSsoClick = async () => {
+    if (isGoogleSsoPending) {
+      return;
+    }
+
+    setIsGoogleSsoPending(true);
+
+    try {
+      await signInWithGoogleSso();
+    } catch (error) {
+      setIsGoogleSsoPending(false);
+      throw error;
+    }
   };
 
   const handleAnonymousNameSave = async (event: FormEvent<HTMLFormElement>) => {
@@ -67,9 +83,12 @@ export default function UnauthenticatedHome() {
               aria-hidden={entryStep !== "method-selection"}
             >
               <button
-                className="form-button-full-width form-card-font mb-10"
+                className={`form-button-full-width form-card-font mb-10 ${
+                  isGoogleSsoPending ? "is-pending" : ""
+                }`}
                 type="button"
-                onClick={() => void signInWithGoogleSso()}
+                onClick={() => void handleGoogleSsoClick()}
+                disabled={isGoogleSsoPending}
               >
                 Sign in
               </button>
