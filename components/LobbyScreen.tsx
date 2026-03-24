@@ -485,7 +485,7 @@ export default function LobbyScreen() {
 
       <div className="container">
         <div className="flex-space-between">
-          <h2 className="sage-eyebrow-text">GETTING STARTED</h2>
+          <h2 className="sage-eyebrow-text">LOBBY SETUP</h2>
           {/* when this button is clicked, it opens the rules image in another window */}
           <div className="menu-action-buttons">
             <button
