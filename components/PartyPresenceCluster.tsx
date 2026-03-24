@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
+import { db, isFirebaseConfigured } from "../lib/firebase";
 import { useParty } from "./LobbyProvider";
 
 type PresenceMember = {
@@ -32,6 +34,7 @@ function getFallbackInitial(displayName: string) {
 export default function PartyPresenceCluster() {
   const { uid } = useAnonymousAuth();
   const { members, partyId } = useParty();
+  const [profilePhotosById, setProfilePhotosById] = useState<Record<string, string | null>>({});
 
   const orderedMembers = useMemo(() => {
     if (!members.length) {
@@ -51,6 +54,40 @@ export default function PartyPresenceCluster() {
     return localUser ? [...otherMembers, localUser] : mappedMembers;
   }, [members, uid]);
 
+  useEffect(() => {
+    if (!isFirebaseConfigured || !orderedMembers.length) {
+      setProfilePhotosById({});
+      return;
+    }
+
+    const unsubscribeByMember = orderedMembers.map((member) =>
+      onSnapshot(doc(db, "users", member.id), (snapshot) => {
+        const data = snapshot.data();
+        const nextPhoto =
+          typeof data?.photoUrl === "string"
+            ? data.photoUrl
+            : typeof data?.photoURL === "string"
+              ? data.photoURL
+              : null;
+
+        setProfilePhotosById((current) => {
+          if (current[member.id] === nextPhoto) {
+            return current;
+          }
+
+          return {
+            ...current,
+            [member.id]: nextPhoto,
+          };
+        });
+      }),
+    );
+
+    return () => {
+      unsubscribeByMember.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [orderedMembers]);
+
   if (!partyId || !orderedMembers.length) {
     return null;
   }
@@ -60,6 +97,7 @@ export default function PartyPresenceCluster() {
       {orderedMembers.map((member, index) => {
         const isLocalUser = Boolean(uid && member.id === uid);
         const avatarLabel = getMemberLabel(member, isLocalUser);
+        const resolvedPhotoUrl = profilePhotosById[member.id] ?? member.photoURL;
 
         return (
           <div
@@ -70,10 +108,10 @@ export default function PartyPresenceCluster() {
             style={{ zIndex: index + 1 }}
             role="img"
           >
-            {member.photoURL ? (
+            {resolvedPhotoUrl ? (
               <img
                 className="party-presence-cluster__photo"
-                src={member.photoURL}
+                src={resolvedPhotoUrl}
                 alt={avatarLabel}
                 loading="lazy"
                 referrerPolicy="no-referrer"

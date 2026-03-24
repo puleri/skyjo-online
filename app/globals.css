@@ -3979,7 +3979,6 @@ border: 1px solid #ffedef;
   content: "";
   position: absolute;
   inset: -3px;
-  transform: translate(1px, 1px);
   border-radius: 50%;
   border: 2px solid var(--color-accent-secondary);
   pointer-events: none;
