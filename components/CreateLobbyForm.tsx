@@ -10,15 +10,10 @@ import {
 } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
-import type { SpikeItemCount } from "../lib/game/deck";
 
 export default function CreateLobbyForm() {
   const [name, setName] = useState("");
-  const [spikeItemCount, setSpikeItemCount] = useState<SpikeItemCount>("high");
-  const [spikeRowClear, setSpikeRowClear] = useState(true);
-  const [spikeEndGameBonuses, setSpikeEndGameBonuses] = useState(true);
   const [isPrivateLobby, setIsPrivateLobby] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingParty, setIsCreatingParty] = useState(false);
   const [createdPartyName, setCreatedPartyName] = useState<string | null>(null);
@@ -26,17 +21,6 @@ export default function CreateLobbyForm() {
   const [error, setError] = useState<string | null>(null);
   const { uid, displayName, profileDisplayName } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
-  const spikeItemCountOptions: { value: SpikeItemCount; label: string }[] = [
-    { value: "none", label: "None" },
-    { value: "low", label: "Low" },
-    { value: "medium", label: "Medium" },
-    { value: "high", label: "High" },
-  ];
-  const spikeItemCountIndex = Math.max(
-    0,
-    spikeItemCountOptions.findIndex((option) => option.value === spikeItemCount)
-  );
-  const spikeItemCountLabel = spikeItemCountOptions[spikeItemCountIndex]?.label ?? "High";
   const hasSavedDisplayName = Boolean(savedDisplayName?.trim());
 
   useEffect(() => {
@@ -95,10 +79,7 @@ export default function CreateLobbyForm() {
         players: 1,
         assignedGlyphs: [hostGlyph],
         availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
-        spikeMode: true,
-        spikeItemCount,
-        spikeRowClear,
-        spikeEndGameBonuses,
+        preGameConfig: null,
         isPrivate: isPrivateLobby,
       });
       setIsCreatingParty(true);
@@ -148,19 +129,6 @@ export default function CreateLobbyForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-
-      <span className="lobby-mode-tag" aria-label="Settings">
-        Settings
-      </span>
-      <button
-              type="button"
-              className="game-settings-action-button"
-              aria-label="Open slider settings"
-              aria-haspopup="dialog"
-              onClick={() => setIsSettingsOpen(true)}
-            >
-              <img className="game-settings-icon" src="/slider-icon.png" alt="slider icon" />
-            </button>
       <div className="label-input-grid">
         <label className="form-card-font" htmlFor="lobby-name">
           Lobby Name
@@ -173,6 +141,22 @@ export default function CreateLobbyForm() {
           placeholder="Friday Night Misty"
         />
       </div>
+      <label className="modal__subsettings-option mb-10" style={{ display: "flex" }}>
+        <span>Private lobby</span>
+        <span className="toggle">
+          <input
+            className="toggle__input"
+            type="checkbox"
+            checked={isPrivateLobby}
+            onChange={(event) => setIsPrivateLobby(event.target.checked)}
+            aria-describedby="private-lobby-helper"
+          />
+          <span className="toggle__track" aria-hidden="true" />
+        </span>
+      </label>
+      <p className="modal__option-help" id="private-lobby-helper">
+        Private lobbies are hidden from the public list and can only be joined via invite link.
+      </p>
       <button
         className="form-button-full-width form-card-font mb-10"
         type="submit"
@@ -192,107 +176,6 @@ export default function CreateLobbyForm() {
           <div className="modal">
             <h2 className="leaderboard-title" id="join-lobby-title">Party ready</h2>
             <p className="leaderboard-sub">Saving your party…</p>
-          </div>
-        </div>
-      ) : null}
-      {isSettingsOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="lobby-settings-title"
-          onClick={() => setIsSettingsOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="leaderboard-title" id="lobby-settings-title">Game settings</h2>
-            <p className="leaderboard-sub">Customize how your lobby plays.</p>
-            <div className="modal__option">
-              <div className="modal__subsettings" role="group" aria-label="Game settings">
-                  <div className="modal__slider">
-                    <div className="modal__slider-header">
-                      <span className="modal__subsettings-option">Item frequency</span>
-                    </div>
-                    <input
-                      className="modal__slider-input"
-                      type="range"
-                      min="0"
-                      max={spikeItemCountOptions.length - 1}
-                      step="1"
-                      value={spikeItemCountIndex}
-                      onChange={(event) => {
-                        const nextIndex = Number(event.target.value);
-                        const nextValue =
-                          spikeItemCountOptions[nextIndex]?.value ?? spikeItemCountOptions[0].value;
-                        setSpikeItemCount(nextValue);
-                      }}
-                      aria-describedby="spike-item-count-helper"
-                    />
-                    <div className="modal__slider-labels" aria-hidden="true">
-                      {spikeItemCountOptions.map((option) => (
-                        <span key={option.value}>{option.label}</span>
-                      ))}
-                    </div>
-                    <p className="modal__option-help" id="spike-item-count-helper">
-                       ({spikeItemCountLabel} selected).
-                    </p>
-                  </div>
-                  <label className="modal__subsettings-option">
-                    <span>Enable matching row clears</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={spikeRowClear}
-                        onChange={(event) => setSpikeRowClear(event.target.checked)}
-                        aria-describedby="spike-row-clear-helper"
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
-                    </span>
-                  </label>
-                  <p className="modal__option-help" id="spike-row-clear-helper">
-                    Clear a row when all revealed cards match.
-                  </p>
-                  <label className="modal__subsettings-option">
-                    <span>Enable end game bonuses</span>
-                    <span className="toggle">
-                      <input
-                        className="toggle__input"
-                        type="checkbox"
-                        checked={spikeEndGameBonuses}
-                        onChange={(event) => setSpikeEndGameBonuses(event.target.checked)}
-                        aria-describedby="spike-end-game-bonuses-helper"
-                      />
-                      <span className="toggle__track" aria-hidden="true" />
-                    </span>
-                  </label>
-                  <p className="modal__option-help" id="spike-end-game-bonuses-helper">
-                    Award three end-game bonuses worth -5 points each, including Fastest player.
-                  </p>
-                </div>
-            </div>
-            <div className="modal__option">
-              <label className="modal__subsettings-option">
-                <span>Private lobby</span>
-                <span className="toggle">
-                  <input
-                    className="toggle__input"
-                    type="checkbox"
-                    checked={isPrivateLobby}
-                    onChange={(event) => setIsPrivateLobby(event.target.checked)}
-                    aria-describedby="private-lobby-helper"
-                  />
-                  <span className="toggle__track" aria-hidden="true" />
-                </span>
-              </label>
-              <p className="modal__option-help" id="private-lobby-helper">
-                Private lobbies won&apos;t appear in the public lobby list.
-              </p>
-            </div>
-            <div className="modal__actions">
-              <button className="form-button-full-width" type="button" onClick={() => setIsSettingsOpen(false)}>
-                Save
-              </button>
-            </div>
           </div>
         </div>
       ) : null}
