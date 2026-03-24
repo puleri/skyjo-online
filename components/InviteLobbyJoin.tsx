@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  collection,
   doc,
   onSnapshot,
   runTransaction,
@@ -29,6 +28,7 @@ type LobbyMeta = {
   hostId: string | null;
   status: string;
   gameId: string | null;
+  source: "party" | "lobby";
 };
 
 export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
@@ -40,6 +40,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [joinSuccess, setJoinSuccess] = useState<string | null>(null);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const {
     uid,
@@ -71,25 +72,57 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
       return;
     }
 
-    const lobbyRef = doc(db, "lobbies", lobbyId);
+    const partyRef = doc(db, "parties", lobbyId);
+    let unsubscribeLegacy: (() => void) | null = null;
     const unsubscribe = onSnapshot(
-      lobbyRef,
-      (snapshot) => {
+      partyRef,
+      (partySnapshot) => {
         setError(null);
-        if (!snapshot.exists()) {
-          setLobbyState("missing");
-          setLobby(null);
-          setHostName("A player");
+        if (unsubscribeLegacy) {
+          unsubscribeLegacy();
+          unsubscribeLegacy = null;
+        }
+        if (partySnapshot.exists()) {
+          const data = partySnapshot.data();
+          setLobbyState("exists");
+          setLobby({
+            hostId: (data.hostId as string | undefined) ?? null,
+            status: (data.status as string | undefined) ?? "open",
+            gameId:
+              (data.activeGameId as string | undefined) ??
+              (data.gameId as string | undefined) ??
+              null,
+            source: "party",
+          });
+          setHostName((data.hostDisplayName as string | undefined) ?? "A player");
           return;
         }
-        const data = snapshot.data();
-        setLobbyState("exists");
-        setLobby({
-          hostId: (data.hostId as string | undefined) ?? null,
-          status: (data.status as string | undefined) ?? "open",
-          gameId: (data.gameId as string | undefined) ?? null,
-        });
-        setHostName((data.hostDisplayName as string | undefined) ?? "A player");
+
+        const legacyLobbyRef = doc(db, "lobbies", lobbyId);
+        unsubscribeLegacy = onSnapshot(
+          legacyLobbyRef,
+          (legacySnapshot) => {
+            if (!legacySnapshot.exists()) {
+              setLobbyState("missing");
+              setLobby(null);
+              setHostName("A player");
+              return;
+            }
+            const data = legacySnapshot.data();
+            setLobbyState("exists");
+            setLobby({
+              hostId: (data.hostId as string | undefined) ?? null,
+              status: (data.status as string | undefined) ?? "open",
+              gameId: (data.gameId as string | undefined) ?? null,
+              source: "lobby",
+            });
+            setHostName((data.hostDisplayName as string | undefined) ?? "A player");
+          },
+          (err) => {
+            setLobbyState("error");
+            setError(err.message);
+          }
+        );
       },
       (err) => {
         setLobbyState("error");
@@ -97,7 +130,12 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (unsubscribeLegacy) {
+        unsubscribeLegacy();
+      }
+    };
   }, [firebaseReady, lobbyId]);
 
   useEffect(() => {
@@ -129,6 +167,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     }
 
     setIsJoining(true);
+    setJoinSuccess(null);
     setError(null);
     try {
       let resolvedUid = uid;
@@ -148,15 +187,22 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         await saveProfileDisplayName(trimmedName);
       }
 
-      const lobbyRef = doc(db, "lobbies", lobbyId);
-      const playerRef = doc(db, "lobbies", lobbyId, "players", resolvedUid);
+      const partyRef = doc(db, "parties", lobbyId);
+      const partyMemberRef = doc(db, "parties", lobbyId, "partyMembers", resolvedUid);
+      const legacyLobbyRef = doc(db, "lobbies", lobbyId);
       await runTransaction(db, async (transaction) => {
-        const lobbySnapshot = await transaction.get(lobbyRef);
-        if (!lobbySnapshot.exists()) {
+        const partySnapshot = await transaction.get(partyRef);
+        const legacyLobbySnapshot = !partySnapshot.exists()
+          ? await transaction.get(legacyLobbyRef)
+          : null;
+        if (!partySnapshot.exists() && !legacyLobbySnapshot?.exists()) {
           throw new Error("This lobby no longer exists.");
         }
 
-        const lobbyData = lobbySnapshot.data();
+        const lobbyData = partySnapshot.exists() ? partySnapshot.data() : legacyLobbySnapshot?.data();
+        if (!lobbyData) {
+          throw new Error("Lobby details are unavailable.");
+        }
         if ((lobbyData.status as string | undefined) === "in-game") {
           const gameId = (lobbyData.gameId as string | undefined) ?? null;
           if (gameId) {
@@ -165,10 +211,14 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
           throw new Error("This lobby is already in a game.");
         }
 
-        const playerSnapshot = await transaction.get(playerRef);
+        const playerSnapshot = await transaction.get(partyMemberRef);
         const isHost = (lobbyData.hostId as string | undefined) === resolvedUid;
         if (playerSnapshot.exists()) {
-          transaction.update(playerRef, { displayName: trimmedName });
+          transaction.update(partyMemberRef, {
+            displayName: trimmedName,
+            photoURL: null,
+            updatedAt: serverTimestamp(),
+          });
           const currentPlayerIds = Array.isArray(lobbyData.playerIds)
             ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
             : [];
@@ -193,13 +243,26 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
           const nextPlayerNames = nextPlayerIds.map(
             (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
           );
-          transaction.update(lobbyRef, {
+          const partyUpdates = {
             ...(isHost ? { hostDisplayName: trimmedName } : {}),
             playerCount: nextPlayerIds.length,
+            memberIds: nextPlayerIds,
             playerIds: nextPlayerIds,
             playerNames: nextPlayerNames,
             players: nextPlayerIds.length,
-          });
+            updatedAt: serverTimestamp(),
+          };
+          if (partySnapshot.exists()) {
+            transaction.update(partyRef, partyUpdates);
+          } else {
+            transaction.set(partyRef, {
+              ...lobbyData,
+              ...partyUpdates,
+              status: lobbyData.status ?? "open",
+              activeGameId: (lobbyData.gameId as string | undefined) ?? null,
+              createdAt: (lobbyData.createdAt as DocumentData | undefined) ?? serverTimestamp(),
+            });
+          }
           return;
         }
 
@@ -245,9 +308,11 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         const lobbyUpdates: UpdateData<DocumentData> = {
           assignedGlyphs: nextAssignedGlyphs,
           playerCount: nextPlayerIds.length,
+          memberIds: nextPlayerIds,
           playerIds: nextPlayerIds,
           playerNames: nextPlayerNames,
           players: nextPlayerIds.length,
+          updatedAt: serverTimestamp(),
         };
         if (isHost) {
           lobbyUpdates.hostDisplayName = trimmedName;
@@ -259,16 +324,25 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
           );
         }
 
-        transaction.set(playerRef, {
+        transaction.set(partyMemberRef, {
           displayName: trimmedName,
+          photoURL: null,
           joinedAt: serverTimestamp(),
-          isReady: false,
-          glyph,
+          isHost,
         });
-        transaction.update(lobbyRef, lobbyUpdates);
+        if (partySnapshot.exists()) {
+          transaction.update(partyRef, lobbyUpdates);
+        } else {
+          transaction.set(partyRef, {
+            ...lobbyData,
+            ...lobbyUpdates,
+            status: lobbyData.status ?? "open",
+            activeGameId: (lobbyData.gameId as string | undefined) ?? null,
+            createdAt: (lobbyData.createdAt as DocumentData | undefined) ?? serverTimestamp(),
+          });
+        }
       });
-
-      router.push(`/lobby/${lobbyId}`);
+      setJoinSuccess("Joined party. You can return to the lobby list.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
@@ -374,6 +448,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
               >
                 {isJoining ? "Joining..." : "Join Lobby"}
               </button>
+              {joinSuccess ? <p>{joinSuccess}</p> : null}
               {error ? <p className="notice">{error}</p> : null}
             </form>
           )}
