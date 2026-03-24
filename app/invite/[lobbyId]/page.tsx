@@ -11,7 +11,7 @@ const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
 const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 
 const buildLobbyDocumentUrl = (lobbyId: string) => {
-  const baseUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/lobbies/${encodeURIComponent(
+  const baseUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/parties/${encodeURIComponent(
     lobbyId
   )}`;
   return firebaseApiKey ? `${baseUrl}?key=${firebaseApiKey}` : baseUrl;

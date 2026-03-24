@@ -3,21 +3,18 @@
 import {
   doc,
   onSnapshot,
-  runTransaction,
+  getDoc,
   serverTimestamp,
   setDoc,
-  type DocumentData,
-  type UpdateData,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   readStoredUsername,
   useAnonymousAuth,
   usernameStorageKey,
 } from "../lib/auth";
-import { GLYPHS } from "../lib/constants";
 import { app, db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
@@ -54,6 +51,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
   } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
   const router = useRouter();
+  const shouldRouteHomeAfterJoinRef = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -61,6 +59,16 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     }, 1000);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const hasInternalReferrer = document.referrer.startsWith(window.location.origin);
+    const openedDirectly = !hasInternalReferrer && window.history.length <= 1;
+    shouldRouteHomeAfterJoinRef.current = openedDirectly;
   }, []);
 
   useEffect(() => {
@@ -190,165 +198,54 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
 
       const partyRef = doc(db, "parties", lobbyId);
       const partyMemberRef = doc(db, "parties", lobbyId, "partyMembers", resolvedUid);
-      const legacyLobbyRef = doc(db, "lobbies", lobbyId);
-      await runTransaction(db, async (transaction) => {
-        const partySnapshot = await transaction.get(partyRef);
-        const legacyLobbySnapshot = !partySnapshot.exists()
-          ? await transaction.get(legacyLobbyRef)
-          : null;
-        if (!partySnapshot.exists() && !legacyLobbySnapshot?.exists()) {
-          throw new Error("This lobby no longer exists.");
-        }
+      const partySnapshot = await getDoc(partyRef);
+      if (!partySnapshot.exists()) {
+        throw new Error("This lobby no longer exists.");
+      }
 
-        const lobbyData = partySnapshot.exists() ? partySnapshot.data() : legacyLobbySnapshot?.data();
-        if (!lobbyData) {
-          throw new Error("Lobby details are unavailable.");
+      const partyData = partySnapshot.data();
+      if ((partyData.status as string | undefined) === "in-game") {
+        const gameId =
+          (partyData.activeGameId as string | undefined) ??
+          (partyData.gameId as string | undefined) ??
+          null;
+        if (gameId) {
+          throw new Error("This lobby is already in a game. Spectate instead.");
         }
-        if ((lobbyData.status as string | undefined) === "in-game") {
-          const gameId = (lobbyData.gameId as string | undefined) ?? null;
-          if (gameId) {
-            throw new Error("This lobby is already in a game. Spectate instead.");
-          }
-          throw new Error("This lobby is already in a game.");
-        }
+        throw new Error("This lobby is already in a game.");
+      }
 
-        const playerSnapshot = await transaction.get(partyMemberRef);
-        const isHost = (lobbyData.hostId as string | undefined) === resolvedUid;
-        if (playerSnapshot.exists()) {
-          transaction.update(partyMemberRef, {
+      const existingMemberSnapshot = await getDoc(partyMemberRef);
+      const isHost = (partyData.hostId as string | undefined) === resolvedUid;
+      if (existingMemberSnapshot.exists()) {
+        await setDoc(
+          partyMemberRef,
+          {
             displayName: trimmedName,
             photoURL: null,
             updatedAt: serverTimestamp(),
-          });
-          const currentPlayerIds = Array.isArray(lobbyData.playerIds)
-            ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
-            : [];
-          const currentPlayerNames = Array.isArray(lobbyData.playerNames)
-            ? lobbyData.playerNames.filter((name): name is string => typeof name === "string")
-            : [];
-          const playerNameMap = new Map<string, string>();
-          currentPlayerIds.forEach((playerId, index) => {
-            const existingName = currentPlayerNames[index];
-            playerNameMap.set(
-              playerId,
-              typeof existingName === "string" ? existingName : "Anonymous player"
-            );
-          });
-          if (!playerNameMap.has(resolvedUid)) {
-            currentPlayerIds.push(resolvedUid);
-          }
-          playerNameMap.set(resolvedUid, trimmedName);
-          const nextPlayerIds = currentPlayerIds.filter(
-            (playerId, index) => currentPlayerIds.indexOf(playerId) === index
-          );
-          const nextPlayerNames = nextPlayerIds.map(
-            (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
-          );
-          const partyUpdates = {
-            ...(isHost ? { hostDisplayName: trimmedName } : {}),
-            playerCount: nextPlayerIds.length,
-            memberIds: nextPlayerIds,
-            playerIds: nextPlayerIds,
-            playerNames: nextPlayerNames,
-            players: nextPlayerIds.length,
-            updatedAt: serverTimestamp(),
-          };
-          if (partySnapshot.exists()) {
-            transaction.update(partyRef, partyUpdates);
-          } else {
-            transaction.set(partyRef, {
-              ...lobbyData,
-              ...partyUpdates,
-              status: lobbyData.status ?? "open",
-              activeGameId: (lobbyData.gameId as string | undefined) ?? null,
-              createdAt: (lobbyData.createdAt as DocumentData | undefined) ?? serverTimestamp(),
-            });
-          }
-          return;
-        }
-
-        const availableGlyphs = Array.isArray(lobbyData.availableGlyphs)
-          ? lobbyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
-          : null;
-        const assignedGlyphs = Array.isArray(lobbyData.assignedGlyphs)
-          ? lobbyData.assignedGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
-          : [];
-        const glyphPool =
-          availableGlyphs && availableGlyphs.length > 0
-            ? availableGlyphs
-            : GLYPHS.filter((glyph) => !assignedGlyphs.includes(glyph));
-
-        if (!glyphPool.length) {
-          throw new Error("This lobby is full.");
-        }
-
-        const glyph = glyphPool[Math.floor(Math.random() * glyphPool.length)];
-        const nextAssignedGlyphs = Array.from(new Set([...assignedGlyphs, glyph]));
-        const currentPlayerIds = Array.isArray(lobbyData.playerIds)
-          ? lobbyData.playerIds.filter((id): id is string => typeof id === "string")
-          : [];
-        const currentPlayerNames = Array.isArray(lobbyData.playerNames)
-          ? lobbyData.playerNames.filter((name): name is string => typeof name === "string")
-          : [];
-        const playerNameMap = new Map<string, string>();
-        currentPlayerIds.forEach((playerId, index) => {
-          const existingName = currentPlayerNames[index];
-          playerNameMap.set(
-            playerId,
-            typeof existingName === "string" ? existingName : "Anonymous player"
-          );
-        });
-        currentPlayerIds.push(resolvedUid);
-        playerNameMap.set(resolvedUid, trimmedName);
-        const nextPlayerIds = currentPlayerIds.filter(
-          (playerId, index) => currentPlayerIds.indexOf(playerId) === index
+          },
+          { merge: true }
         );
-        const nextPlayerNames = nextPlayerIds.map(
-          (playerId) => playerNameMap.get(playerId) ?? "Anonymous player"
-        );
-        const lobbyUpdates: UpdateData<DocumentData> = {
-          assignedGlyphs: nextAssignedGlyphs,
-          playerCount: nextPlayerIds.length,
-          memberIds: nextPlayerIds,
-          playerIds: nextPlayerIds,
-          playerNames: nextPlayerNames,
-          players: nextPlayerIds.length,
-          updatedAt: serverTimestamp(),
-        };
-        if (isHost) {
-          lobbyUpdates.hostDisplayName = trimmedName;
-        }
-
-        if (availableGlyphs && availableGlyphs.length > 0) {
-          lobbyUpdates.availableGlyphs = availableGlyphs.filter(
-            (availableGlyph) => availableGlyph !== glyph
-          );
-        }
-
-        transaction.set(partyMemberRef, {
+      } else {
+        await setDoc(partyMemberRef, {
           displayName: trimmedName,
           photoURL: null,
           joinedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           isHost,
         });
-        if (partySnapshot.exists()) {
-          transaction.update(partyRef, lobbyUpdates);
-        } else {
-          transaction.set(partyRef, {
-            ...lobbyData,
-            ...lobbyUpdates,
-            status: lobbyData.status ?? "open",
-            activeGameId: (lobbyData.gameId as string | undefined) ?? null,
-            createdAt: (lobbyData.createdAt as DocumentData | undefined) ?? serverTimestamp(),
-          });
-        }
-      });
+      }
+
       await setDoc(
         doc(db, "users", resolvedUid),
         { activePartyId: lobbyId, updatedAt: serverTimestamp() },
         { merge: true }
       );
-      setJoinSuccess("Joined party. You can return to the lobby list.");
+      setJoinSuccess("Joined party.");
+      if (shouldRouteHomeAfterJoinRef.current) {
+        router.replace("/");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);

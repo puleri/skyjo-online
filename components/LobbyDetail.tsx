@@ -304,8 +304,9 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     [displayedLobby?.hostId, displayedPlayers]
   );
   const allPlayersReady = displayedPlayers.length > 0 && displayedPlayers.every((player) => player.isReady);
+  const invitePartyId = activePartyId ?? lobbyId;
   const inviteLink =
-    typeof window === "undefined" ? "" : `${window.location.origin}/invite/${lobbyId}`;
+    typeof window === "undefined" ? "" : `${window.location.origin}/invite/${invitePartyId}`;
   const lobbySceneStyle = useMemo(() => {
     if (!isSnowEnabled) {
       return undefined;
