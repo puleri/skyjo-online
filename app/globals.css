@@ -51,6 +51,7 @@
   --card-back-image: url("/images/misty-cardback.png");
   --card-back-image-wide: url("/images/wide.png");
   --lobby-bg-image: url("/images/misty-lobby-bg.png");
+  --login-bg-image: url("/images/signin.webp");
 }
 
 :root[data-theme="dark"] {
@@ -3005,9 +3006,9 @@ small {
   justify-content: center;
   align-items: center;
   gap: 24px;
-  background-image: var(--lobby-bg-image);
+  background-image: var(--login-bg-image);
   background-size: cover;
-  background-position: bottom;
+  background-position: top;
   min-height: 100vh;
   position: relative;
   z-index: 0;

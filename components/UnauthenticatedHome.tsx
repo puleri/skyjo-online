@@ -53,19 +53,12 @@ export default function UnauthenticatedHome() {
   return (
     <main className="lobby-scene-wrapper">
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
-      <img
-        className="welcome-div welcome-div-dark"
-        src="/images/misty-lobby-bg-darkmode.png"
-        alt=""
-        aria-hidden="true"
-      />
 
       <div className="container">
         <div className="flex-space-between">
-          <h2 className="charcoal-eyebrow-text">GETTING STARTED</h2>
         </div>
 
-        <section className="" style={{ maxWidth: 540, margin: "0 auto" }}>
+        <section className="" style={{ maxWidth: 540, margin: "100px auto 0" }}>
           {entryStep === "method-selection" ? (
             <>
               <button
