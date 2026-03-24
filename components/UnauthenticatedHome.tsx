@@ -72,7 +72,7 @@ export default function UnauthenticatedHome() {
                 or
               </p>
               <button
-                className="form-button-full-width form-card-font"
+                className="form-card-font unauth-back-button form-card-font"
                 type="button"
                 onClick={handleContinueWithoutSignIn}
               >
@@ -110,7 +110,6 @@ export default function UnauthenticatedHome() {
               >
                 ← Back
               </button>
-              {savedName ? <p className="notice">Saved as {savedName}.</p> : null}
             </form>
           )}
 
