@@ -1,6 +1,15 @@
 "use client";
 
-import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { FormEvent, useEffect, useState } from "react";
 import {
   readStoredUsername,
@@ -12,12 +21,11 @@ import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 
 export default function CreateLobbyForm() {
-  const [name, setName] = useState("");
-  const [isPrivateLobby, setIsPrivateLobby] = useState(false);
+  const [inviteeUserId, setInviteeUserId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingParty, setIsCreatingParty] = useState(false);
-  const [createdPartyName, setCreatedPartyName] = useState<string | null>(null);
   const [savedDisplayName, setSavedDisplayName] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { uid, displayName, profileDisplayName } = useAnonymousAuth();
   const firebaseReady = isFirebaseConfigured;
@@ -42,20 +50,27 @@ export default function CreateLobbyForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!firebaseReady || !name.trim()) {
+    const trimmedInviteeId = inviteeUserId.trim();
+
+    if (!firebaseReady || !trimmedInviteeId) {
       return;
     }
     if (!hasSavedDisplayName) {
-      setError("Save your display name before creating a lobby.");
+      setError("Save your display name before inviting players.");
       return;
     }
     if (!uid) {
-      setError("Sign in to create a lobby.");
+      setError("Sign in to invite players.");
+      return;
+    }
+    if (trimmedInviteeId === uid) {
+      setError("You cannot invite yourself.");
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const resolvedName = resolvePlayerDisplayName({
@@ -63,9 +78,17 @@ export default function CreateLobbyForm() {
         authDisplayName: displayName,
         storedDisplayName: readStoredUsername(),
       });
+      const inviteeUserRef = doc(db, "users", trimmedInviteeId);
+      const inviteeUserSnap = await getDoc(inviteeUserRef);
+      if (!inviteeUserSnap.exists()) {
+        throw new Error("That user ID was not found.");
+      }
+
+      setIsCreatingParty(true);
+
       const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
       const partyRef = await addDoc(collection(db, "parties"), {
-        name: name.trim(),
+        name: `${resolvedName}'s party`,
         hostId: uid,
         memberIds: [uid],
         activeGameId: null,
@@ -80,31 +103,51 @@ export default function CreateLobbyForm() {
         assignedGlyphs: [hostGlyph],
         availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
         preGameConfig: null,
-        isPrivate: isPrivateLobby,
+        isPrivate: true,
       });
-      setIsCreatingParty(true);
-      await new Promise<void>((resolve) => {
-        window.setTimeout(() => resolve(), 1000);
-      });
+
       await setDoc(doc(db, "parties", partyRef.id, "partyMembers", uid), {
         displayName: resolvedName,
         photoURL: null,
         joinedAt: serverTimestamp(),
         isHost: true,
       });
+
       await setDoc(
         doc(db, "users", uid),
         { activePartyId: partyRef.id, updatedAt: serverTimestamp() },
-        { merge: true }
+        { merge: true },
       );
-      setIsCreatingParty(false);
-      setCreatedPartyName(name.trim());
-      setName("");
+
+      const inviteRef = await addDoc(collection(db, "partyInvites"), {
+        partyId: partyRef.id,
+        hostId: uid,
+        hostDisplayName: resolvedName,
+        inviteeId: trimmedInviteeId,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      await runTransaction(db, async (transaction) => {
+        transaction.update(inviteeUserRef, {
+          pendingPartyInviteId: inviteRef.id,
+          pendingPartyInviteUpdatedAt: serverTimestamp(),
+        });
+      });
+
+      await updateDoc(doc(db, "parties", partyRef.id), {
+        latestInviteeId: trimmedInviteeId,
+        updatedAt: serverTimestamp(),
+      });
+
+      setSuccessMessage(`Invite sent to ${trimmedInviteeId}.`);
+      setInviteeUserId("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
       setError(message);
-      setIsCreatingParty(false);
     } finally {
+      setIsCreatingParty(false);
       setIsSubmitting(false);
     }
   };
@@ -115,7 +158,7 @@ export default function CreateLobbyForm() {
         <strong>Missing Firebase configuration.</strong>
         <p>
           Add values to <code>.env.local</code> (see <code>.env.local.example</code>)
-          before creating lobbies.
+          before inviting players.
         </p>
         <p>
           Missing keys:{" "}
@@ -130,52 +173,34 @@ export default function CreateLobbyForm() {
   return (
     <form onSubmit={handleSubmit}>
       <div className="label-input-grid">
-        <label className="form-card-font" htmlFor="lobby-name">
-          Lobby Name
+        <label className="form-card-font" htmlFor="invitee-user-id">
+          Player User ID
         </label>
         <input
-          id="lobby-name"
-          value={name}
+          id="invitee-user-id"
+          value={inviteeUserId}
           className="form-card-font remaining-grid"
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Friday Night Misty"
+          onChange={(event) => setInviteeUserId(event.target.value)}
+          placeholder="Paste the player user ID"
         />
       </div>
-      <label className="modal__subsettings-option mb-10" style={{ display: "flex" }}>
-        <span>Private lobby</span>
-        <span className="toggle">
-          <input
-            className="toggle__input"
-            type="checkbox"
-            checked={isPrivateLobby}
-            onChange={(event) => setIsPrivateLobby(event.target.checked)}
-            aria-describedby="private-lobby-helper"
-          />
-          <span className="toggle__track" aria-hidden="true" />
-        </span>
-      </label>
-      <p className="modal__option-help" id="private-lobby-helper">
-        Private lobbies are hidden from the public list and can only be joined via invite link.
-      </p>
       <button
         className="form-button-full-width form-card-font mb-10"
         type="submit"
-        disabled={isSubmitting || !name.trim() || !uid || !hasSavedDisplayName}
+        disabled={isSubmitting || !inviteeUserId.trim() || !uid || !hasSavedDisplayName}
       >
-        {isSubmitting ? "Creating..." : "Create Lobby"}
+        {isSubmitting ? "Inviting..." : "Invite player"}
       </button>
       {!hasSavedDisplayName ? (
-        <p className="notice">Save your player name above before creating a lobby.</p>
+        <p className="notice">Save your player name above before inviting players.</p>
       ) : null}
       {error ? <p className="notice">{error}</p> : null}
-      {createdPartyName ? (
-        <p className="notice">Party “{createdPartyName}” created. Share your invite link to add players.</p>
-      ) : null}
+      {successMessage ? <p className="notice">{successMessage}</p> : null}
       {isCreatingParty ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="join-lobby-title">
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="creating-party-title">
           <div className="modal">
-            <h2 className="leaderboard-title" id="join-lobby-title">Party ready</h2>
-            <p className="leaderboard-sub">Saving your party…</p>
+            <h2 className="leaderboard-title" id="creating-party-title">Creating party</h2>
+            <p className="leaderboard-sub">Preparing your invite…</p>
           </div>
         </div>
       ) : null}

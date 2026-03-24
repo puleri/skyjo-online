@@ -18,7 +18,7 @@ import {
 } from "react";
 import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
-import LobbyList from "./LobbyList";
+import PartyInviteModal from "./PartyInviteModal";
 import SnowfallLayer from "./SnowfallLayer";
 import {
   db,
@@ -965,13 +965,7 @@ export default function LobbyScreen() {
         <section className="form-card">
           <CreateLobbyForm />
         </section>
-
-        <div className="lobby-list-section">
-          <div className="flex-space-between">
-            <h2 className="charcoal-eyebrow-text">LOBBIES</h2>
-          </div>
-          <LobbyList />
-        </div>
+        <PartyInviteModal />
 
         {isLeaderboardOpen ? (
           <div
