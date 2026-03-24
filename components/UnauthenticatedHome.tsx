@@ -54,12 +54,6 @@ export default function UnauthenticatedHome() {
     <main className="lobby-scene-wrapper">
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
       <img
-        className="welcome-div welcome-div-light"
-        src="/images/misty-lobby-bg.png"
-        alt=""
-        aria-hidden="true"
-      />
-      <img
         className="welcome-div welcome-div-dark"
         src="/images/misty-lobby-bg-darkmode.png"
         alt=""
@@ -68,21 +62,10 @@ export default function UnauthenticatedHome() {
 
       <div className="container">
         <div className="flex-space-between">
-          <h2 className="sage-eyebrow-text">GETTING STARTED</h2>
-          <Link
-            href="/rules"
-            className="menu-action-button"
-            aria-label="Open game rules"
-          >
-            <img
-              className="question-mark-icon"
-              src="/question-mark-icon.png"
-              alt="Misty Instructions Menu Icon"
-            />
-          </Link>
+          <h2 className="charcoal-eyebrow-text">GETTING STARTED</h2>
         </div>
 
-        <section className="form-card" style={{ maxWidth: 540, margin: "0 auto" }}>
+        <section className="" style={{ maxWidth: 540, margin: "0 auto" }}>
           {entryStep === "method-selection" ? (
             <>
               <button
