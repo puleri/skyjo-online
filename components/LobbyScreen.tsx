@@ -1,13 +1,18 @@
 "use client";
 import {
+  addDoc,
   collection,
   deleteDoc,
+  doc,
   onSnapshot,
   orderBy,
+  serverTimestamp,
+  setDoc,
   query,
   Timestamp,
 } from "firebase/firestore";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CSSProperties,
   FormEvent,
@@ -16,6 +21,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { readStoredUsername, resolvePlayerDisplayName, useAnonymousAuth } from "../lib/auth";
+import { GLYPHS } from "../lib/constants";
 import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
 import PartyInviteModal from "./PartyInviteModal";
@@ -49,6 +56,7 @@ function isLeaderboardEntryActive(expiresAt: unknown) {
 }
 
 export default function LobbyScreen() {
+  const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
   const {
@@ -97,6 +105,8 @@ export default function LobbyScreen() {
   const [playbackAnnouncement, setPlaybackAnnouncement] = useState<
     string | null
   >(null);
+  const [isCreatingClassiqueParty, setIsCreatingClassiqueParty] = useState(false);
+  const [classiqueError, setClassiqueError] = useState<string | null>(null);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
   const firebaseReady = isFirebaseConfigured;
@@ -106,6 +116,7 @@ export default function LobbyScreen() {
   const leaderboardCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const wasSettingsOpen = useRef(false);
   const wasLeaderboardOpen = useRef(false);
+  const { uid } = useAnonymousAuth();
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -487,6 +498,69 @@ export default function LobbyScreen() {
       setProfileSaveMessage(
         error instanceof Error ? error.message : "Unable to sign out right now.",
       );
+    }
+  };
+
+  const handleCreateClassiqueParty = async () => {
+    if (!uid) {
+      setClassiqueError("Sign in to create a Classique party.");
+      return;
+    }
+
+    const resolvedName = resolvePlayerDisplayName({
+      profileDisplayName: profile?.displayName ?? null,
+      authDisplayName,
+      storedDisplayName: readStoredUsername(),
+    });
+    const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
+    setIsCreatingClassiqueParty(true);
+    setClassiqueError(null);
+    try {
+      const partyRef = await addDoc(collection(db, "parties"), {
+        name: `${resolvedName}'s Classique party`,
+        hostId: uid,
+        memberIds: [uid],
+        activeGameId: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        status: "open",
+        playerCount: 1,
+        hostDisplayName: resolvedName,
+        playerIds: [uid],
+        playerNames: [resolvedName],
+        players: 1,
+        assignedGlyphs: [hostGlyph],
+        availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
+        preGameConfig: {
+          gameType: "spike",
+          spikeMode: true,
+          spikeItemCount: "high",
+          spikeRowClear: true,
+          spikeEndGameBonuses: true,
+        },
+        isPrivate: true,
+      });
+
+      await setDoc(doc(db, "parties", partyRef.id, "partyMembers", uid), {
+        displayName: resolvedName,
+        photoURL: null,
+        joinedAt: serverTimestamp(),
+        isHost: true,
+      });
+
+      await setDoc(
+        doc(db, "users", uid),
+        { activePartyId: partyRef.id, updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+
+      router.push(`/lobby/${partyRef.id}`);
+    } catch (error) {
+      setClassiqueError(
+        error instanceof Error ? error.message : "Unable to create a Classique party right now.",
+      );
+    } finally {
+      setIsCreatingClassiqueParty(false);
     }
   };
 
@@ -964,6 +1038,19 @@ export default function LobbyScreen() {
 
         <section className="form-card">
           <CreateLobbyForm />
+          {isSignedIn ? (
+            <>
+              <button
+                type="button"
+                className="form-button-full-width form-card-font"
+                onClick={() => void handleCreateClassiqueParty()}
+                disabled={!firebaseReady || isCreatingClassiqueParty}
+              >
+                {isCreatingClassiqueParty ? "Creating Classique party..." : "Classique"}
+              </button>
+              {classiqueError ? <p className="notice">{classiqueError}</p> : null}
+            </>
+          ) : null}
         </section>
         <PartyInviteModal />
 
