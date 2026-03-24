@@ -88,6 +88,7 @@ type GameMeta = {
   spikeItemCount?: SpikeItemCount;
   spikeRowClear?: boolean;
   spikeEndGameBonuses?: boolean;
+  targetScore?: 50 | 100;
   endingPlayerId: string | null;
   finalTurnRemainingIds: string[] | null;
   selectedDiscardPlayerId: string | null;
@@ -1083,6 +1084,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
           spikeRowClear: Boolean(data.spikeRowClear),
           spikeEndGameBonuses:
             (data.spikeEndGameBonuses as boolean | undefined) ?? true,
+          targetScore: (data.targetScore as 50 | 100 | undefined) ?? 100,
           endingPlayerId:
             (data.endingPlayerId as string | null | undefined) ?? null,
           finalTurnRemainingIds: Array.isArray(data.finalTurnRemainingIds)
@@ -1995,6 +1997,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       game.spikeItemCount,
       game.spikeRowClear,
       game.spikeEndGameBonuses,
+      game.targetScore,
     );
   }, [game]);
   const isLocalPlayer = Boolean(

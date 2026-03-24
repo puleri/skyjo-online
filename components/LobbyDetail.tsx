@@ -534,6 +534,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       spikeItemCount: partySpikeItemCount,
       spikeRowClear: partySpikeRowClear,
       spikeEndGameBonuses: partySpikeEndGameBonuses,
+      targetScore: displayedLobby?.preGameConfig?.targetScore ?? 100,
     };
     if (!isValidPreGameConfig(config)) {
       setError("Invalid game settings.");

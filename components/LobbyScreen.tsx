@@ -108,6 +108,8 @@ export default function LobbyScreen() {
   >(null);
   const [isCreatingClassiqueParty, setIsCreatingClassiqueParty] = useState(false);
   const [classiqueError, setClassiqueError] = useState<string | null>(null);
+  const [isCreatingQuickplayParty, setIsCreatingQuickplayParty] = useState(false);
+  const [quickplayError, setQuickplayError] = useState<string | null>(null);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
   const firebaseReady = isFirebaseConfigured;
@@ -503,20 +505,37 @@ export default function LobbyScreen() {
     }
   };
 
-  const handleCreateClassiqueParty = async () => {
+  const handleCreateClassiqueParty = async (targetScore: 50 | 100) => {
+    const isQuickplay = targetScore === 50;
+    const modeName = isQuickplay ? "Quickplay" : "Classique";
     if (!uid) {
-      setClassiqueError("Sign in to create a Classique party.");
+      const message = `Sign in to create a ${modeName} party.`;
+      if (isQuickplay) {
+        setQuickplayError(message);
+      } else {
+        setClassiqueError(message);
+      }
       return;
     }
 
     if (partyId && party) {
       if (!isHost) {
-        setClassiqueError("Only the party host can start Classique.");
+        const message = `Only the party host can start ${modeName}.`;
+        if (isQuickplay) {
+          setQuickplayError(message);
+        } else {
+          setClassiqueError(message);
+        }
         return;
       }
 
       if (members.length < MIN_PARTY_SIZE_TO_START) {
-        setClassiqueError(`Need at least ${MIN_PARTY_SIZE_TO_START} players to start Classique.`);
+        const message = `Need at least ${MIN_PARTY_SIZE_TO_START} players to start ${modeName}.`;
+        if (isQuickplay) {
+          setQuickplayError(message);
+        } else {
+          setClassiqueError(message);
+        }
         return;
       }
 
@@ -526,19 +545,33 @@ export default function LobbyScreen() {
         spikeItemCount: "none",
         spikeRowClear: false,
         spikeEndGameBonuses: false,
+        targetScore,
       };
 
-      setIsCreatingClassiqueParty(true);
-      setClassiqueError(null);
+      if (isQuickplay) {
+        setIsCreatingQuickplayParty(true);
+        setQuickplayError(null);
+      } else {
+        setIsCreatingClassiqueParty(true);
+        setClassiqueError(null);
+      }
       try {
         await setPreGameConfig(classiqueConfig);
         await startGame();
       } catch (error) {
-        setClassiqueError(
-          error instanceof Error ? error.message : "Unable to start a Classique game right now.",
-        );
+        const message =
+          error instanceof Error ? error.message : `Unable to start a ${modeName} game right now.`;
+        if (isQuickplay) {
+          setQuickplayError(message);
+        } else {
+          setClassiqueError(message);
+        }
       } finally {
-        setIsCreatingClassiqueParty(false);
+        if (isQuickplay) {
+          setIsCreatingQuickplayParty(false);
+        } else {
+          setIsCreatingClassiqueParty(false);
+        }
       }
       return;
     }
@@ -549,11 +582,16 @@ export default function LobbyScreen() {
       storedDisplayName: readStoredUsername(),
     });
     const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
-    setIsCreatingClassiqueParty(true);
-    setClassiqueError(null);
+    if (isQuickplay) {
+      setIsCreatingQuickplayParty(true);
+      setQuickplayError(null);
+    } else {
+      setIsCreatingClassiqueParty(true);
+      setClassiqueError(null);
+    }
     try {
       const partyRef = await addDoc(collection(db, "parties"), {
-        name: `${resolvedName}'s Classique party`,
+        name: `${resolvedName}'s ${modeName} party`,
         hostId: uid,
         memberIds: [uid],
         activeGameId: null,
@@ -573,6 +611,7 @@ export default function LobbyScreen() {
           spikeItemCount: "none",
           spikeRowClear: false,
           spikeEndGameBonuses: false,
+          targetScore,
         },
         isPrivate: true,
       });
@@ -592,11 +631,19 @@ export default function LobbyScreen() {
 
       router.push(`/lobby/${partyRef.id}`);
     } catch (error) {
-      setClassiqueError(
-        error instanceof Error ? error.message : "Unable to create a Classique party right now.",
-      );
+      const message =
+        error instanceof Error ? error.message : `Unable to create a ${modeName} party right now.`;
+      if (isQuickplay) {
+        setQuickplayError(message);
+      } else {
+        setClassiqueError(message);
+      }
     } finally {
-      setIsCreatingClassiqueParty(false);
+      if (isQuickplay) {
+        setIsCreatingQuickplayParty(false);
+      } else {
+        setIsCreatingClassiqueParty(false);
+      }
     }
   };
 
@@ -1079,12 +1126,21 @@ export default function LobbyScreen() {
               <button
                 type="button"
                 className="form-button-full-width form-card-font"
-                onClick={() => void handleCreateClassiqueParty()}
-                disabled={!firebaseReady || isCreatingClassiqueParty}
+                onClick={() => void handleCreateClassiqueParty(100)}
+                disabled={!firebaseReady || isCreatingClassiqueParty || isCreatingQuickplayParty}
               >
                 {isCreatingClassiqueParty ? "Creating Classique party..." : "Classique"}
               </button>
               {classiqueError ? <p className="notice">{classiqueError}</p> : null}
+              <button
+                type="button"
+                className="form-button-full-width form-card-font"
+                onClick={() => void handleCreateClassiqueParty(50)}
+                disabled={!firebaseReady || isCreatingClassiqueParty || isCreatingQuickplayParty}
+              >
+                {isCreatingQuickplayParty ? "Creating Quickplay party..." : "Quickplay"}
+              </button>
+              {quickplayError ? <p className="notice">{quickplayError}</p> : null}
             </>
           ) : null}
         </section>

@@ -64,6 +64,10 @@ function coerceSpikeItemCount(value: unknown): PreGameConfig["spikeItemCount"] {
     : "low";
 }
 
+function coerceTargetScore(value: unknown): PreGameConfig["targetScore"] {
+  return value === 50 ? 50 : 100;
+}
+
 function toPreGameConfig(data: Record<string, unknown>): PreGameConfig | null {
   const raw =
     data.preGameConfig && typeof data.preGameConfig === "object"
@@ -81,6 +85,7 @@ function toPreGameConfig(data: Record<string, unknown>): PreGameConfig | null {
       spikeItemCount: coerceSpikeItemCount(data.spikeItemCount),
       spikeRowClear: Boolean(data.spikeRowClear),
       spikeEndGameBonuses: (data.spikeEndGameBonuses as boolean | undefined) ?? true,
+      targetScore: coerceTargetScore(data.targetScore),
     };
   }
 
@@ -97,6 +102,7 @@ function toPreGameConfig(data: Record<string, unknown>): PreGameConfig | null {
     spikeItemCount: coerceSpikeItemCount(raw.spikeItemCount),
     spikeRowClear: Boolean(raw.spikeRowClear),
     spikeEndGameBonuses: (raw.spikeEndGameBonuses as boolean | undefined) ?? true,
+    targetScore: coerceTargetScore(raw.targetScore),
   };
 }
 
