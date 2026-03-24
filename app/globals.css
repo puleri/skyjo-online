@@ -2706,6 +2706,23 @@ small {
   visibility: hidden;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .unauth-step {
+    transition-duration: 1ms;
+    transition-delay: 0ms;
+  }
+
+  .unauth-step.is-inactive {
+    transform: none;
+  }
+
+  .form-button-full-width.is-pending {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    background-position: 50% 50%;
+  }
+}
+
 .unauth-name-field {
   display: flex;
   flex-direction: column;
