@@ -3,6 +3,7 @@ import {
   deleteField,
   doc,
   getDocs,
+  getDoc,
   orderBy,
   query,
   runTransaction,
@@ -2261,21 +2262,22 @@ export const leavePartyGame = async (
   }));
 
   if (mode === "whole-party") {
-    await runTransaction(db, async (transaction) => {
-      const partySnap = await transaction.get(partyRef);
-      if (partySnap.exists()) {
-        transaction.delete(partyRef);
-      }
+    const gameSnap = await getDoc(doc(db, "games", gameId));
+    if (!gameSnap.exists()) {
+      throw new Error("Game not found.");
+    }
 
-      currentMembers.forEach((member) => {
-        transaction.delete(doc(db, "parties", partyId, "partyMembers", member.id));
-        transaction.set(
-          doc(db, "users", member.id),
-          { activePartyId: null, updatedAt: serverTimestamp() },
-          { merge: true },
-        );
-      });
-    });
+    const game = gameSnap.data() as GameDoc;
+    const activePlayerIds = new Set(game.activePlayerOrder ?? []);
+    const partyMemberIds = currentMembers.map((member) => member.id);
+    const leavingPlayerIds = partyMemberIds.filter((memberId) =>
+      activePlayerIds.has(memberId),
+    );
+
+    for (const leavingPlayerId of leavingPlayerIds) {
+      await leaveGame(gameId, leavingPlayerId);
+    }
+
     return;
   }
 
