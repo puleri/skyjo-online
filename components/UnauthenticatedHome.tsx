@@ -1,26 +1,73 @@
 "use client";
 
 import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  readStoredUsername,
+  useAnonymousAuth,
+  usernameStorageKey,
+  usernameUpdatedEvent,
+} from "../lib/auth";
 import { usePreferences } from "../lib/preferences";
 import SnowfallLayer from "./SnowfallLayer";
-import UsernameForm from "./UsernameForm";
+
+type AuthEntryStep = "method-selection" | "anonymous-name";
 
 export default function UnauthenticatedHome() {
   const { preferences } = usePreferences();
   const { snow: isSnowEnabled } = preferences;
+  const [entryStep, setEntryStep] = useState<AuthEntryStep>("method-selection");
+  const [username, setUsername] = useState("");
+  const [savedName, setSavedName] = useState<string | null>(null);
+
+  const { uid, error, signInAsAnonymous, signInWithGoogleSso } = useAnonymousAuth();
+
+  useEffect(() => {
+    const storedName = readStoredUsername();
+    if (storedName) {
+      setUsername(storedName);
+      setSavedName(storedName);
+    }
+  }, []);
+
+  const handleContinueWithoutSignIn = async () => {
+    setEntryStep("anonymous-name");
+
+    if (!uid) {
+      await signInAsAnonymous();
+    }
+  };
+
+  const handleAnonymousNameSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = username.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    if (!uid) {
+      await signInAsAnonymous();
+    }
+
+    window.localStorage.setItem(usernameStorageKey, trimmed);
+    window.dispatchEvent(new Event(usernameUpdatedEvent));
+    setSavedName(trimmed);
+  };
 
   return (
-    <main>
+    <main className="lobby-scene-wrapper">
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
       <img
         className="welcome-div welcome-div-light"
-        src="/images/misty-hero-banner.png"
+        src="/images/misty-lobby-bg.png"
         alt=""
+        aria-hidden="true"
       />
       <img
         className="welcome-div welcome-div-dark"
-        src="/images/misty-hero-banner-darkmode.png"
+        src="/images/misty-lobby-bg-darkmode.png"
         alt=""
+        aria-hidden="true"
       />
 
       <div className="container">
@@ -38,8 +85,62 @@ export default function UnauthenticatedHome() {
             />
           </Link>
         </div>
-        <section>
-          <UsernameForm />
+
+        <section className="form-card" style={{ maxWidth: 540, margin: "0 auto" }}>
+          {entryStep === "method-selection" ? (
+            <>
+              <button
+                className="form-button-full-width form-card-font mb-10"
+                type="button"
+                onClick={() => void signInWithGoogleSso()}
+              >
+                Sign in
+              </button>
+              <p className="form-card-font" style={{ textAlign: "center", margin: "0 0 10px" }}>
+                or
+              </p>
+              <button
+                className="form-button-full-width form-card-font"
+                type="button"
+                onClick={() => void handleContinueWithoutSignIn()}
+              >
+                Continue without signing in
+              </button>
+            </>
+          ) : (
+            <form onSubmit={handleAnonymousNameSave}>
+              <p>To continue, create the name other players will see you as.</p>
+              <div className="label-input-grid">
+                <label className="form-card-font" htmlFor="unauth-home-username">
+                  Name
+                </label>
+                <input
+                  id="unauth-home-username"
+                  value={username}
+                  className="form-card-font remaining-grid"
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="Skye"
+                />
+              </div>
+              <button
+                className="form-button-full-width form-card-font mt-20"
+                type="submit"
+                disabled={!username.trim()}
+              >
+                Save
+              </button>
+              <button
+                className="form-button-full-width form-card-font mt-20"
+                type="button"
+                onClick={() => setEntryStep("method-selection")}
+              >
+                Back
+              </button>
+              {savedName ? <p className="notice">Saved as {savedName}.</p> : null}
+            </form>
+          )}
+
+          {error ? <p className="notice">Auth error: {error}</p> : null}
         </section>
       </div>
     </main>
