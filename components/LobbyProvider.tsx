@@ -10,7 +10,6 @@ import {
   runTransaction,
   serverTimestamp,
   setDoc,
-  updateDoc,
 } from "firebase/firestore";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAnonymousAuth } from "../lib/auth";
@@ -23,7 +22,17 @@ import {
   type SpikeItemCount,
 } from "../lib/game/deck";
 
-type GameType = "classic" | "spike";
+export type GameType = "classic" | "spike";
+
+export type PreGameConfig = {
+  gameType: GameType;
+  spikeMode: boolean;
+  spikeItemCount: SpikeItemCount;
+  spikeRowClear: boolean;
+  spikeEndGameBonuses: boolean;
+};
+
+export const MIN_PARTY_SIZE_TO_START = 2;
 
 type Party = {
   id: string;
@@ -31,10 +40,7 @@ type Party = {
   hostDisplayName: string | null;
   status: string;
   activeGameId: string | null;
-  spikeMode: boolean;
-  spikeItemCount: SpikeItemCount;
-  spikeRowClear: boolean;
-  spikeEndGameBonuses: boolean;
+  preGameConfig: PreGameConfig | null;
 };
 
 type PartyMember = {
@@ -53,12 +59,70 @@ type PartyContextValue = {
   loading: boolean;
   invite: () => Promise<string>;
   leave: () => Promise<void>;
-  setGameType: (gameType: GameType) => Promise<void>;
+  setPreGameConfig: (config: PreGameConfig) => Promise<void>;
   startGame: () => Promise<void>;
   setActivePartyId: (nextPartyId: string | null) => Promise<void>;
 };
 
 const PartyContext = createContext<PartyContextValue | null>(null);
+
+function coerceSpikeItemCount(value: unknown): SpikeItemCount {
+  return value === "none" || value === "low" || value === "medium" || value === "high"
+    ? value
+    : "low";
+}
+
+function toPreGameConfig(data: Record<string, unknown>): PreGameConfig | null {
+  const raw =
+    data.preGameConfig && typeof data.preGameConfig === "object"
+      ? (data.preGameConfig as Record<string, unknown>)
+      : null;
+
+  if (!raw) {
+    if (typeof data.spikeMode !== "boolean") {
+      return null;
+    }
+    const spikeMode = Boolean(data.spikeMode);
+    return {
+      gameType: spikeMode ? "spike" : "classic",
+      spikeMode,
+      spikeItemCount: coerceSpikeItemCount(data.spikeItemCount),
+      spikeRowClear: Boolean(data.spikeRowClear),
+      spikeEndGameBonuses: (data.spikeEndGameBonuses as boolean | undefined) ?? true,
+    };
+  }
+
+  const gameType = raw.gameType === "classic" || raw.gameType === "spike" ? raw.gameType : null;
+  const spikeMode = typeof raw.spikeMode === "boolean" ? raw.spikeMode : gameType === "spike";
+
+  if (!gameType) {
+    return null;
+  }
+
+  return {
+    gameType,
+    spikeMode,
+    spikeItemCount: coerceSpikeItemCount(raw.spikeItemCount),
+    spikeRowClear: Boolean(raw.spikeRowClear),
+    spikeEndGameBonuses: (raw.spikeEndGameBonuses as boolean | undefined) ?? true,
+  };
+}
+
+export function isValidPreGameConfig(config: PreGameConfig | null | undefined) {
+  if (!config) {
+    return false;
+  }
+  if (config.gameType !== "classic" && config.gameType !== "spike") {
+    return false;
+  }
+  if (config.spikeMode !== (config.gameType === "spike")) {
+    return false;
+  }
+  if (!["none", "low", "medium", "high"].includes(config.spikeItemCount)) {
+    return false;
+  }
+  return typeof config.spikeRowClear === "boolean" && typeof config.spikeEndGameBonuses === "boolean";
+}
 
 function toParty(id: string, data: Record<string, unknown>): Party {
   return {
@@ -72,10 +136,7 @@ function toParty(id: string, data: Record<string, unknown>): Party {
         : typeof data.gameId === "string"
           ? data.gameId
           : null,
-    spikeMode: Boolean(data.spikeMode),
-    spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
-    spikeRowClear: Boolean(data.spikeRowClear),
-    spikeEndGameBonuses: (data.spikeEndGameBonuses as boolean | undefined) ?? true,
+    preGameConfig: toPreGameConfig(data),
   };
 }
 
@@ -235,18 +296,34 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
     await setActivePartyId(null);
   }, [partyId, setActivePartyId, uid]);
 
-  const setGameType = useCallback(
-    async (gameType: GameType) => {
-      if (!uid || !partyId || !party || uid !== party.hostId) {
-        throw new Error("Only the host can change game type.");
+  const setPreGameConfig = useCallback(
+    async (config: PreGameConfig) => {
+      if (!uid || !partyId) {
+        throw new Error("Missing active party.");
+      }
+      if (!isValidPreGameConfig(config)) {
+        throw new Error("Invalid pre-game config.");
       }
 
-      await updateDoc(doc(db, "parties", partyId), {
-        spikeMode: gameType === "spike",
-        updatedAt: serverTimestamp(),
+      const partyRef = doc(db, "parties", partyId);
+      await runTransaction(db, async (transaction) => {
+        const partySnap = await transaction.get(partyRef);
+        if (!partySnap.exists()) {
+          throw new Error("Party not found.");
+        }
+
+        const partyData = partySnap.data();
+        if ((partyData.hostId as string | undefined) !== uid) {
+          throw new Error("Only the host can update game settings.");
+        }
+
+        transaction.update(partyRef, {
+          preGameConfig: config,
+          updatedAt: serverTimestamp(),
+        });
       });
     },
-    [party, partyId, uid],
+    [partyId, uid],
   );
 
   const startGame = useCallback(async () => {
@@ -266,19 +343,26 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
         throw new Error("Party not found.");
       }
 
-      const partyData = partySnap.data();
+      const partyData = partySnap.data() as Record<string, unknown>;
+      if (partyData.hostId !== uid) {
+        throw new Error("Only the host can start the game.");
+      }
+
+      const parsedPreGameConfig = toPreGameConfig(partyData);
+      if (!isValidPreGameConfig(parsedPreGameConfig)) {
+        throw new Error("Host must configure game settings before starting.");
+      }
+      const preGameConfig = parsedPreGameConfig as PreGameConfig;
+
       const playerSnapshot = await getDocs(
         query(collection(db, "parties", partyId, "partyMembers"), orderBy("joinedAt", "asc")),
       );
-      if (playerSnapshot.empty) {
-        throw new Error("Add at least one player before starting.");
+      if (playerSnapshot.size < MIN_PARTY_SIZE_TO_START) {
+        throw new Error(`Add at least ${MIN_PARTY_SIZE_TO_START} players before starting.`);
       }
 
       const playerOrder = playerSnapshot.docs.map((playerDoc) => playerDoc.id);
-      const spikeMode = Boolean(partyData.spikeMode);
-      const spikeItemCount = (partyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
-      const spikeRowClear = Boolean(partyData.spikeRowClear);
-      const spikeEndGameBonuses = (partyData.spikeEndGameBonuses as boolean | undefined) ?? true;
+      const { spikeMode, spikeItemCount, spikeRowClear, spikeEndGameBonuses } = preGameConfig;
 
       let shuffledDeck: Card[] = shuffleDeck(createMistyDeck());
       const playerGrids = new Map<string, number[]>();
@@ -378,11 +462,11 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       loading: loadingUser || loadingParty,
       invite,
       leave,
-      setGameType,
+      setPreGameConfig,
       startGame,
       setActivePartyId,
     }),
-    [invite, leave, loadingParty, loadingUser, members, party, partyId, setActivePartyId, setGameType, startGame, uid],
+    [invite, leave, loadingParty, loadingUser, members, party, partyId, setActivePartyId, setPreGameConfig, startGame, uid],
   );
 
   return <PartyContext.Provider value={value}>{children}</PartyContext.Provider>;

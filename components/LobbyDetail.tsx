@@ -26,7 +26,13 @@ import type { Card } from "../lib/game/deck";
 import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 import SnowfallLayer from "./SnowfallLayer";
-import { useParty } from "./LobbyProvider";
+import {
+  MIN_PARTY_SIZE_TO_START,
+  isValidPreGameConfig,
+  type GameType,
+  type PreGameConfig,
+  useParty,
+} from "./LobbyProvider";
 
 type LobbyPlayer = {
   id: string;
@@ -43,10 +49,7 @@ type LobbyMeta = {
   hostId: string | null;
   gameId: string | null;
   status: string;
-  spikeMode: boolean;
-  spikeItemCount?: SpikeItemCount;
-  spikeRowClear?: boolean;
-  spikeEndGameBonuses?: boolean;
+  preGameConfig: PreGameConfig | null;
 };
 
 const backgroundMusicStorageKey = "misty-background-music";
@@ -63,6 +66,11 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [partyGameType, setPartyGameType] = useState<GameType>("spike");
+  const [partySpikeItemCount, setPartySpikeItemCount] = useState<SpikeItemCount>("high");
+  const [partySpikeRowClear, setPartySpikeRowClear] = useState(true);
+  const [partySpikeEndGameBonuses, setPartySpikeEndGameBonuses] = useState(true);
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -91,6 +99,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     party: activeParty,
     members: activePartyMembers,
     startGame: startPartyGame,
+    setPreGameConfig,
     invite: inviteToParty,
     setActivePartyId,
   } = useParty();
@@ -241,9 +250,7 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
           hostId: (data.hostId as string | undefined) ?? null,
           gameId: (data.gameId as string | undefined) ?? null,
           status: (data.status as string | undefined) ?? "open",
-          spikeMode: Boolean(data.spikeMode),
-          spikeItemCount: (data.spikeItemCount as SpikeItemCount | undefined) ?? "low",
-          spikeRowClear: Boolean(data.spikeRowClear),
+          preGameConfig: null,
         });
       },
       (err) => {
@@ -281,12 +288,19 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       hostId: activeParty.hostId,
       gameId: activeParty.activeGameId,
       status: activeParty.status,
-      spikeMode: activeParty.spikeMode,
-      spikeItemCount: activeParty.spikeItemCount,
-      spikeRowClear: activeParty.spikeRowClear,
-      spikeEndGameBonuses: activeParty.spikeEndGameBonuses,
+      preGameConfig: activeParty.preGameConfig,
     };
   }, [activeParty, lobby, shouldUseSharedParty]);
+
+  useEffect(() => {
+    if (!shouldUseSharedParty || !displayedLobby?.preGameConfig) {
+      return;
+    }
+    setPartyGameType(displayedLobby.preGameConfig.gameType);
+    setPartySpikeItemCount(displayedLobby.preGameConfig.spikeItemCount);
+    setPartySpikeRowClear(displayedLobby.preGameConfig.spikeRowClear);
+    setPartySpikeEndGameBonuses(displayedLobby.preGameConfig.spikeEndGameBonuses);
+  }, [displayedLobby?.preGameConfig, shouldUseSharedParty]);
 
   useEffect(() => {
     if (displayedLobby?.gameId) {
@@ -304,6 +318,9 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     [displayedLobby?.hostId, displayedPlayers]
   );
   const allPlayersReady = displayedPlayers.length > 0 && displayedPlayers.every((player) => player.isReady);
+  const hasMinPartySize = displayedPlayers.length >= MIN_PARTY_SIZE_TO_START;
+  const hasValidPartyConfig = isValidPreGameConfig(displayedLobby?.preGameConfig);
+  const canStartPartyGame = allPlayersReady && hasMinPartySize && hasValidPartyConfig;
   const invitePartyId = activePartyId ?? lobbyId;
   const inviteLink =
     typeof window === "undefined" ? "" : `${window.location.origin}/invite/${invitePartyId}`;
@@ -371,6 +388,14 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     }
     if (!allPlayersReady) {
       setError("All players must be ready to start.");
+      return;
+    }
+    if (shouldUseSharedParty && !hasValidPartyConfig) {
+      setError("Host must configure game settings before starting.");
+      return;
+    }
+    if (shouldUseSharedParty && !hasMinPartySize) {
+      setError(`At least ${MIN_PARTY_SIZE_TO_START} players are required to start.`);
       return;
     }
 
@@ -497,6 +522,34 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     }
   };
 
+  const handleSavePartyConfig = async () => {
+    if (!isHost || !shouldUseSharedParty) {
+      return;
+    }
+    const config: PreGameConfig = {
+      gameType: partyGameType,
+      spikeMode: partyGameType === "spike",
+      spikeItemCount: partySpikeItemCount,
+      spikeRowClear: partySpikeRowClear,
+      spikeEndGameBonuses: partySpikeEndGameBonuses,
+    };
+    if (!isValidPreGameConfig(config)) {
+      setError("Invalid game settings.");
+      return;
+    }
+
+    setError(null);
+    setIsSavingConfig(true);
+    try {
+      await setPreGameConfig(config);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to save settings.";
+      setError(message);
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
   if (!lobbyId) {
     return (
       <>
@@ -532,13 +585,13 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       <LoadingSwipeOverlay isVisible={showLoadingOverlay} />
       {error ? <p className="notice">Firestore error: {error}</p> : null}
 
-      {!players.length ? (
+      {!displayedPlayers.length ? (
         <p>No players have joined this lobby yet.</p>
       ) : (
         <div className="lobby-scene-wrapper" style={lobbySceneStyle}>
           {isSnowEnabled ? <SnowfallLayer height={"100%"} zIndex={0} /> : null}
           <div className="lobby-scene" aria-label="Lobby players">
-            {players.map((player) => (
+            {displayedPlayers.map((player) => (
               <div key={player.id} className="lobby-player">
                 <img
                   className="lobby-player__glyph"
@@ -610,14 +663,90 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
             </button>
             {inviteStatus ? <p className="lobby-detail__invite-status">{inviteStatus}</p> : null}
             {isHost ? (
-              <button
-                type="button"
-                className="form-button-full-width"
-                onClick={handleStartGame}
-                disabled={!allPlayersReady || isStarting}
-              >
-                {isStarting ? "Starting..." : "Start game"}
-              </button>
+              <>
+                {shouldUseSharedParty ? (
+                  <div className="modal__subsettings" role="group" aria-label="Party game settings">
+                    <label className="modal__subsettings-option">
+                      <span>Game type</span>
+                      <select
+                        value={partyGameType}
+                        onChange={(event) => setPartyGameType(event.target.value as GameType)}
+                        disabled={isSavingConfig}
+                      >
+                        <option value="classic">Classic</option>
+                        <option value="spike">Spike</option>
+                      </select>
+                    </label>
+                    {partyGameType === "spike" ? (
+                      <>
+                        <label className="modal__subsettings-option">
+                          <span>Item frequency</span>
+                          <select
+                            value={partySpikeItemCount}
+                            onChange={(event) => setPartySpikeItemCount(event.target.value as SpikeItemCount)}
+                            disabled={isSavingConfig}
+                          >
+                            <option value="none">None</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                        </label>
+                        <label className="modal__subsettings-option">
+                          <span>Enable matching row clears</span>
+                          <span className="toggle">
+                            <input
+                              className="toggle__input"
+                              type="checkbox"
+                              checked={partySpikeRowClear}
+                              onChange={(event) => setPartySpikeRowClear(event.target.checked)}
+                              disabled={isSavingConfig}
+                            />
+                            <span className="toggle__track" aria-hidden="true" />
+                          </span>
+                        </label>
+                        <label className="modal__subsettings-option">
+                          <span>Enable end game bonuses</span>
+                          <span className="toggle">
+                            <input
+                              className="toggle__input"
+                              type="checkbox"
+                              checked={partySpikeEndGameBonuses}
+                              onChange={(event) => setPartySpikeEndGameBonuses(event.target.checked)}
+                              disabled={isSavingConfig}
+                            />
+                            <span className="toggle__track" aria-hidden="true" />
+                          </span>
+                        </label>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="form-button-full-width"
+                      onClick={handleSavePartyConfig}
+                      disabled={isSavingConfig}
+                    >
+                      {isSavingConfig ? "Saving settings..." : "Save game settings"}
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="form-button-full-width"
+                  onClick={handleStartGame}
+                  disabled={(shouldUseSharedParty ? !canStartPartyGame : !allPlayersReady) || isStarting}
+                >
+                  {isStarting ? "Starting..." : "Start game"}
+                </button>
+                {shouldUseSharedParty && !hasValidPartyConfig ? (
+                  <p className="lobby-detail__waiting">Save valid game settings to enable Start game.</p>
+                ) : null}
+                {shouldUseSharedParty && !hasMinPartySize ? (
+                  <p className="lobby-detail__waiting">
+                    Need at least {MIN_PARTY_SIZE_TO_START} players before starting.
+                  </p>
+                ) : null}
+              </>
             ) : (
               <p className="lobby-detail__waiting">
                 Once players are ready, <strong>{hostPlayer?.displayName ?? "the host"}</strong> can start the game.

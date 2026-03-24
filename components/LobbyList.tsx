@@ -39,6 +39,7 @@ type Lobby = {
 type LobbyPreview = {
   id: string;
   name: string;
+  hasConfig: boolean;
   spikeMode: boolean;
   spikeItemCount?: SpikeItemCount;
   spikeRowClear?: boolean;
@@ -225,14 +226,30 @@ export default function LobbyList() {
         throw new Error("Lobby details are no longer available.");
       }
       const lobbyData = lobbySnapshot.data();
-      const spikeItemCount = (lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low";
+      const rawPreGameConfig =
+        lobby.source === "party" &&
+        lobbyData.preGameConfig &&
+        typeof lobbyData.preGameConfig === "object"
+          ? (lobbyData.preGameConfig as Record<string, unknown>)
+          : null;
+      const spikeMode = rawPreGameConfig
+        ? Boolean(rawPreGameConfig.spikeMode)
+        : Boolean(lobbyData.spikeMode);
+      const spikeItemCount = rawPreGameConfig
+        ? ((rawPreGameConfig.spikeItemCount as SpikeItemCount | undefined) ?? "low")
+        : ((lobbyData.spikeItemCount as SpikeItemCount | undefined) ?? "low");
       const preview: LobbyPreview = {
         id: lobby.id,
         name: lobbyData.name ?? lobby.name ?? "Untitled lobby",
-        spikeMode: Boolean(lobbyData.spikeMode),
+        hasConfig: lobby.source === "party" ? Boolean(rawPreGameConfig) : true,
+        spikeMode,
         spikeItemCount,
-        spikeRowClear: Boolean(lobbyData.spikeRowClear),
-        spikeEndGameBonuses: (lobbyData.spikeEndGameBonuses as boolean | undefined) ?? true,
+        spikeRowClear: rawPreGameConfig
+          ? Boolean(rawPreGameConfig.spikeRowClear)
+          : Boolean(lobbyData.spikeRowClear),
+        spikeEndGameBonuses: rawPreGameConfig
+          ? (rawPreGameConfig.spikeEndGameBonuses as boolean | undefined) ?? true
+          : (lobbyData.spikeEndGameBonuses as boolean | undefined) ?? true,
         players: playersSnapshot.docs.map(
           (player) => player.data().displayName ?? "Anonymous player"
         ),
@@ -422,7 +439,9 @@ export default function LobbyList() {
   const bonusStatus = activePreview?.spikeEndGameBonuses
     ? endGameBonusesLabel
     : "";
-  const modeDetails = activePreview?.spikeMode
+  const modeDetails = activePreview && !activePreview.hasConfig
+    ? "Setup required before start"
+    : activePreview?.spikeMode
     ? ["Spike", spikeItemLabel, rowClearStatus, bonusStatus].filter(Boolean).join(" • ")
     : "Classic";
 
