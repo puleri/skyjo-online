@@ -1482,6 +1482,16 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
   }, [authError]);
 
+  useEffect(() => {
+    if (!uid || !game) {
+      return;
+    }
+    const isActivePlayer = (game.activePlayerOrder ?? []).includes(uid);
+    if (!isActivePlayer && localPlayerState === null) {
+      router.push("/");
+    }
+  }, [game, localPlayerState, router, uid]);
+
   const orderedPlayers = useMemo(() => {
     if (!game?.activePlayerOrder.length) {
       return players;
@@ -4232,7 +4242,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                       className="form-button-full-width game-results__leave-button"
                       onClick={handleConfirmLeaveWithParty}
                     >
-                      Leave with party
+                      Leave with the whole party
                     </button>
                   </>
                 ) : (
