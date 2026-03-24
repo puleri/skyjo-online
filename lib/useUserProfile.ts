@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  GoogleAuthProvider,
   getAuth,
   onAuthStateChanged,
+  signInWithPopup,
   signOut,
   updateProfile as updateAuthProfile,
   type User,
@@ -38,6 +40,7 @@ type UseUserProfileState = {
   isSignedIn: boolean;
   isAnonymousUser: boolean;
   updateProfile: (updates: UserProfileUpdate) => Promise<void>;
+  signInWithGoogleSso: () => Promise<void>;
   signOutUser: () => Promise<void>;
 };
 
@@ -211,8 +214,26 @@ export function useUserProfile(): UseUserProfileState {
     const user = auth.currentUser;
     const trimmedDisplayName = updates.displayName?.trim();
 
-    if (!user || user.isAnonymous) {
+    if (!user) {
       throw new Error("A signed-in user profile is required.");
+    }
+
+    if (user.isAnonymous) {
+      if (updates.displayName !== undefined) {
+        await updateAuthProfile(user, { displayName: trimmedDisplayName || null });
+        setAuthDisplayName(trimmedDisplayName || null);
+
+        if (typeof window !== "undefined") {
+          if (trimmedDisplayName) {
+            window.localStorage.setItem(usernameStorageKey, trimmedDisplayName);
+          } else {
+            window.localStorage.removeItem(usernameStorageKey);
+          }
+
+          window.dispatchEvent(new Event(usernameUpdatedEvent));
+        }
+      }
+      return;
     }
 
     await setDoc(
@@ -241,6 +262,16 @@ export function useUserProfile(): UseUserProfileState {
     }
   }, []);
 
+  const signInWithGoogleSso = useCallback(async () => {
+    const auth = getAuth(app);
+
+    if (auth.currentUser?.isAnonymous) {
+      await signOut(auth);
+    }
+
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  }, []);
+
   const signOutUser = useCallback(async () => {
     const auth = getAuth(app);
     await signOut(auth);
@@ -255,6 +286,7 @@ export function useUserProfile(): UseUserProfileState {
     isSignedIn,
     isAnonymousUser,
     updateProfile,
+    signInWithGoogleSso,
     signOutUser,
   };
 }
