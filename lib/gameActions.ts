@@ -30,6 +30,7 @@ type GameDoc = {
   spikeItemCount?: SpikeItemCount;
   spikeRowClear?: boolean;
   spikeEndGameBonuses?: boolean;
+  targetScore?: 50 | 100;
   endingPlayerId?: string | null;
   finalTurnRemainingIds?: string[] | null;
   selectedDiscardPlayerId?: string | null;
@@ -187,6 +188,8 @@ const getNextPlayerId = (order: string[], currentPlayerId: string) => {
   const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % order.length;
   return order[nextIndex];
 };
+
+const getGameTargetScore = (game: GameDoc) => (game.targetScore === 50 ? 50 : 100);
 
 const getColumnIndices = (index: number) => {
   const column = index % columns;
@@ -629,7 +632,8 @@ const computeRoundScores = (
     };
   });
 
-  const isGameComplete = totalScores.some((totalScore) => totalScore >= 100);
+  const targetScore = getGameTargetScore(game);
+  const isGameComplete = totalScores.some((totalScore) => totalScore >= targetScore);
 
   let endGameBonusResults: GameDoc["endGameBonusResults"] = null;
   if (isGameComplete && applyEndGameBonuses) {

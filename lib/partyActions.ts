@@ -24,6 +24,7 @@ export type PreGameConfig = {
   spikeItemCount: SpikeItemCount;
   spikeRowClear: boolean;
   spikeEndGameBonuses: boolean;
+  targetScore: 50 | 100;
 };
 
 export const MIN_PARTY_SIZE_TO_START = 2;
@@ -41,7 +42,12 @@ export function isValidPreGameConfig(config: PreGameConfig | null | undefined) {
   if (!["none", "low", "medium", "high"].includes(config.spikeItemCount)) {
     return false;
   }
-  return typeof config.spikeRowClear === "boolean" && typeof config.spikeEndGameBonuses === "boolean";
+  const isTargetScoreValid = config.targetScore === 50 || config.targetScore === 100;
+  return (
+    typeof config.spikeRowClear === "boolean" &&
+    typeof config.spikeEndGameBonuses === "boolean" &&
+    isTargetScoreValid
+  );
 }
 
 type StartPartyGameParams = {
@@ -108,7 +114,7 @@ export async function startPartyGameAction({ db, partyId, callerUid }: StartPart
     );
     const playerOrder = partyMembers.map((member) => member.id);
 
-    const { spikeMode, spikeItemCount, spikeRowClear, spikeEndGameBonuses } = preGameConfig;
+    const { spikeMode, spikeItemCount, spikeRowClear, spikeEndGameBonuses, targetScore } = preGameConfig;
 
     let shuffledDeck: Card[] = shuffleDeck(createMistyDeck());
     const playerGrids = new Map<string, number[]>();
@@ -147,6 +153,7 @@ export async function startPartyGameAction({ db, partyId, callerUid }: StartPart
       discard: [discardCard],
       graveyard: [],
       preGameConfig,
+      targetScore,
       partyMembersSnapshot: partyMembers,
       spikeMode,
       ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
