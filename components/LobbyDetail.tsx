@@ -303,10 +303,12 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   }, [displayedLobby?.preGameConfig, shouldUseSharedParty]);
 
   useEffect(() => {
-    if (displayedLobby?.gameId) {
-      router.push(`/game/${displayedLobby.gameId}`);
+    if (!displayedLobby?.gameId || shouldUseSharedParty) {
+      return;
     }
-  }, [displayedLobby?.gameId, router]);
+
+    router.push(`/game/${displayedLobby.gameId}`);
+  }, [displayedLobby?.gameId, router, shouldUseSharedParty]);
 
   const currentPlayer = useMemo(
     () => (uid ? displayedPlayers.find((player) => player.id === uid) ?? null : null),
