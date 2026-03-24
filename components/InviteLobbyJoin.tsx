@@ -5,6 +5,7 @@ import {
   onSnapshot,
   runTransaction,
   serverTimestamp,
+  setDoc,
   type DocumentData,
   type UpdateData,
 } from "firebase/firestore";
@@ -342,6 +343,11 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
           });
         }
       });
+      await setDoc(
+        doc(db, "users", resolvedUid),
+        { activePartyId: lobbyId, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
       setJoinSuccess("Joined party. You can return to the lobby list.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error.";
