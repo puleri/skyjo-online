@@ -419,7 +419,7 @@ type ItemUsage =
 const describeItemAction = (usage: ItemUsage) => {
   switch (usage.code) {
     case "C":
-      return `used Wild to set a card to ${usage.value}.`;
+      return "used Wild to change the value of a card on their board.";
     case "E":
       return "used Swap to swap two cards.";
     case "H":
