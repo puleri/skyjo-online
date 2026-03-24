@@ -59,8 +59,13 @@ export default function UnauthenticatedHome() {
         </div>
 
         <section className="" style={{ maxWidth: 540, margin: "100px auto 0" }}>
-          {entryStep === "method-selection" ? (
-            <>
+          <div className="unauth-step-stack">
+            <div
+              className={`unauth-step ${
+                entryStep === "method-selection" ? "is-active" : "is-inactive"
+              }`}
+              aria-hidden={entryStep !== "method-selection"}
+            >
               <button
                 className="form-button-full-width form-card-font mb-10"
                 type="button"
@@ -78,40 +83,47 @@ export default function UnauthenticatedHome() {
               >
                 Continue without signing in
               </button>
-            </>
-          ) : (
-            <form onSubmit={handleAnonymousNameSave}>
-              <p>To continue, create the name other players will see you as.</p>
-              <div className="unauth-name-field">
-                <label className="form-card-font unauth-name-label" htmlFor="unauth-home-username">
-                  Name
-                </label>
-                <div className="unauth-name-controls">
-                  <input
-                    id="unauth-home-username"
-                    value={username}
-                    className="form-card-font unauth-name-input"
-                    onChange={(event) => setUsername(event.target.value)}
-                    placeholder="Skye"
-                  />
-                  <button
-                    className="form-card-font unauth-save-button"
-                    type="submit"
-                    disabled={!username.trim()}
-                  >
-                    Save
-                  </button>
+            </div>
+
+            <div
+              className={`unauth-step ${
+                entryStep === "anonymous-name" ? "is-active" : "is-inactive"
+              }`}
+              aria-hidden={entryStep !== "anonymous-name"}
+            >
+              <form onSubmit={handleAnonymousNameSave}>
+                <p>To continue, create the name other players will see you as.</p>
+                <div className="unauth-name-field">
+                  <label className="form-card-font unauth-name-label" htmlFor="unauth-home-username">
+                    Name
+                  </label>
+                  <div className="unauth-name-controls">
+                    <input
+                      id="unauth-home-username"
+                      value={username}
+                      className="form-card-font unauth-name-input"
+                      onChange={(event) => setUsername(event.target.value)}
+                      placeholder="Skye"
+                    />
+                    <button
+                      className="form-card-font unauth-save-button"
+                      type="submit"
+                      disabled={!username.trim()}
+                    >
+                      Save
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <button
-                className="form-card-font unauth-back-button mt-20"
-                type="button"
-                onClick={() => setEntryStep("method-selection")}
-              >
-                ← Back
-              </button>
-            </form>
-          )}
+                <button
+                  className="form-card-font unauth-back-button mt-20"
+                  type="button"
+                  onClick={() => setEntryStep("method-selection")}
+                >
+                  ← Back
+                </button>
+              </form>
+            </div>
+          </div>
 
           {error ? <p className="notice">Auth error: {error}</p> : null}
         </section>
