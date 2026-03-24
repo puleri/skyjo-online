@@ -1,5 +1,5 @@
-import LobbyScreen from "../components/LobbyScreen";
+import HomeGate from "../components/HomeGate";
 
 export default function HomePage() {
-  return <LobbyScreen />;
+  return <HomeGate />;
 }

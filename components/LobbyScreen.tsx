@@ -20,7 +20,6 @@ import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
 import LobbyList from "./LobbyList";
 import SnowfallLayer from "./SnowfallLayer";
-import UsernameForm from "./UsernameForm";
 import {
   db,
   isFirebaseConfigured,
@@ -902,9 +901,6 @@ export default function LobbyScreen() {
             </div>
           </div>
         ) : null}
-        <section>
-          <UsernameForm />
-        </section>
 
         <section className="form-card">
           <CreateLobbyForm />
