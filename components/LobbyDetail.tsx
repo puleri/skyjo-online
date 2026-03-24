@@ -524,6 +524,49 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     }
   };
 
+  const handleStartClassiqueGame = async () => {
+    if (!uid) {
+      setError("Sign in to start a game.");
+      return;
+    }
+    if (!isHost) {
+      setError("Only the host can start the game.");
+      return;
+    }
+    if (!allPlayersReady) {
+      setError("All players must be ready to start.");
+      return;
+    }
+    if (!shouldUseSharedParty) {
+      await handleStartGame();
+      return;
+    }
+    if (!hasMinPartySize) {
+      setError(`At least ${MIN_PARTY_SIZE_TO_START} players are required to start.`);
+      return;
+    }
+
+    const classiqueConfig: PreGameConfig = {
+      gameType: "spike",
+      spikeMode: true,
+      spikeItemCount: "high",
+      spikeRowClear: true,
+      spikeEndGameBonuses: true,
+    };
+
+    setIsStarting(true);
+    setError(null);
+    try {
+      await setPreGameConfig(classiqueConfig);
+      await startPartyGame();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   const handleSavePartyConfig = async () => {
     if (!isHost || !shouldUseSharedParty) {
       return;
@@ -740,6 +783,16 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
                 >
                   {isStarting ? "Starting..." : "Start game"}
                 </button>
+                {shouldUseSharedParty ? (
+                  <button
+                    type="button"
+                    className="form-button-full-width"
+                    onClick={handleStartClassiqueGame}
+                    disabled={!allPlayersReady || !hasMinPartySize || isStarting || isSavingConfig}
+                  >
+                    {isStarting ? "Starting..." : "Classique"}
+                  </button>
+                ) : null}
                 {shouldUseSharedParty && !hasValidPartyConfig ? (
                   <p className="lobby-detail__waiting">Save valid game settings to enable Start game.</p>
                 ) : null}
