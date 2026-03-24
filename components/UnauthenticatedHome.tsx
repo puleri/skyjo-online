@@ -30,12 +30,8 @@ export default function UnauthenticatedHome() {
     }
   }, []);
 
-  const handleContinueWithoutSignIn = async () => {
+  const handleContinueWithoutSignIn = () => {
     setEntryStep("anonymous-name");
-
-    if (!uid) {
-      await signInAsAnonymous();
-    }
   };
 
   const handleAnonymousNameSave = async (event: FormEvent<HTMLFormElement>) => {
@@ -102,7 +98,7 @@ export default function UnauthenticatedHome() {
               <button
                 className="form-button-full-width form-card-font"
                 type="button"
-                onClick={() => void handleContinueWithoutSignIn()}
+                onClick={handleContinueWithoutSignIn}
               >
                 Continue without signing in
               </button>
