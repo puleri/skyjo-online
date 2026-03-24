@@ -2645,6 +2645,33 @@ small {
   scale: .99
 }
 
+.unauth-step-stack {
+  position: relative;
+  display: grid;
+}
+
+.unauth-step {
+  grid-area: 1 / 1;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.unauth-step.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  position: relative;
+  visibility: visible;
+}
+
+.unauth-step.is-inactive {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
 .unauth-name-field {
   display: flex;
   flex-direction: column;
