@@ -2650,6 +2650,45 @@ small {
   scale: 1;
 }
 
+.lobby-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lobby-bento-grid .form-button-full-width {
+  margin: 0;
+}
+
+.lobby-bento-grid__classique {
+  grid-column: span 2;
+}
+
+.lobby-bento-grid__quickplay {
+  grid-column: span 2;
+}
+
+.lobby-bento-grid__experimental {
+  grid-column: span 3;
+}
+
+.lobby-bento-grid__shop {
+  grid-column: span 1;
+}
+
+@media (max-width: 640px) {
+  .lobby-bento-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lobby-bento-grid__classique,
+  .lobby-bento-grid__quickplay,
+  .lobby-bento-grid__experimental,
+  .lobby-bento-grid__shop {
+    grid-column: span 2;
+  }
+}
+
 @keyframes form-button-pending-pulse {
   0% {
     background-position: 0% 50%;
