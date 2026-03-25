@@ -27,6 +27,9 @@ export type UserProfile = {
   email: string | null;
   photoURL: string | null;
   friends: string[];
+  activeGameId: string | null;
+  presenceState: "online" | "in_game" | "offline";
+  lastSeenAt: UserProfileTimestamp;
   lastFiveGames: UserProfileGamePlacement[];
   settingsPreferences: UserProfileSettings;
   level: number;
@@ -81,6 +84,9 @@ export function defaultUserProfile(authUser: UserProfileAuthFields): UserProfile
     email: authUser.email,
     photoURL: authUser.photoURL,
     friends: [],
+    activeGameId: null,
+    presenceState: "offline",
+    lastSeenAt: null,
     lastFiveGames: [],
     settingsPreferences: createDefaultUserSettings(),
     level: 1,
@@ -101,6 +107,11 @@ export function mergeUserProfile(
     ...current,
     ...updates,
     friends: [...(updates.friends ?? current.friends)],
+    activeGameId:
+      updates.activeGameId === undefined ? current.activeGameId : updates.activeGameId,
+    presenceState:
+      updates.presenceState === undefined ? current.presenceState : updates.presenceState,
+    lastSeenAt: updates.lastSeenAt === undefined ? current.lastSeenAt : updates.lastSeenAt,
     unlockedSpells: [...(updates.unlockedSpells ?? current.unlockedSpells)],
     rewardedGameIds: [...(updates.rewardedGameIds ?? current.rewardedGameIds ?? [])],
     lastXpGainAnimation:
