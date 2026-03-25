@@ -472,6 +472,9 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const hasInitializedClearSoundRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const audioBufferPromiseCacheRef = useRef<
+    Map<string, Promise<AudioBuffer | null>>
+  >(new Map());
   const betweenRoundsBufferRef = useRef<AudioBuffer | null>(null);
   const betweenRoundsSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const betweenRoundsGainRef = useRef<GainNode | null>(null);
@@ -536,6 +539,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     return () => {
       stopItemDrawAudio();
       audioBufferCacheRef.current.clear();
+      audioBufferPromiseCacheRef.current.clear();
       audioContext.close().catch(() => undefined);
       audioContextRef.current = null;
     };
@@ -663,15 +667,27 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return cached;
     }
 
-    try {
-      const response = await fetch(soundPath);
-      const buffer = await response.arrayBuffer();
-      const decoded = await audioContext.decodeAudioData(buffer);
-      audioBufferCacheRef.current.set(soundPath, decoded);
-      return decoded;
-    } catch {
-      return null;
+    const pendingPromise = audioBufferPromiseCacheRef.current.get(soundPath);
+    if (pendingPromise) {
+      return pendingPromise;
     }
+
+    const bufferPromise = (async () => {
+      try {
+        const response = await fetch(soundPath);
+        const buffer = await response.arrayBuffer();
+        const decoded = await audioContext.decodeAudioData(buffer);
+        audioBufferCacheRef.current.set(soundPath, decoded);
+        return decoded;
+      } catch {
+        return null;
+      } finally {
+        audioBufferPromiseCacheRef.current.delete(soundPath);
+      }
+    })();
+
+    audioBufferPromiseCacheRef.current.set(soundPath, bufferPromise);
+    return bufferPromise;
   };
 
   const preloadImageAsset = (path: string) =>
