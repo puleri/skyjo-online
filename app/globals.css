@@ -2580,11 +2580,13 @@ small {
   inset: 0;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: 153%;
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
   pointer-events: none;
   z-index: 0;
+    box-shadow: inset 6px 6px 30px rgba(255, 255, 255, 0.886);
+
 }
 
 .home-menu-buttons::after {
@@ -2593,17 +2595,17 @@ small {
   top: var(--sheen-offset-y);
   left: 0;
   width: 45%;
-  height: 220%;
+  height: 320%;
   background: linear-gradient(
-    105deg,
+    90deg,
     rgba(255, 255, 255, 0) 0%,
     rgba(255, 255, 255, 0.18) 40%,
-    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0.3) 50%,
     rgba(255, 255, 255, 0.2) 60%,
     rgba(255, 255, 255, 0) 100%
   );
-  transform: translateX(-190%) rotate(var(--sheen-angle));
-  animation: home-menu-sheen-swipe-right var(--sheen-duration) ease-in-out infinite;
+  transform: translateX(0) rotate(var(--sheen-angle));
+
   animation-delay: var(--sheen-delay);
   pointer-events: none;
   z-index: 1;
@@ -2616,8 +2618,8 @@ small {
 
 .home-menu-buttons:hover {
   background-color: #D9D9D9;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.686);
+  box-shadow: none;
+  filter: drop-shadow(11px 11px 30px rgba(59, 59, 59, 0.3));
   scale: 1.02;
 }
 
@@ -2629,14 +2631,14 @@ small {
   background: linear-gradient(
     105deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.14) 32%,
-    rgba(255, 255, 255, 0.78) 50%,
-    rgba(255, 255, 255, 0.12) 68%,
+    rgba(255, 255, 255, 0.04) 32%,
+    rgba(255, 255, 255, 0.48) 50%,
+    rgba(255, 255, 255, 0.04) 68%,
     rgba(255, 255, 255, 0) 100%
   );
   animation-name: home-menu-sheen-hover-from-left;
   animation-duration: var(--sheen-hover-duration);
-  animation-timing-function: cubic-bezier(0.24, 0.74, 0.3, 1);
+  animation-timing-function: cubic-bezier(0.94, 0.44, 0.3, .5);
   animation-iteration-count: 1;
   animation-fill-mode: both;
   animation-delay: 0s;
@@ -2647,7 +2649,7 @@ small {
 }
 
 .home-menu-buttons--classique {
-  --sheen-angle: -27deg;
+  --sheen-angle: 37deg;
   --sheen-offset-y: -60%;
   --sheen-delay: 0.15s;
 }
@@ -2657,8 +2659,8 @@ small {
 }
 
 .home-menu-buttons--quickplay {
-  --sheen-angle: -22deg;
-  --sheen-offset-y: -56%;
+  --sheen-angle: 32deg;
+  --sheen-offset-y: -10%;
   --sheen-delay: 0.5s;
 }
 
