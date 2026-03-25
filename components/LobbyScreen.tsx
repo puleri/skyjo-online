@@ -671,15 +671,10 @@ export default function LobbyScreen() {
   return (
     <main>
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
-      <img
-        className="welcome-div"
-        src={isDarkMode ? "/images/misty-hero-banner-darkmode.png" : "/images/misty-hero-banner.png"}
-        alt=""
-      />
 
       <div className="container">
         <div className="flex-space-between">
-          <h2 className="sage-eyebrow-text">LOBBY SETUP</h2>
+          <h2 className="sage-eyebrow-text">MISTY</h2>
           {/* when this button is clicked, it opens the rules image in another window */}
           <div className="menu-action-buttons">
             <button
@@ -1136,10 +1131,10 @@ export default function LobbyScreen() {
         <section className="form-card">
           <CreateLobbyForm />
           {isSignedIn ? (
-            <>
+            <div className="lobby-bento-grid">
               <button
                 type="button"
-                className="form-button-full-width form-card-font"
+                className="form-button-full-width form-card-font lobby-bento-grid__classique"
                 onClick={() => void handleCreateClassiqueParty(100)}
                 disabled={
                   !firebaseReady ||
@@ -1150,10 +1145,9 @@ export default function LobbyScreen() {
               >
                 {isCreatingClassiqueParty ? "Creating Classique party..." : "Classique"}
               </button>
-              {classiqueError ? <p className="notice">{classiqueError}</p> : null}
               <button
                 type="button"
-                className="form-button-full-width form-card-font"
+                className="form-button-full-width form-card-font lobby-bento-grid__quickplay"
                 onClick={() => void handleCreateClassiqueParty(50)}
                 disabled={
                   !firebaseReady ||
@@ -1166,18 +1160,23 @@ export default function LobbyScreen() {
               </button>
               <button
                 type="button"
-                className="form-button-full-width form-card-font"
+                className="form-button-full-width form-card-font lobby-bento-grid__experimental"
                 disabled
               >
                 Experimental (WIP)
               </button>
               <button
                 type="button"
-                className="form-button-full-width form-card-font"
+                className="form-button-full-width form-card-font lobby-bento-grid__shop"
                 disabled
               >
                 Shop (WIP)
               </button>
+            </div>
+          ) : null}
+          {isSignedIn ? (
+            <>
+              {classiqueError ? <p className="notice">{classiqueError}</p> : null}
               {quickplayError ? <p className="notice">{quickplayError}</p> : null}
             </>
           ) : null}
