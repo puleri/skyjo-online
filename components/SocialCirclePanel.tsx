@@ -9,6 +9,10 @@ type SocialCirclePanelProps = {
   onEnsurePartyId?: (() => Promise<string>) | null;
 };
 
+type PartyLinkStatus = "idle" | "copying" | "copied" | "error";
+
+const signInRoute = "/";
+
 function getFriendInviteLabel(fromUserId: string) {
   return fromUserId.trim() ? `Friend request from ${fromUserId}` : "Friend request";
 }
@@ -39,6 +43,7 @@ export default function SocialCirclePanel({
   const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
+  const [partyLinkStatus, setPartyLinkStatus] = useState<PartyLinkStatus>("idle");
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const inviteRows = useMemo(
@@ -88,6 +93,28 @@ export default function SocialCirclePanel({
     }
   };
 
+  const onClickSharePartyLink = async () => {
+    if (partyLinkStatus === "copying") {
+      return;
+    }
+
+    const resolvedPartyId = partyId ?? (onEnsurePartyId ? await onEnsurePartyId() : null);
+    if (!resolvedPartyId) {
+      setPartyLinkStatus("error");
+      return;
+    }
+
+    setPartyLinkStatus("copying");
+    try {
+      const params = new URLSearchParams({ joinPartyId: resolvedPartyId });
+      const partyJoinUrl = `${window.location.origin}${signInRoute}?${params.toString()}`;
+      await navigator.clipboard.writeText(partyJoinUrl);
+      setPartyLinkStatus("copied");
+    } catch {
+      setPartyLinkStatus("error");
+    }
+  };
+
   const onClickInviteFriend = async (friendUid: string) => {
     if (invitingFriendUid) {
       return;
@@ -105,6 +132,15 @@ export default function SocialCirclePanel({
       setInvitingFriendUid(null);
     }
   };
+
+  const partyLinkStatusText =
+    partyLinkStatus === "copied"
+      ? "Copied!"
+      : partyLinkStatus === "error"
+        ? "Couldn't copy party link."
+        : partyLinkStatus === "copying"
+          ? "Copying…"
+          : null;
 
   return (
     <div className="social-circle-panel">
@@ -131,18 +167,33 @@ export default function SocialCirclePanel({
         </form>
       </section>
 
-      {partyId ? (
+      {partyId || onEnsurePartyId ? (
         <section className="social-circle-panel__section">
-          <button
-            type="button"
-            className="modal__inline-save-button social-circle-panel__toggle"
-            onClick={() => {
-              void onClickLeaveParty();
-            }}
-            disabled={isLeavingParty || !onLeaveParty}
-          >
-            {isLeavingParty ? "Leaving party…" : "Leave Party"}
-          </button>
+          <div className="social-circle-panel__row-actions">
+            {partyId ? (
+              <button
+                type="button"
+                className="modal__inline-save-button social-circle-panel__toggle"
+                onClick={() => {
+                  void onClickLeaveParty();
+                }}
+                disabled={isLeavingParty || !onLeaveParty}
+              >
+                {isLeavingParty ? "Leaving party…" : "Leave Party"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="modal__inline-save-button social-circle-panel__toggle"
+              onClick={() => {
+                void onClickSharePartyLink();
+              }}
+              disabled={partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId)}
+            >
+              {partyLinkStatus === "copying" ? "Copying…" : "Copy Party Link"}
+            </button>
+          </div>
+          {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
         </section>
       ) : null}
 
