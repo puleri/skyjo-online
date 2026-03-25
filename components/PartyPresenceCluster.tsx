@@ -59,6 +59,11 @@ export default function PartyPresenceCluster() {
     return localUser ? [...otherMembers, localUser] : mappedMembers;
   }, [members, uid]);
 
+  const localMember = useMemo(
+    () => (uid ? orderedMembers.find((member) => member.id === uid) ?? null : null),
+    [orderedMembers, uid],
+  );
+
   useEffect(() => {
     if (!isFirebaseConfigured || !orderedMembers.length) {
       setProfilePhotosById({});
@@ -137,7 +142,11 @@ export default function PartyPresenceCluster() {
     };
   }, []);
 
-  const openSagePanel = () => {
+  const openSagePanel = (trigger?: HTMLButtonElement | null) => {
+    if (trigger) {
+      localTriggerRef.current = trigger;
+    }
+
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
@@ -187,26 +196,38 @@ export default function PartyPresenceCluster() {
 
           if (isLocalUser) {
             return (
-              <button
-                key={member.id}
-                ref={localTriggerRef}
-                type="button"
-                className={`party-presence-cluster__member party-presence-cluster__member-trigger${member.isHost ? " is-host" : ""} is-local`}
-                title={avatarLabel}
-                aria-label={avatarLabel}
-                aria-haspopup="dialog"
-                aria-expanded={isSageOpen}
-                style={{ zIndex: index + 1 }}
-                onClick={openSagePanel}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    openSagePanel();
-                  }
-                }}
-              >
-                {avatarContent}
-              </button>
+              <>
+                <button
+                  key={`${member.id}-trigger`}
+                  ref={localTriggerRef}
+                  type="button"
+                  className={`party-presence-cluster__member party-presence-cluster__member-trigger party-presence-cluster__member-trigger--desktop${member.isHost ? " is-host" : ""} is-local`}
+                  title={avatarLabel}
+                  aria-label={avatarLabel}
+                  aria-haspopup="dialog"
+                  aria-expanded={isSageOpen}
+                  style={{ zIndex: index + 1 }}
+                  onClick={(event) => openSagePanel(event.currentTarget)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openSagePanel(event.currentTarget);
+                    }
+                  }}
+                >
+                  {avatarContent}
+                </button>
+                <div
+                  key={`${member.id}-indicator`}
+                  className={`party-presence-cluster__member party-presence-cluster__member-indicator--mobile${member.isHost ? " is-host" : ""} is-local`}
+                  title={avatarLabel}
+                  aria-label={avatarLabel}
+                  style={{ zIndex: index + 1 }}
+                  role="img"
+                >
+                  {avatarContent}
+                </div>
+              </>
             );
           }
 
@@ -224,6 +245,35 @@ export default function PartyPresenceCluster() {
           );
         })}
       </aside>
+
+      {localMember ? (
+        <button
+          type="button"
+          className="party-presence-cluster__open-button"
+          aria-label="Open social panel"
+          aria-haspopup="dialog"
+          aria-expanded={isSageOpen}
+          onClick={(event) => openSagePanel(event.currentTarget)}
+        >
+          <span className="party-presence-cluster__open-button-avatar" aria-hidden="true">
+            {(profilePhotosById[localMember.id] ?? localMember.photoURL) ? (
+              <img
+                className="party-presence-cluster__photo"
+                src={profilePhotosById[localMember.id] ?? localMember.photoURL ?? ""}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <span className="party-presence-cluster__fallback">{getFallbackInitial(localMember.displayName)}</span>
+            )}
+          </span>
+          <span className="party-presence-cluster__open-button-label">Social</span>
+          <span className="party-presence-cluster__open-button-icon" aria-hidden="true">
+            ▾
+          </span>
+        </button>
+      ) : null}
 
       {isSageOpen ? (
         <div
