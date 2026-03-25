@@ -4023,7 +4023,6 @@ border: 1px solid #ffedef;
   transition: opacity 220ms ease;
 }
 
-.party-presence-cluster__sage-modal--opening,
 .party-presence-cluster__sage-modal--open,
 .party-presence-cluster__sage-backdrop--entering,
 .party-presence-cluster__sage-backdrop--open,
