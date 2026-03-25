@@ -671,13 +671,8 @@ export default function LobbyScreen() {
     <main>
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
       <img
-        className="welcome-div welcome-div-light"
-        src="/images/misty-hero-banner.png"
-        alt=""
-      />
-      <img
-        className="welcome-div welcome-div-dark"
-        src="/images/misty-hero-banner-darkmode.png"
+        className="welcome-div"
+        src={isDarkMode ? "/images/misty-hero-banner-darkmode.png" : "/images/misty-hero-banner.png"}
         alt=""
       />
 
