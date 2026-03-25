@@ -489,6 +489,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const lastTurnSoundKeyRef = useRef<string | null>(null);
   const modeTooltipRef = useRef<HTMLDivElement | null>(null);
   const actionWatchdogTimerRef = useRef<number | null>(null);
+  const hasRunCriticalPreloadRef = useRef(false);
   const hasStartedProgressivePreloadRef = useRef(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const [localPlayerExperiencePreview, setLocalPlayerExperiencePreview] =
@@ -744,6 +745,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     if (typeof window === "undefined") {
       return;
     }
+    if (hasRunCriticalPreloadRef.current) {
+      return;
+    }
+    hasRunCriticalPreloadRef.current = true;
 
     let isActive = true;
     const minimumOverlayDurationMs = 2000;
