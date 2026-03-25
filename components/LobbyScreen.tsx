@@ -537,23 +537,14 @@ export default function LobbyScreen() {
         return;
       }
 
-      const classiqueConfig: PreGameConfig = isQuickplay
-        ? {
-          gameType: "spike",
-          spikeMode: true,
-          spikeItemCount: "high",
-          spikeRowClear: true,
-          spikeEndGameBonuses: true,
-          targetScore,
-        }
-        : {
-          gameType: "classic",
-          spikeMode: false,
-          spikeItemCount: "none",
-          spikeRowClear: false,
-          spikeEndGameBonuses: false,
-          targetScore,
-        };
+      const classiqueConfig: PreGameConfig = {
+        gameType: "spike",
+        spikeMode: true,
+        spikeItemCount: "high",
+        spikeRowClear: true,
+        spikeEndGameBonuses: true,
+        targetScore,
+      };
 
       if (isQuickplay) {
         setIsCreatingQuickplayParty(true);
@@ -600,23 +591,14 @@ export default function LobbyScreen() {
         db,
         callerUid: uid,
         playerDisplayName: resolvedName,
-        preGameConfig: isQuickplay
-          ? {
-            gameType: "spike",
-            spikeMode: true,
-            spikeItemCount: "high",
-            spikeRowClear: true,
-            spikeEndGameBonuses: true,
-            targetScore,
-          }
-          : {
-              gameType: "classic",
-              spikeMode: false,
-              spikeItemCount: "none",
-              spikeRowClear: false,
-              spikeEndGameBonuses: false,
-              targetScore,
-            },
+        preGameConfig: {
+          gameType: "spike",
+          spikeMode: true,
+          spikeItemCount: "high",
+          spikeRowClear: true,
+          spikeEndGameBonuses: true,
+          targetScore,
+        },
       });
 
       router.push(`/game/${gameId}`);
