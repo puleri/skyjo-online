@@ -285,10 +285,22 @@ export default function PartyPresenceCluster() {
         >
           <div className="party-presence-cluster__sage-panel" onClick={(event) => event.stopPropagation()}>
             <div className="party-presence-cluster__sage-content">
-              <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
-                Party Sage
-              </h2>
-              <SocialCirclePanel partyId={partyId} />
+              <div className="party-presence-cluster__sage-header">
+                <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
+                  Party Sage
+                </h2>
+                <button
+                  type="button"
+                  className="party-presence-cluster__sage-close"
+                  aria-label="Close social panel"
+                  onClick={closeSagePanel}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="party-presence-cluster__sage-body">
+                <SocialCirclePanel partyId={partyId} />
+              </div>
             </div>
           </div>
         </div>
