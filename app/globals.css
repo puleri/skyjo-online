@@ -3955,6 +3955,11 @@ border: 1px solid #ffedef;
   cursor: pointer;
 }
 
+.party-presence-cluster__member-indicator--mobile,
+.party-presence-cluster__open-button {
+  display: none;
+}
+
 .party-presence-cluster__member-trigger:focus-visible {
   outline: 3px solid var(--color-accent-secondary);
   outline-offset: 2px;
@@ -4214,6 +4219,76 @@ border: 1px solid #ffedef;
     height: 40px;
   }
 
+  .party-presence-cluster__member-trigger--desktop {
+    display: none;
+  }
+
+  .party-presence-cluster__member-indicator--mobile {
+    display: inline-flex;
+  }
+
+  .party-presence-cluster__open-button {
+    position: absolute;
+    top: 56px;
+    right: 10px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--color-accent) 54%, black 8%);
+    background: color-mix(in srgb, var(--color-surface-bright) 86%, var(--color-accent-soft) 14%);
+    color: var(--color-text);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    z-index: 20;
+  }
+
+  .party-presence-cluster__open-button:hover {
+    background: color-mix(in srgb, var(--color-accent-soft) 30%, var(--color-surface-bright) 70%);
+  }
+
+  .party-presence-cluster__open-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.24);
+  }
+
+  .party-presence-cluster__open-button:focus-visible {
+    outline: 3px solid var(--color-accent-secondary);
+    outline-offset: 2px;
+  }
+
+  .party-presence-cluster__open-button-label {
+    line-height: 1;
+  }
+
+  .party-presence-cluster__open-button-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--color-surface-bright);
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .party-presence-cluster__open-button-avatar .party-presence-cluster__fallback {
+    font-size: 0.68rem;
+  }
+
+  .party-presence-cluster__open-button-icon {
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
   .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-panel--entering,
@@ -4228,4 +4303,10 @@ border: 1px solid #ffedef;
     width: min(280px, calc(100vw - 24px));
     max-height: calc(100vh - 32px);
   }
+}
+
+:root[data-theme="dark"] .party-presence-cluster__open-button {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, black 12%);
+  background: color-mix(in srgb, var(--color-surface) 85%, var(--color-accent-soft) 15%);
+  color: var(--color-text);
 }
