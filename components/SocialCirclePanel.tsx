@@ -5,13 +5,14 @@ import { useSocialPanel } from "../lib/useSocialPanel";
 
 type SocialCirclePanelProps = {
   partyId: string | null;
+  onLeaveParty?: (() => Promise<void>) | null;
 };
 
 function getFriendInviteLabel(fromUserId: string) {
   return fromUserId.trim() ? `Friend request from ${fromUserId}` : "Friend request";
 }
 
-export default function SocialCirclePanel({ partyId }: SocialCirclePanelProps) {
+export default function SocialCirclePanel({ partyId, onLeaveParty = null }: SocialCirclePanelProps) {
   const {
     invites,
     friends,
@@ -31,6 +32,7 @@ export default function SocialCirclePanel({ partyId }: SocialCirclePanelProps) {
   const [isOnlineOpen, setIsOnlineOpen] = useState(false);
   const [friendIdentifierInput, setFriendIdentifierInput] = useState("");
   const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
+  const [isLeavingParty, setIsLeavingParty] = useState(false);
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const inviteRows = useMemo(
@@ -67,6 +69,19 @@ export default function SocialCirclePanel({ partyId }: SocialCirclePanelProps) {
     }
   };
 
+  const onClickLeaveParty = async () => {
+    if (!partyId || !onLeaveParty || isLeavingParty) {
+      return;
+    }
+
+    setIsLeavingParty(true);
+    try {
+      await onLeaveParty();
+    } finally {
+      setIsLeavingParty(false);
+    }
+  };
+
   return (
     <div className="social-circle-panel">
       <section className="social-circle-panel__section">
@@ -91,6 +106,21 @@ export default function SocialCirclePanel({ partyId }: SocialCirclePanelProps) {
           </button>
         </form>
       </section>
+
+      {partyId ? (
+        <section className="social-circle-panel__section">
+          <button
+            type="button"
+            className="modal__inline-save-button social-circle-panel__toggle"
+            onClick={() => {
+              void onClickLeaveParty();
+            }}
+            disabled={isLeavingParty || !onLeaveParty}
+          >
+            {isLeavingParty ? "Leaving party…" : "Leave Party"}
+          </button>
+        </section>
+      ) : null}
 
       <section className="social-circle-panel__section">
         <button
