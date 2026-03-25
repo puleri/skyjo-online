@@ -37,6 +37,7 @@ type PartyMember = {
   displayName: string;
   photoURL: string | null;
   isHost: boolean;
+  isReady: boolean;
   joinedAt?: unknown;
 };
 
@@ -49,6 +50,7 @@ type PartyContextValue = {
   invite: () => Promise<string>;
   leave: () => Promise<void>;
   setPreGameConfig: (config: PreGameConfig) => Promise<void>;
+  toggleReady: () => Promise<void>;
   startGame: () => Promise<void>;
   setActivePartyId: (nextPartyId: string | null) => Promise<void>;
 };
@@ -180,6 +182,7 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
           displayName: (memberDoc.data().displayName as string | undefined) ?? "Anonymous player",
           photoURL: (memberDoc.data().photoURL as string | undefined) ?? null,
           isHost: Boolean(memberDoc.data().isHost),
+          isReady: Boolean(memberDoc.data().isReady),
           joinedAt: memberDoc.data().joinedAt,
         })),
       );
@@ -317,6 +320,26 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
     [partyId, uid],
   );
 
+  const toggleReady = useCallback(async () => {
+    if (!uid || !partyId) {
+      throw new Error("Join a party before updating readiness.");
+    }
+
+    const memberRef = doc(db, "parties", partyId, "partyMembers", uid);
+    await runTransaction(db, async (transaction) => {
+      const memberSnap = await transaction.get(memberRef);
+      if (!memberSnap.exists()) {
+        throw new Error("Join the party before updating readiness.");
+      }
+
+      const currentReady = Boolean(memberSnap.data().isReady);
+      transaction.update(memberRef, {
+        isReady: !currentReady,
+        updatedAt: serverTimestamp(),
+      });
+    });
+  }, [partyId, uid]);
+
   const startGame = useCallback(async () => {
     if (!uid || !partyId || !party) {
       throw new Error("Missing active party.");
@@ -351,10 +374,11 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       invite,
       leave,
       setPreGameConfig,
+      toggleReady,
       startGame,
       setActivePartyId,
     }),
-    [invite, leave, loadingParty, loadingUser, members, party, partyId, setActivePartyId, setPreGameConfig, startGame, uid],
+    [invite, leave, loadingParty, loadingUser, members, party, partyId, setActivePartyId, setPreGameConfig, startGame, toggleReady, uid],
   );
 
   return <PartyContext.Provider value={value}>{children}</PartyContext.Provider>;
