@@ -4048,11 +4048,12 @@ border: 1px solid #ffedef;
 }
 
 .party-presence-cluster__sage-panel {
-  --sage-panel-size-open: clamp(280px, 50vw, 620px);
-  --sage-panel-size-open-mobile: clamp(220px, min(78vw, 78vh), 520px);
+  --sage-panel-size-open: clamp(540px, 86vw, 1060px);
+  --sage-panel-size-open-mobile: clamp(360px, min(94vw, 94vh), 700px);
   --sage-panel-size-closed: 44px;
   --sage-panel-anchor-top: 34px;
   --sage-panel-anchor-right: 34px;
+  --sage-panel-open-bleed: clamp(90px, 14vw, 220px);
   position: fixed;
   top: var(--sage-panel-anchor-top);
   left: calc(100% - var(--sage-panel-anchor-right));
@@ -4073,13 +4074,12 @@ border: 1px solid #ffedef;
   transition: top 260ms ease, left 260ms ease, width 260ms ease, height 260ms ease, transform 260ms ease;
 }
 
-.party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
 .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
 .party-presence-cluster__sage-panel--entering,
 .party-presence-cluster__sage-panel--open,
 .party-presence-cluster__sage-panel--exiting {
   top: 50%;
-  left: 50%;
+  left: calc(100% + var(--sage-panel-open-bleed));
   width: var(--sage-panel-size-open);
   height: var(--sage-panel-size-open);
 }
@@ -4092,11 +4092,22 @@ border: 1px solid #ffedef;
   height: var(--sage-panel-size-closed);
 }
 
+.party-presence-cluster__sage-content {
+  margin-left: auto;
+  width: min(100%, 360px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: right;
+}
+
 .party-presence-cluster__sage-title {
   margin: 0;
   font-size: clamp(1.15rem, 3vw, 1.6rem);
   letter-spacing: 0.02em;
   color: var(--color-text);
+  text-align: right;
 }
 
 .social-circle-panel {
@@ -4175,13 +4186,12 @@ border: 1px solid #ffedef;
     transition: none;
   }
 
-  .party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-panel--entering,
   .party-presence-cluster__sage-panel--open,
   .party-presence-cluster__sage-panel--exiting {
     top: 50%;
-    left: 50%;
+    left: calc(100% + var(--sage-panel-open-bleed));
     width: var(--sage-panel-size-open);
     height: var(--sage-panel-size-open);
   }
@@ -4212,12 +4222,15 @@ border: 1px solid #ffedef;
   }
 
   .party-presence-cluster__sage-panel,
-  .party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-panel--entering,
   .party-presence-cluster__sage-panel--open,
   .party-presence-cluster__sage-panel--exiting {
     width: var(--sage-panel-size-open-mobile);
     height: var(--sage-panel-size-open-mobile);
+  }
+
+  .party-presence-cluster__sage-content {
+    width: min(100%, 280px);
   }
 }

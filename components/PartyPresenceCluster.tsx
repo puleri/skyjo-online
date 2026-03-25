@@ -234,10 +234,12 @@ export default function PartyPresenceCluster() {
           aria-labelledby="party-presence-sage-title"
         >
           <div className="party-presence-cluster__sage-panel" onClick={(event) => event.stopPropagation()}>
-            <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
-              Party Sage
-            </h2>
-            <SocialCirclePanel partyId={partyId} />
+            <div className="party-presence-cluster__sage-content">
+              <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
+                Party Sage
+              </h2>
+              <SocialCirclePanel partyId={partyId} />
+            </div>
           </div>
         </div>
       ) : null}
