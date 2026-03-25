@@ -1,7 +1,18 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { usePreferences } from "../lib/preferences";
+import {
+  buildXpAnimationSegments,
+  getStoredLevelProgress,
+  getStoredLifetimeExperience,
+  isNextLevelMultipleOfFive,
+  type StoredLevelProgress,
+  type XpAnimationSegment,
+} from "../lib/progression";
 import { useSocialPanel } from "../lib/useSocialPanel";
+import { useUserProfile } from "../lib/useUserProfile";
+import { formatPlacementLabel } from "../lib/userProfile";
 
 type SocialCirclePanelProps = {
   partyId: string | null;
@@ -10,6 +21,7 @@ type SocialCirclePanelProps = {
 };
 
 type PartyLinkStatus = "idle" | "copying" | "copied" | "error";
+type SocialModalTab = "social" | "preferences" | "profile";
 
 const signInRoute = "/";
 
@@ -35,15 +47,52 @@ export default function SocialCirclePanel({
     declinePartyInvite,
     inviteFriendToCurrentLobby,
   } = useSocialPanel();
+  const {
+    profile,
+    loading: isProfileLoading,
+    error: profileError,
+    authDisplayName,
+    isSignedIn,
+    isAnonymousUser,
+    updateProfile,
+    signInWithGoogleSso,
+    signOutUser,
+  } = useUserProfile();
+  const { preferences, setPreference } = usePreferences();
+  const {
+    firstTimeTips: showFirstTimeTips,
+    darkMode: isDarkMode,
+    cardSounds: isCardSoundsEnabled,
+    backgroundMusic: isBackgroundMusicEnabled,
+    snow: isSnowEnabled,
+    autoFollow: isAutoFollowEnabled,
+  } = preferences;
 
+  const [activeTab, setActiveTab] = useState<SocialModalTab>("social");
   const [isInvitesOpen, setIsInvitesOpen] = useState(true);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [isOnlineOpen, setIsOnlineOpen] = useState(false);
+  const [isUiPreferencesOpen, setIsUiPreferencesOpen] = useState(true);
+  const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(true);
   const [friendIdentifierInput, setFriendIdentifierInput] = useState("");
   const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
   const [partyLinkStatus, setPartyLinkStatus] = useState<PartyLinkStatus>("idle");
+  const [profileName, setProfileName] = useState("");
+  const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [playbackSegmentIndex, setPlaybackSegmentIndex] = useState(0);
+  const [displayedPercent, setDisplayedPercent] = useState(0);
+  const [progressTransitionDurationMs, setProgressTransitionDurationMs] = useState(0);
+  const [progressTransitionTiming, setProgressTransitionTiming] = useState("ease");
+  const [displayedLeftLevel, setDisplayedLeftLevel] = useState(1);
+  const [displayedRightLevel, setDisplayedRightLevel] = useState(2);
+  const [hasCompletedPlayback, setHasCompletedPlayback] = useState(false);
+  const [xpReplayRunId, setXpReplayRunId] = useState(0);
+  const [playbackAnnouncement, setPlaybackAnnouncement] = useState<string | null>(null);
+  const playbackTimeoutRef = useRef<number | null>(null);
+  const playbackFrameRef = useRef<number | null>(null);
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const inviteRows = useMemo(
@@ -63,6 +112,197 @@ export default function SocialCirclePanel({
     ],
     [acceptFriendInvite, acceptPartyInvite, declineFriendInvite, declinePartyInvite, invites.friend, invites.party],
   );
+
+  useEffect(() => {
+    const nextProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "";
+    setProfileName(nextProfileName);
+  }, [authDisplayName, profile?.displayName]);
+
+  useEffect(() => {
+    setProfileSaveMessage(null);
+  }, [profileName]);
+
+  const persistedProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "";
+  const hasDisplayNameChanged = profileName.trim() !== persistedProfileName;
+  const canEditProfile = isSignedIn && (isAnonymousUser || Boolean(profile));
+  const shouldShowProfileStats = !isAnonymousUser;
+  const recentPlacements = profile?.lastFiveGames ?? [];
+  const recentPlacementSummary = useMemo(
+    () => recentPlacements.map((placement) => formatPlacementLabel(placement)).join(", "),
+    [recentPlacements],
+  );
+  const finalProgress = useMemo<StoredLevelProgress>(
+    () => getStoredLevelProgress(profile?.level ?? 1, profile?.experience ?? 0),
+    [profile?.experience, profile?.level],
+  );
+  const latestXpAnimation = profile?.lastXpGainAnimation ?? null;
+  const latestXpAnimationGameId = latestXpAnimation?.gameId ?? null;
+  const xpPlayback = useMemo<XpAnimationSegment[]>(() => {
+    if (!latestXpAnimation) {
+      return [];
+    }
+
+    const { fromLevel, fromExperience, toLevel, toExperience } = latestXpAnimation;
+    return buildXpAnimationSegments(fromLevel, fromExperience, toLevel, toExperience);
+  }, [latestXpAnimation]);
+  const activePlaybackSegment = xpPlayback[playbackSegmentIndex] ?? null;
+  const canReplayLatestXpAnimation = Boolean(latestXpAnimationGameId && xpPlayback.length);
+  const shouldPlayXpAnimation = activeTab === "profile" && xpPlayback.length > 0;
+  const isPlaybackActive = Boolean(shouldPlayXpAnimation && !hasCompletedPlayback && activePlaybackSegment);
+  const displayedProgress = isPlaybackActive
+    ? {
+      currentLevel: displayedLeftLevel,
+      nextLevel: displayedRightLevel,
+      progressPercent: displayedPercent,
+      xpGainedTowardCurrentLevel: activePlaybackSegment.startXp,
+      xpRequiredForCurrentLevel: activePlaybackSegment.xpRequiredForLevel,
+      xpRemainingToNextLevel: Math.max(0, activePlaybackSegment.xpRequiredForLevel - activePlaybackSegment.startXp),
+    }
+    : finalProgress;
+  const showRewardPreview = isNextLevelMultipleOfFive(finalProgress.nextLevel);
+  const totalLifetimeXp = useMemo(
+    () => getStoredLifetimeExperience(profile?.level ?? 1, profile?.experience ?? 0),
+    [profile?.experience, profile?.level],
+  );
+  const progressionHelperText =
+    `${finalProgress.xpGainedTowardCurrentLevel} / ${finalProgress.xpRequiredForCurrentLevel} XP this level · ${totalLifetimeXp} lifetime XP`;
+  const xpReplayStatusText = latestXpAnimation ? `+${latestXpAnimation.awardedXp} XP from your last game` : null;
+  const displayedProgressionHelperText =
+    isPlaybackActive && playbackAnnouncement ? playbackAnnouncement : progressionHelperText;
+
+  useEffect(() => {
+    if (!shouldPlayXpAnimation || xpPlayback.length === 0) {
+      setPlaybackSegmentIndex(0);
+      setDisplayedPercent(finalProgress.progressPercent);
+      setProgressTransitionDurationMs(0);
+      setProgressTransitionTiming("ease");
+      setDisplayedLeftLevel(finalProgress.currentLevel);
+      setDisplayedRightLevel(finalProgress.nextLevel);
+      setHasCompletedPlayback(xpPlayback.length === 0);
+      setPlaybackAnnouncement(null);
+      return;
+    }
+
+    const firstSegment = xpPlayback[0];
+    setPlaybackSegmentIndex(0);
+    setDisplayedLeftLevel(firstSegment.labelCurrentLevel);
+    setDisplayedRightLevel(firstSegment.labelNextLevel);
+    setDisplayedPercent(firstSegment.startPercent);
+    setProgressTransitionDurationMs(0);
+    setProgressTransitionTiming("ease");
+    setHasCompletedPlayback(false);
+    setPlaybackAnnouncement(null);
+  }, [
+    finalProgress.currentLevel,
+    finalProgress.nextLevel,
+    finalProgress.progressPercent,
+    shouldPlayXpAnimation,
+    xpPlayback,
+    xpReplayRunId,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (playbackTimeoutRef.current !== null) {
+      window.clearTimeout(playbackTimeoutRef.current);
+      playbackTimeoutRef.current = null;
+    }
+    if (playbackFrameRef.current !== null) {
+      window.cancelAnimationFrame(playbackFrameRef.current);
+      playbackFrameRef.current = null;
+    }
+
+    if (!shouldPlayXpAnimation) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches || hasCompletedPlayback || !activePlaybackSegment) {
+      if (mediaQuery.matches) {
+        setHasCompletedPlayback(true);
+        setDisplayedLeftLevel(finalProgress.currentLevel);
+        setDisplayedRightLevel(finalProgress.nextLevel);
+        setDisplayedPercent(finalProgress.progressPercent);
+        setProgressTransitionDurationMs(0);
+        setProgressTransitionTiming("ease");
+        setPlaybackAnnouncement(null);
+      }
+      return;
+    }
+
+    const dramaticEasing = "cubic-bezier(0.65, 0, 0.35, 1)";
+    const boundaryPauseMs = activePlaybackSegment.isLevelUpBoundary ? 280 : 0;
+    setDisplayedLeftLevel(activePlaybackSegment.labelCurrentLevel);
+    setDisplayedRightLevel(activePlaybackSegment.labelNextLevel);
+    setDisplayedPercent(activePlaybackSegment.startPercent);
+    setProgressTransitionDurationMs(0);
+    setProgressTransitionTiming("linear");
+
+    playbackFrameRef.current = window.requestAnimationFrame(() => {
+      setProgressTransitionDurationMs(activePlaybackSegment.durationMs);
+      setProgressTransitionTiming(dramaticEasing);
+      setDisplayedPercent(activePlaybackSegment.endPercent);
+      playbackFrameRef.current = null;
+    });
+
+    playbackTimeoutRef.current = window.setTimeout(() => {
+      playbackTimeoutRef.current = null;
+
+      if (playbackSegmentIndex >= xpPlayback.length - 1) {
+        setHasCompletedPlayback(true);
+        setPlaybackAnnouncement(null);
+        setDisplayedLeftLevel(finalProgress.currentLevel);
+        setDisplayedRightLevel(finalProgress.nextLevel);
+        setDisplayedPercent(finalProgress.progressPercent);
+        setProgressTransitionDurationMs(0);
+        setProgressTransitionTiming("ease-out");
+        return;
+      }
+
+      const nextSegment = xpPlayback[playbackSegmentIndex + 1];
+      if (activePlaybackSegment.isLevelUpBoundary) {
+        setPlaybackAnnouncement(
+          `Level up! Lv. ${activePlaybackSegment.labelCurrentLevel} → Lv. ${nextSegment.labelCurrentLevel}`,
+        );
+        setDisplayedLeftLevel(nextSegment.labelCurrentLevel);
+        setDisplayedRightLevel(nextSegment.labelNextLevel);
+        setProgressTransitionDurationMs(0);
+        setProgressTransitionTiming("linear");
+        setDisplayedPercent(0);
+      } else {
+        setPlaybackAnnouncement(null);
+      }
+
+      playbackTimeoutRef.current = window.setTimeout(() => {
+        playbackTimeoutRef.current = null;
+        setPlaybackAnnouncement(null);
+        setPlaybackSegmentIndex((current) => current + 1);
+      }, boundaryPauseMs);
+    }, activePlaybackSegment.durationMs);
+
+    return () => {
+      if (playbackTimeoutRef.current !== null) {
+        window.clearTimeout(playbackTimeoutRef.current);
+        playbackTimeoutRef.current = null;
+      }
+      if (playbackFrameRef.current !== null) {
+        window.cancelAnimationFrame(playbackFrameRef.current);
+        playbackFrameRef.current = null;
+      }
+    };
+  }, [
+    activePlaybackSegment,
+    finalProgress.currentLevel,
+    finalProgress.nextLevel,
+    finalProgress.progressPercent,
+    hasCompletedPlayback,
+    playbackSegmentIndex,
+    shouldPlayXpAnimation,
+    xpPlayback,
+  ]);
 
   const onSubmitFriendInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -133,6 +373,45 @@ export default function SocialCirclePanel({
     }
   };
 
+  const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedName = profileName.trim();
+
+    if (!trimmedName) {
+      setProfileSaveMessage("Enter a display name before saving.");
+      return;
+    }
+
+    if (!hasDisplayNameChanged) {
+      setProfileSaveMessage("Your display name is already up to date.");
+      return;
+    }
+
+    try {
+      setIsSavingProfile(true);
+      setProfileSaveMessage(null);
+      await updateProfile({ displayName: trimmedName });
+      setProfileSaveMessage(`Saved as ${trimmedName}.`);
+    } catch (saveError) {
+      setProfileSaveMessage(
+        saveError instanceof Error ? saveError.message : "Unable to save your profile right now.",
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      setProfileSaveMessage(null);
+    } catch (signOutError) {
+      setProfileSaveMessage(
+        signOutError instanceof Error ? signOutError.message : "Unable to sign out right now.",
+      );
+    }
+  };
+
   const partyLinkStatusText =
     partyLinkStatus === "copied"
       ? "Copied!"
@@ -144,159 +423,465 @@ export default function SocialCirclePanel({
 
   return (
     <div className="social-circle-panel">
-      <section className="social-circle-panel__section">
-        <h3 className="social-circle-panel__heading">Add Friend</h3>
-        <form className="modal__text-input-row" onSubmit={onSubmitFriendInvite}>
-          <input
-            type="text"
-            className="modal__text-input"
-            placeholder="User ID, name, or email"
-            value={friendIdentifierInput}
-            onChange={(event) => setFriendIdentifierInput(event.target.value)}
-            aria-label="Friend identifier"
-            disabled={isSubmittingFriendInvite}
-          />
+      <div className="social-circle-panel__tabs" role="tablist" aria-label="Social panel sections">
+        {(["social", "preferences", "profile"] as const).map((tabKey) => (
           <button
-            type="submit"
-            className="modal__inline-save-button"
-            aria-label="Send friend invite"
-            disabled={isSubmittingFriendInvite || !friendIdentifierInput.trim()}
+            key={tabKey}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tabKey}
+            className={`social-circle-panel__tab ${activeTab === tabKey ? "social-circle-panel__tab--active" : ""}`}
+            onClick={() => setActiveTab(tabKey)}
           >
-            +
+            {tabKey === "social" ? "Social" : tabKey === "preferences" ? "Preferences" : "Profile"}
           </button>
-        </form>
-      </section>
+        ))}
+      </div>
 
-      {partyId || onEnsurePartyId ? (
-        <section className="social-circle-panel__section">
-          <div className="social-circle-panel__row-actions">
-            {partyId ? (
+      {activeTab === "social" ? (
+        <>
+          <section className="social-circle-panel__section">
+            <h3 className="social-circle-panel__heading">Add Friend</h3>
+            <form className="modal__text-input-row" onSubmit={onSubmitFriendInvite}>
+              <input
+                type="text"
+                className="modal__text-input"
+                placeholder="User ID, name, or email"
+                value={friendIdentifierInput}
+                onChange={(event) => setFriendIdentifierInput(event.target.value)}
+                aria-label="Friend identifier"
+                disabled={isSubmittingFriendInvite}
+              />
               <button
-                type="button"
-                className="modal__inline-save-button social-circle-panel__toggle"
-                onClick={() => {
-                  void onClickLeaveParty();
-                }}
-                disabled={isLeavingParty || !onLeaveParty}
+                type="submit"
+                className="modal__inline-save-button"
+                aria-label="Send friend invite"
+                disabled={isSubmittingFriendInvite || !friendIdentifierInput.trim()}
               >
-                {isLeavingParty ? "Leaving party…" : "Leave Party"}
+                +
               </button>
-            ) : null}
+            </form>
+          </section>
+
+          {partyId || onEnsurePartyId ? (
+            <section className="social-circle-panel__section">
+              <div className="social-circle-panel__row-actions">
+                {partyId ? (
+                  <button
+                    type="button"
+                    className="modal__inline-save-button social-circle-panel__toggle"
+                    onClick={() => {
+                      void onClickLeaveParty();
+                    }}
+                    disabled={isLeavingParty || !onLeaveParty}
+                  >
+                    {isLeavingParty ? "Leaving party…" : "Leave Party"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="modal__inline-save-button social-circle-panel__toggle"
+                  onClick={() => {
+                    void onClickSharePartyLink();
+                  }}
+                  disabled={partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId)}
+                >
+                  {partyLinkStatus === "copying" ? "Copying…" : "Copy Party Link"}
+                </button>
+              </div>
+              {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
+            </section>
+          ) : null}
+
+          <section className="social-circle-panel__section">
             <button
               type="button"
-              className="modal__inline-save-button social-circle-panel__toggle"
-              onClick={() => {
-                void onClickSharePartyLink();
-              }}
-              disabled={partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId)}
+              className="profile-progression__replay-button social-circle-panel__toggle"
+              onClick={() => setIsInvitesOpen((current) => !current)}
+              aria-expanded={isInvitesOpen}
             >
-              {partyLinkStatus === "copying" ? "Copying…" : "Copy Party Link"}
+              Invites ({inviteRows.length})
             </button>
-          </div>
-          {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
-        </section>
+            {isInvitesOpen ? (
+              <div className="social-circle-panel__list" role="list">
+                {inviteRows.length === 0 ? <p className="notice">No pending invites.</p> : null}
+                {inviteRows.map((invite) => (
+                  <article key={invite.key} className="social-circle-panel__row" role="listitem">
+                    <p className="social-circle-panel__row-text">{invite.label}</p>
+                    <div className="social-circle-panel__row-actions">
+                      <button
+                        type="button"
+                        className="modal__inline-save-button"
+                        onClick={() => {
+                          void invite.onAccept();
+                        }}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        className="modal__inline-save-button"
+                        onClick={() => {
+                          void invite.onDecline();
+                        }}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="social-circle-panel__section">
+            <button
+              type="button"
+              className="profile-progression__replay-button social-circle-panel__toggle"
+              onClick={() => setIsFriendsOpen((current) => !current)}
+              aria-expanded={isFriendsOpen}
+            >
+              Friends ({friends.length})
+            </button>
+            {isFriendsOpen ? (
+              <div className="social-circle-panel__list" role="list">
+                {friends.length === 0 ? <p className="notice">No friends yet.</p> : null}
+                {friends.map((friend) => (
+                  <article key={friend.uid} className="social-circle-panel__row" role="listitem">
+                    <p className="social-circle-panel__row-text">{friend.displayName}</p>
+                    <div className="social-circle-panel__row-actions">
+                      <button
+                        type="button"
+                        className="modal__inline-save-button"
+                        onClick={() => {
+                          void onClickInviteFriend(friend.uid);
+                        }}
+                        disabled={Boolean(invitingFriendUid)}
+                      >
+                        {invitingFriendUid === friend.uid ? "Inviting…" : "Invite to Lobby"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="social-circle-panel__section">
+            <button
+              type="button"
+              className="profile-progression__replay-button social-circle-panel__toggle"
+              onClick={() => setIsOnlineOpen((current) => !current)}
+              aria-expanded={isOnlineOpen}
+            >
+              Online ({online.length})
+            </button>
+            {isOnlineOpen ? (
+              <div className="social-circle-panel__list" role="list">
+                {online.length === 0 ? <p className="notice">No friends currently in a game.</p> : null}
+                {online.map((friend) => (
+                  <article key={friend.uid} className="social-circle-panel__row" role="listitem">
+                    <p className="social-circle-panel__row-text">
+                      {friend.displayName}
+                      {friend.activeGameId ? <span className="social-circle-panel__badge">In Game</span> : null}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          {loading && !hasInvites && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
+          {error ? <p className="notice">{error}</p> : null}
+        </>
       ) : null}
 
-      <section className="social-circle-panel__section">
-        <button
-          type="button"
-          className="profile-progression__replay-button social-circle-panel__toggle"
-          onClick={() => setIsInvitesOpen((current) => !current)}
-          aria-expanded={isInvitesOpen}
-        >
-          Invites ({inviteRows.length})
-        </button>
-        {isInvitesOpen ? (
-          <div className="social-circle-panel__list" role="list">
-            {inviteRows.length === 0 ? <p className="notice">No pending invites.</p> : null}
-            {inviteRows.map((invite) => (
-              <article key={invite.key} className="social-circle-panel__row" role="listitem">
-                <p className="social-circle-panel__row-text">{invite.label}</p>
-                <div className="social-circle-panel__row-actions">
+      {activeTab === "preferences" ? (
+        <>
+          <section className="social-circle-panel__section">
+            <button
+              type="button"
+              className="modal__section-dropdown"
+              onClick={() => setIsUiPreferencesOpen((current) => !current)}
+              aria-expanded={isUiPreferencesOpen}
+              aria-controls="social-ui-preferences"
+            >
+              <span className="modal__section-dropdown-label">UI Preferences</span>
+              <span aria-hidden="true">{isUiPreferencesOpen ? "▾" : "▸"}</span>
+            </button>
+            <div
+              id="social-ui-preferences"
+              className={`modal__collapsible ${isUiPreferencesOpen ? "modal__collapsible--open" : ""}`}
+              aria-hidden={!isUiPreferencesOpen}
+            >
+              <div className="modal__collapsible-content">
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Dark mode</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isDarkMode}
+                        onChange={(event) => setPreference("darkMode", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Switch the interface to the dark theme.</p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Let it snow</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isSnowEnabled}
+                        onChange={(event) => setPreference("snow", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Sprinkle a light snowfall across the screen.</p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Card sounds</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isCardSoundsEnabled}
+                        onChange={(event) => setPreference("cardSounds", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Mute card draws, turn alerts, reveal sounds, and swap effects.</p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Background music</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isBackgroundMusicEnabled}
+                        onChange={(event) => setPreference("backgroundMusic", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Play theme music during round breaks and in the lobby.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="social-circle-panel__section">
+            <button
+              type="button"
+              className="modal__section-dropdown"
+              onClick={() => setIsAccessibilityOpen((current) => !current)}
+              aria-expanded={isAccessibilityOpen}
+              aria-controls="social-accessibility-settings"
+            >
+              <span className="modal__section-dropdown-label">Accessibility</span>
+              <span aria-hidden="true">{isAccessibilityOpen ? "▾" : "▸"}</span>
+            </button>
+            <div
+              id="social-accessibility-settings"
+              className={`modal__collapsible ${isAccessibilityOpen ? "modal__collapsible--open" : ""}`}
+              aria-hidden={!isAccessibilityOpen}
+            >
+              <div className="modal__collapsible-content">
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>First time tips</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={showFirstTimeTips}
+                        onChange={(event) => setPreference("firstTimeTips", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Show the quick hints about revealing, replacing, and swapping cards.</p>
+                </div>
+                <div className="modal__option">
+                  <label className="modal__option-label modal__option-toggle">
+                    <span>Auto-follow active player</span>
+                    <span className="toggle">
+                      <input
+                        className="toggle__input"
+                        type="checkbox"
+                        checked={isAutoFollowEnabled}
+                        onChange={(event) => setPreference("autoFollow", event.target.checked)}
+                      />
+                      <span className="toggle__track" aria-hidden="true" />
+                    </span>
+                  </label>
+                  <p className="modal__option-help">Automatically follow the active player after scrolling settles.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {activeTab === "profile" ? (
+        <section className="social-circle-panel__section">
+          {isProfileLoading ? <p className="notice">Loading account settings…</p> : null}
+          {profileError ? <p className="notice">Profile error: {profileError}</p> : null}
+          {canEditProfile ? (
+            <form className="modal__profile-form" onSubmit={(event) => void handleProfileSave(event)}>
+              <div className="modal__option">
+                <label className="modal__option-label" htmlFor="social-profile-name">
+                  <span>Display name</span>
+                </label>
+                <div className="modal__text-input-row">
+                  <input
+                    id="social-profile-name"
+                    className="form-card-font modal__text-input"
+                    type="text"
+                    value={profileName}
+                    onChange={(event) => setProfileName(event.target.value)}
+                    placeholder={authDisplayName ?? "Skye"}
+                    disabled={isProfileLoading || isSavingProfile}
+                  />
                   <button
-                    type="button"
                     className="modal__inline-save-button"
-                    onClick={() => {
-                      void invite.onAccept();
-                    }}
+                    type="submit"
+                    disabled={!profileName.trim() || !hasDisplayNameChanged || isProfileLoading || isSavingProfile}
                   >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    className="modal__inline-save-button"
-                    onClick={() => {
-                      void invite.onDecline();
-                    }}
-                  >
-                    Decline
+                    {isSavingProfile ? "Saving…" : "Save"}
                   </button>
                 </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </section>
+                <p className="modal__option-help">Choose the name other players see in lobbies and completed games.</p>
+              </div>
+              {shouldShowProfileStats ? (
+                <>
+                  <div className="modal__option">
+                    <div className="modal__option-label">
+                      <span>Progression</span>
+                    </div>
+                    <div
+                      className="profile-progression"
+                      aria-label={`Level ${displayedProgress.currentLevel} progression`}
+                      style={
+                        {
+                          "--profile-progress-width": `${displayedPercent}%`,
+                          "--profile-progress-duration": `${progressTransitionDurationMs}ms`,
+                          "--profile-progress-easing": progressTransitionTiming,
+                        } as CSSProperties
+                      }
+                    >
+                      <div className="profile-progression__bar-row">
+                        <span className="profile-progression__level-label">Lv. {displayedProgress.currentLevel}</span>
+                        <div
+                          className="profile-progression__bar"
+                          role="progressbar"
+                          aria-valuemin={0}
+                          aria-valuemax={displayedProgress.xpRequiredForCurrentLevel}
+                          aria-valuenow={displayedProgress.xpGainedTowardCurrentLevel}
+                          aria-valuetext={`${displayedProgress.xpGainedTowardCurrentLevel} of ${displayedProgress.xpRequiredForCurrentLevel} XP toward level ${displayedProgress.nextLevel}`}
+                        >
+                          <span className="profile-progression__fill" />
+                        </div>
+                        <span className="profile-progression__level-label">Lv. {displayedProgress.nextLevel}</span>
+                      </div>
+                      <p className="modal__option-help">{displayedProgressionHelperText}</p>
+                      <p className="modal__option-help">
+                        {finalProgress.xpRemainingToNextLevel} XP until level {finalProgress.nextLevel}.
+                      </p>
+                      {showRewardPreview ? (
+                        <div
+                          className="profile-progression__reward-preview"
+                          aria-label={`Reward preview for level ${finalProgress.nextLevel}`}
+                        >
+                          <div className="profile-progression__reward-cardback" aria-hidden="true" />
+                          <div>
+                            <p className="profile-progression__reward-title">Level {finalProgress.nextLevel} reward preview</p>
+                            <p className="modal__option-help">
+                              Reach this milestone to unlock the next cardback reward.
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="social-circle-panel__row-actions">
+                        {canReplayLatestXpAnimation ? (
+                          <button
+                            type="button"
+                            className="profile-progression__replay-button"
+                            onClick={() => {
+                              setHasCompletedPlayback(false);
+                              setXpReplayRunId((current) => current + 1);
+                            }}
+                          >
+                            Replay XP gain
+                          </button>
+                        ) : null}
+                        {xpReplayStatusText ? <p className="modal__option-help">{xpReplayStatusText}</p> : null}
+                      </div>
+                    </div>
+                  </div>
 
-      <section className="social-circle-panel__section">
-        <button
-          type="button"
-          className="profile-progression__replay-button social-circle-panel__toggle"
-          onClick={() => setIsFriendsOpen((current) => !current)}
-          aria-expanded={isFriendsOpen}
-        >
-          Friends ({friends.length})
-        </button>
-        {isFriendsOpen ? (
-          <div className="social-circle-panel__list" role="list">
-            {friends.length === 0 ? <p className="notice">No friends yet.</p> : null}
-            {friends.map((friend) => (
-              <article key={friend.uid} className="social-circle-panel__row" role="listitem">
-                <p className="social-circle-panel__row-text">{friend.displayName}</p>
-                <div className="social-circle-panel__row-actions">
-                  <button
-                    type="button"
-                    className="modal__inline-save-button"
-                    onClick={() => {
-                      void onClickInviteFriend(friend.uid);
-                    }}
-                    disabled={Boolean(invitingFriendUid)}
-                  >
-                    {invitingFriendUid === friend.uid ? "Inviting…" : "Invite to Lobby"}
+                  <div className="modal__option">
+                    <div className="modal__option-label">
+                      <span>Last 5 Results</span>
+                    </div>
+                    {recentPlacements.length ? (
+                      <>
+                        <div className="profile-results-list" aria-label={`Last 5 results: ${recentPlacementSummary}`}>
+                          {recentPlacements.map((placement, index) => {
+                            const badgeTone = placement <= 3 ? placement : 4;
+                            return (
+                              <span
+                                key={`${placement}-${index}`}
+                                className={`profile-results-badge profile-results-badge--${badgeTone}`}
+                              >
+                                {formatPlacementLabel(placement)}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <p className="modal__option-help">Recent finishes: {recentPlacementSummary}.</p>
+                      </>
+                    ) : (
+                      <p className="modal__option-help">No completed games yet.</p>
+                    )}
+                  </div>
+                </>
+              ) : null}
+
+              {profileSaveMessage ? <p className="notice">{profileSaveMessage}</p> : null}
+              {isAnonymousUser ? (
+                <div className="modal__actions modal__actions--stacked">
+                  <button type="button" className="modal__sign-out-button" onClick={() => void signInWithGoogleSso()}>
+                    Sign in with Google
                   </button>
+                  <p className="modal__option-help">
+                    Sign in with Google to save your profile, keep your match history, and see your last 5 games across
+                    devices.
+                  </p>
                 </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="social-circle-panel__section">
-        <button
-          type="button"
-          className="profile-progression__replay-button social-circle-panel__toggle"
-          onClick={() => setIsOnlineOpen((current) => !current)}
-          aria-expanded={isOnlineOpen}
-        >
-          Online ({online.length})
-        </button>
-        {isOnlineOpen ? (
-          <div className="social-circle-panel__list" role="list">
-            {online.length === 0 ? <p className="notice">No friends currently in a game.</p> : null}
-            {online.map((friend) => (
-              <article key={friend.uid} className="social-circle-panel__row" role="listitem">
-                <p className="social-circle-panel__row-text">
-                  {friend.displayName}
-                  {friend.activeGameId ? <span className="social-circle-panel__badge">In Game</span> : null}
-                </p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      {loading && !hasInvites && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
-      {error ? <p className="notice">{error}</p> : null}
+              ) : null}
+              <div className="modal__actions modal__actions--stacked">
+                <button type="button" className="modal__sign-out-button" onClick={() => void handleSignOut()}>
+                  Sign out
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="modal__option">
+              <p className="modal__option-help">We&apos;re loading your saved profile and recent match history.</p>
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }
