@@ -38,8 +38,10 @@ export default function PartyPresenceCluster() {
   const [profilePhotosById, setProfilePhotosById] = useState<Record<string, string | null>>({});
   const [isSageOpen, setIsSageOpen] = useState(false);
   const [sageAnimationPhase, setSageAnimationPhase] = useState<"opening" | "open" | "closing">("closing");
+  const [didCopyUserId, setDidCopyUserId] = useState(false);
   const localTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const orderedMembers = useMemo(() => {
     const mappedMembers: PresenceMember[] = members.map((member) => ({
@@ -146,8 +148,32 @@ export default function PartyPresenceCluster() {
       if (closeTimerRef.current) {
         clearTimeout(closeTimerRef.current);
       }
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
     };
   }, []);
+
+  const localUserDisplayName = localMember?.displayName.trim() || FALLBACK_LABEL;
+
+  const copyUserId = async () => {
+    if (!localMember?.id) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(localMember.id);
+      setDidCopyUserId(true);
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = setTimeout(() => {
+        setDidCopyUserId(false);
+      }, 1800);
+    } catch {
+      setDidCopyUserId(false);
+    }
+  };
 
   const openSagePanel = (trigger?: HTMLButtonElement | null) => {
     if (trigger) {
@@ -291,9 +317,23 @@ export default function PartyPresenceCluster() {
           <div className="party-presence-cluster__sage-panel" onClick={(event) => event.stopPropagation()}>
             <div className="party-presence-cluster__sage-content">
               <div className="party-presence-cluster__sage-header">
-                <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
-                  Party Sage
-                </h2>
+                <div className="party-presence-cluster__sage-title-group">
+                  <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
+                    {localUserDisplayName}
+                  </h2>
+                  <div className="party-presence-cluster__sage-user-id-row">
+                    <span className="party-presence-cluster__sage-user-id">{localMember?.id}</span>
+                    <button
+                      type="button"
+                      className="party-presence-cluster__copy-user-id"
+                      onClick={copyUserId}
+                      aria-label="Copy your user ID"
+                      title={didCopyUserId ? "Copied!" : "Copy user ID"}
+                    >
+                      📋
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="party-presence-cluster__sage-close"

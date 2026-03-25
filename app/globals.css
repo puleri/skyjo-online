@@ -4133,6 +4133,47 @@ border: 1px solid #ffedef;
   color: var(--color-text);
 }
 
+.party-presence-cluster__sage-title-group {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.party-presence-cluster__sage-user-id-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.party-presence-cluster__sage-user-id {
+  font-size: 0.73rem;
+  color: color-mix(in srgb, var(--color-text) 45%, var(--color-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-presence-cluster__copy-user-id {
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text) 50%, var(--color-surface));
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 6px;
+}
+
+.party-presence-cluster__copy-user-id:hover {
+  color: color-mix(in srgb, var(--color-text) 70%, var(--color-surface));
+}
+
+.party-presence-cluster__copy-user-id:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 1px;
+}
+
 .party-presence-cluster__sage-close {
   width: 34px;
   height: 34px;
