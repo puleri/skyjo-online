@@ -121,6 +121,7 @@ export default function LobbyScreen() {
   const wasLeaderboardOpen = useRef(false);
   const { uid } = useAnonymousAuth();
   const { partyId, party, members, isHost, startGame, setPreGameConfig } = useParty();
+  const isPartyGuest = Boolean(partyId && !isHost);
 
   useEffect(() => {
     if (!firebaseReady) {
@@ -1140,7 +1141,12 @@ export default function LobbyScreen() {
                 type="button"
                 className="form-button-full-width form-card-font"
                 onClick={() => void handleCreateClassiqueParty(100)}
-                disabled={!firebaseReady || isCreatingClassiqueParty || isCreatingQuickplayParty}
+                disabled={
+                  !firebaseReady ||
+                  isCreatingClassiqueParty ||
+                  isCreatingQuickplayParty ||
+                  isPartyGuest
+                }
               >
                 {isCreatingClassiqueParty ? "Creating Classique party..." : "Classique"}
               </button>
@@ -1149,9 +1155,28 @@ export default function LobbyScreen() {
                 type="button"
                 className="form-button-full-width form-card-font"
                 onClick={() => void handleCreateClassiqueParty(50)}
-                disabled={!firebaseReady || isCreatingClassiqueParty || isCreatingQuickplayParty}
+                disabled={
+                  !firebaseReady ||
+                  isCreatingClassiqueParty ||
+                  isCreatingQuickplayParty ||
+                  isPartyGuest
+                }
               >
                 {isCreatingQuickplayParty ? "Creating Quickplay party..." : "Quickplay"}
+              </button>
+              <button
+                type="button"
+                className="form-button-full-width form-card-font"
+                disabled
+              >
+                Experimental (WIP)
+              </button>
+              <button
+                type="button"
+                className="form-button-full-width form-card-font"
+                disabled
+              >
+                Shop (WIP)
               </button>
               {quickplayError ? <p className="notice">{quickplayError}</p> : null}
             </>
