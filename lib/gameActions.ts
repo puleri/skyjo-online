@@ -2243,7 +2243,16 @@ export const leavePartyGame = async (
   const mode = options?.mode ?? "self-only";
 
   if (!partyId) {
-    await leaveGame(gameId, playerId);
+    try {
+      await leaveGame(gameId, playerId);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown error while leaving game.";
+      throw new Error(
+        `Could not leave game ${gameId}. This usually means your local state is stale. ` +
+          `Please refresh and try again. Original error: ${message}`,
+      );
+    }
     return;
   }
 
@@ -2264,18 +2273,59 @@ export const leavePartyGame = async (
   if (mode === "whole-party") {
     const gameSnap = await getDoc(doc(db, "games", gameId));
     if (!gameSnap.exists()) {
-      throw new Error("Game not found.");
+      throw new Error(
+        `Game ${gameId} was not found. The party may still point to a stale game. ` +
+          "Have everyone refresh the lobby and start a new game from the party.",
+      );
     }
 
     const game = gameSnap.data() as GameDoc;
-    const activePlayerIds = new Set(game.activePlayerOrder ?? []);
+    const activePlayerOrder = game.activePlayerOrder ?? [];
+    const activePlayerIds = new Set(activePlayerOrder);
     const partyMemberIds = currentMembers.map((member) => member.id);
+    const partyMemberIdSet = new Set(partyMemberIds);
     const leavingPlayerIds = partyMemberIds.filter((memberId) =>
       activePlayerIds.has(memberId),
     );
+    const partyMembersNotInGame = partyMemberIds.filter(
+      (memberId) => !activePlayerIds.has(memberId),
+    );
+    const activePlayersNotInParty = activePlayerOrder.filter(
+      (activePlayerId) => !partyMemberIdSet.has(activePlayerId),
+    );
+    const hasMembershipMismatch =
+      partyMembersNotInGame.length > 0 || activePlayersNotInParty.length > 0;
+
+    if (hasMembershipMismatch) {
+      console.warn("[leavePartyGame] Party/game membership mismatch detected.", {
+        partyId,
+        gameId,
+        partyMemberIds,
+        activePlayerOrder,
+        partyMembersNotInGame,
+        activePlayersNotInParty,
+      });
+    }
+
+    if (partyMemberIds.length === 0) {
+      throw new Error(
+        `Party ${partyId} has no members, so no one could be removed from game ${gameId}. ` +
+          "This indicates stale party state. Refresh the party and try again.",
+      );
+    }
 
     for (const leavingPlayerId of leavingPlayerIds) {
-      await leaveGame(gameId, leavingPlayerId);
+      try {
+        await leaveGame(gameId, leavingPlayerId);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error while leaving game.";
+        throw new Error(
+          `Failed to remove player ${leavingPlayerId} from game ${gameId}. ` +
+            "Party and game state may be out of sync. Ask everyone to refresh the lobby, " +
+            `then retry. Original error: ${message}`,
+        );
+      }
     }
 
     await runTransaction(db, async (transaction) => {
@@ -2288,13 +2338,30 @@ export const leavePartyGame = async (
         status: "open",
         activeGameId: null,
         gameId: null,
+        lastWholePartyLeaveCleanup:
+          hasMembershipMismatch || partyMembersNotInGame.length > 0
+            ? {
+                partyMembersNotInGame,
+                activePlayersNotInParty,
+              }
+            : deleteField(),
         updatedAt: serverTimestamp(),
       });
     });
     return;
   }
 
-  await leaveGame(gameId, playerId);
+  try {
+    await leaveGame(gameId, playerId);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error while leaving game.";
+    throw new Error(
+      `Could not remove player ${playerId} from game ${gameId}. ` +
+        "This can happen when party/game state is stale. Refresh the party and retry. " +
+        `Original error: ${message}`,
+    );
+  }
 
   await runTransaction(db, async (transaction) => {
     const partySnap = await transaction.get(partyRef);
