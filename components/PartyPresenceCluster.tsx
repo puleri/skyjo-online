@@ -34,7 +34,7 @@ function getFallbackInitial(displayName: string) {
 
 export default function PartyPresenceCluster() {
   const { uid, displayName, profileDisplayName } = useAnonymousAuth();
-  const { members, partyId, invite, leave } = useParty();
+  const { members, partyId, ensurePartyId, leave } = useParty();
   const [profilePhotosById, setProfilePhotosById] = useState<Record<string, string | null>>({});
   const [isSageOpen, setIsSageOpen] = useState(false);
   const [sageAnimationPhase, setSageAnimationPhase] = useState<"opening" | "open" | "closing">("closing");
@@ -307,7 +307,7 @@ export default function PartyPresenceCluster() {
                 <SocialCirclePanel
                   partyId={partyId}
                   onLeaveParty={partyId ? leave : null}
-                  onEnsurePartyId={invite}
+                  onEnsurePartyId={ensurePartyId}
                 />
               </div>
             </div>
