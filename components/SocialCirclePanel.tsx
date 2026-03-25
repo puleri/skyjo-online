@@ -6,13 +6,18 @@ import { useSocialPanel } from "../lib/useSocialPanel";
 type SocialCirclePanelProps = {
   partyId: string | null;
   onLeaveParty?: (() => Promise<void>) | null;
+  onEnsurePartyId?: (() => Promise<string>) | null;
 };
 
 function getFriendInviteLabel(fromUserId: string) {
   return fromUserId.trim() ? `Friend request from ${fromUserId}` : "Friend request";
 }
 
-export default function SocialCirclePanel({ partyId, onLeaveParty = null }: SocialCirclePanelProps) {
+export default function SocialCirclePanel({
+  partyId,
+  onLeaveParty = null,
+  onEnsurePartyId = null,
+}: SocialCirclePanelProps) {
   const {
     invites,
     friends,
@@ -33,6 +38,7 @@ export default function SocialCirclePanel({ partyId, onLeaveParty = null }: Soci
   const [friendIdentifierInput, setFriendIdentifierInput] = useState("");
   const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
   const [isLeavingParty, setIsLeavingParty] = useState(false);
+  const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const inviteRows = useMemo(
@@ -79,6 +85,24 @@ export default function SocialCirclePanel({ partyId, onLeaveParty = null }: Soci
       await onLeaveParty();
     } finally {
       setIsLeavingParty(false);
+    }
+  };
+
+  const onClickInviteFriend = async (friendUid: string) => {
+    if (invitingFriendUid) {
+      return;
+    }
+
+    const resolvedPartyId = partyId ?? (onEnsurePartyId ? await onEnsurePartyId() : null);
+    if (!resolvedPartyId) {
+      return;
+    }
+
+    setInvitingFriendUid(friendUid);
+    try {
+      await inviteFriendToCurrentLobby(friendUid, resolvedPartyId);
+    } finally {
+      setInvitingFriendUid(null);
     }
   };
 
@@ -183,14 +207,11 @@ export default function SocialCirclePanel({ partyId, onLeaveParty = null }: Soci
                     type="button"
                     className="modal__inline-save-button"
                     onClick={() => {
-                      if (!partyId) {
-                        return;
-                      }
-                      void inviteFriendToCurrentLobby(friend.uid, partyId);
+                      void onClickInviteFriend(friend.uid);
                     }}
-                    disabled={!partyId}
+                    disabled={Boolean(invitingFriendUid)}
                   >
-                    Invite to Lobby
+                    {invitingFriendUid === friend.uid ? "Inviting…" : "Invite to Lobby"}
                   </button>
                 </div>
               </article>
