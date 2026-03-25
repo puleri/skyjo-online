@@ -4037,18 +4037,14 @@ border: 1px solid #ffedef;
 }
 
 .party-presence-cluster__sage-panel {
-  --sage-panel-size-open: clamp(540px, 86vw, 1060px);
-  --sage-panel-size-open-mobile: clamp(360px, min(94vw, 94vh), 700px);
-  --sage-panel-size-closed: 44px;
-  --sage-panel-anchor-top: 34px;
-  --sage-panel-anchor-right: 34px;
-  --sage-panel-open-bleed: clamp(18px, 5vw, 84px);
+  --sage-panel-width: min(380px, calc(100vw - 32px));
+  --sage-panel-max-height: min(760px, calc(100vh - 32px));
   position: fixed;
-  top: var(--sage-panel-anchor-top);
-  left: calc(100% - var(--sage-panel-anchor-right));
-  width: var(--sage-panel-size-closed);
-  height: var(--sage-panel-size-closed);
-  border-radius: 50%;
+  top: 16px;
+  right: 16px;
+  width: var(--sage-panel-width);
+  max-height: var(--sage-panel-max-height);
+  border-radius: 20px;
   background: radial-gradient(circle at top, color-mix(in srgb, var(--color-accent-soft), white 26%), var(--color-surface-bright));
   border: 3px solid var(--color-surface-bright);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
@@ -4056,55 +4052,77 @@ border: 1px solid #ffedef;
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 10px;
-  padding: 18px;
   overflow: hidden;
-  transform: translate(-50%, -50%);
-  transition: top 260ms ease, left 260ms ease, width 260ms ease, height 260ms ease, transform 260ms ease;
+  opacity: 0;
+  transform: translateY(-12px) scale(0.98);
+  transition: opacity 220ms ease, transform 220ms ease;
 }
 
 .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
 .party-presence-cluster__sage-panel--entering,
 .party-presence-cluster__sage-panel--open,
 .party-presence-cluster__sage-panel--exiting {
-  top: 50%;
-  left: calc(100% + var(--sage-panel-open-bleed));
-  width: var(--sage-panel-size-open);
-  height: var(--sage-panel-size-open);
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .party-presence-cluster__sage-modal--closing .party-presence-cluster__sage-panel,
 .party-presence-cluster__sage-panel--exiting {
-  top: var(--sage-panel-anchor-top);
-  left: calc(100% - var(--sage-panel-anchor-right));
-  width: var(--sage-panel-size-closed);
-  height: var(--sage-panel-size-closed);
+  opacity: 0;
+  transform: translateY(-12px) scale(0.98);
 }
 
 .party-presence-cluster__sage-content {
-  position: fixed;
-  top: 50%;
-  right: clamp(18px, 7vw, 132px);
-  transform: translateY(-50%);
-  width: min(360px, calc(100vw - 36px));
-  max-height: calc(100vh - 44px);
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  text-align: right;
-  z-index: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.party-presence-cluster__sage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
 }
 
 .party-presence-cluster__sage-title {
   margin: 0;
-  font-size: clamp(1.15rem, 3vw, 1.6rem);
+  font-size: clamp(1.05rem, 2.1vw, 1.35rem);
   letter-spacing: 0.02em;
   color: var(--color-text);
-  text-align: right;
 }
 
-.party-presence-cluster__sage-content .social-circle-panel {
+.party-presence-cluster__sage-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface-bright) 84%, var(--color-accent-soft) 16%);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.party-presence-cluster__sage-close:focus-visible {
+  outline: 3px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.party-presence-cluster__sage-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+}
+
+.party-presence-cluster__sage-body .social-circle-panel {
   flex: 1;
 }
 
@@ -4181,24 +4199,20 @@ border: 1px solid #ffedef;
   .party-presence-cluster__sage-modal,
   .party-presence-cluster__sage-backdrop,
   .party-presence-cluster__sage-panel {
-    transition: none;
+    transition: opacity 180ms ease;
   }
 
   .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
   .party-presence-cluster__sage-panel--entering,
   .party-presence-cluster__sage-panel--open,
   .party-presence-cluster__sage-panel--exiting {
-    top: 50%;
-    left: calc(100% + var(--sage-panel-open-bleed));
-    width: var(--sage-panel-size-open);
-    height: var(--sage-panel-size-open);
+    opacity: 1;
+    transform: none;
   }
 
   .party-presence-cluster__sage-modal--closing .party-presence-cluster__sage-panel {
-    top: var(--sage-panel-anchor-top);
-    left: calc(100% - var(--sage-panel-anchor-right));
-    width: var(--sage-panel-size-closed);
-    height: var(--sage-panel-size-closed);
+    opacity: 0;
+    transform: none;
   }
 }
 
@@ -4294,14 +4308,28 @@ border: 1px solid #ffedef;
   .party-presence-cluster__sage-panel--entering,
   .party-presence-cluster__sage-panel--open,
   .party-presence-cluster__sage-panel--exiting {
-    width: var(--sage-panel-size-open-mobile);
-    height: var(--sage-panel-size-open-mobile);
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: calc(100vw - 8px);
+    max-height: 80vh;
+    border-radius: 20px 20px 0 0;
+    border-width: 2px 2px 0;
+    transform: translateY(24px);
   }
 
-  .party-presence-cluster__sage-content {
-    right: 16px;
-    width: min(280px, calc(100vw - 24px));
-    max-height: calc(100vh - 32px);
+  .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
+  .party-presence-cluster__sage-panel--open,
+  .party-presence-cluster__sage-panel--entering {
+    transform: translateY(0);
+  }
+
+  .party-presence-cluster__sage-header {
+    padding: 12px 14px 10px;
+  }
+
+  .party-presence-cluster__sage-body {
+    padding: 10px 14px 14px;
   }
 }
 
@@ -4309,4 +4337,9 @@ border: 1px solid #ffedef;
   border-color: color-mix(in srgb, var(--color-accent) 60%, black 12%);
   background: color-mix(in srgb, var(--color-surface) 85%, var(--color-accent-soft) 15%);
   color: var(--color-text);
+}
+
+:root[data-theme="dark"] .party-presence-cluster__sage-close {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, black 28%);
+  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-accent-soft) 18%);
 }
