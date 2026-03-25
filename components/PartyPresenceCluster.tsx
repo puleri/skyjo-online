@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured } from "../lib/firebase";
 import { useParty } from "./LobbyProvider";
+import SocialCirclePanel from "./SocialCirclePanel";
 
 type PresenceMember = {
   id: string;
@@ -236,6 +237,7 @@ export default function PartyPresenceCluster() {
             <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
               Party Sage
             </h2>
+            <SocialCirclePanel partyId={partyId} />
           </div>
         </div>
       ) : null}
