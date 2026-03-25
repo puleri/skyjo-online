@@ -83,6 +83,7 @@ type AuthState = {
   email: string | null;
   displayName: string | null;
   profileDisplayName: string | null;
+  isAuthStateReady: boolean;
   isProfileLoading: boolean;
   isAnonymousUser: boolean;
   error: string | null;
@@ -173,6 +174,7 @@ export function useAnonymousAuth(): AuthState {
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [isAuthStateReady, setIsAuthStateReady] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isAnonymousUser, setIsAnonymousUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +182,7 @@ export function useAnonymousAuth(): AuthState {
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
+      setIsAuthStateReady(true);
       return;
     }
 
@@ -217,6 +220,7 @@ export function useAnonymousAuth(): AuthState {
       setEmail(user?.email ?? null);
       setDisplayName(user?.displayName ?? null);
       setProfileDisplayName(cachedProfileDisplayName);
+      setIsAuthStateReady(true);
       setIsProfileLoading(Boolean(user && !user.isAnonymous));
       setIsAnonymousUser(user?.isAnonymous ?? false);
       setAuthMode(resolvedAuthMode);
@@ -371,6 +375,7 @@ export function useAnonymousAuth(): AuthState {
     email,
     displayName,
     profileDisplayName,
+    isAuthStateReady,
     isProfileLoading,
     isAnonymousUser,
     error,

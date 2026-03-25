@@ -11,10 +11,11 @@ type HomeViewTransitionState = "idle" | "exiting" | "entering";
 const HOME_VIEW_TRANSITION_MS = 260;
 
 export default function HomeGate() {
-  const { uid, isAnonymousUser } = useAnonymousAuth();
+  const { uid, isAnonymousUser, isAuthStateReady } = useAnonymousAuth();
   const [storedUsername, setStoredUsername] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<HomeView>("unauthorized");
   const [transitionState, setTransitionState] = useState<HomeViewTransitionState>("idle");
+  const hasBootstrappedViewRef = useRef(false);
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -45,7 +46,19 @@ export default function HomeGate() {
   }, [isAnonymousUser, storedUsername, uid]);
 
   useEffect(() => {
+    if (!isAuthStateReady) {
+      return;
+    }
+
     const nextView: HomeView = isReadyForLobby ? "authorized" : "unauthorized";
+
+    if (!hasBootstrappedViewRef.current) {
+      hasBootstrappedViewRef.current = true;
+      setActiveView(nextView);
+      setTransitionState("idle");
+      return;
+    }
+
     if (nextView === activeView) {
       return;
     }
@@ -65,7 +78,7 @@ export default function HomeGate() {
         transitionTimeoutRef.current = null;
       }, HOME_VIEW_TRANSITION_MS);
     }, HOME_VIEW_TRANSITION_MS);
-  }, [activeView, isReadyForLobby]);
+  }, [activeView, isAuthStateReady, isReadyForLobby]);
 
   useEffect(() => {
     return () => {
