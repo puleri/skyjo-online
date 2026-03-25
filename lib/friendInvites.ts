@@ -96,11 +96,13 @@ export async function acceptFriendInvite(inviteId: string, currentUserId: string
 
     transaction.update(fromUserRef, {
       friends: arrayUnion(inviteData.toUserId),
+      lastAcceptedFriendInviteId: inviteId,
       updatedAt: serverTimestamp(),
     });
 
     transaction.update(toUserRef, {
       friends: arrayUnion(inviteData.fromUserId),
+      lastAcceptedFriendInviteId: inviteId,
       updatedAt: serverTimestamp(),
     });
 
