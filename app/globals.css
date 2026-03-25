@@ -3965,6 +3965,17 @@ border: 1px solid #ffedef;
   pointer-events: auto;
 }
 
+.party-presence-cluster__member-trigger {
+  appearance: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.party-presence-cluster__member-trigger:focus-visible {
+  outline: 3px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
 .party-presence-cluster__member:first-child {
   margin-left: 0;
 }
@@ -4013,6 +4024,53 @@ border: 1px solid #ffedef;
   border-color: var(--color-accent-secondary-strong);
 }
 
+.party-presence-cluster__sage-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, black 42%, transparent);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.party-presence-cluster__sage-modal--opening,
+.party-presence-cluster__sage-modal--open {
+  opacity: 1;
+}
+
+.party-presence-cluster__sage-panel {
+  width: min(50vmin, 460px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at top, color-mix(in srgb, var(--color-accent-soft), white 26%), var(--color-surface-bright));
+  border: 3px solid var(--color-surface-bright);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  transform-origin: top right;
+  transform: scale(0.09);
+  transition: transform 220ms ease;
+}
+
+.party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
+.party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel {
+  transform: scale(1);
+}
+
+.party-presence-cluster__sage-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 3vw, 1.6rem);
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] .party-presence-cluster__sage-panel {
+  border-color: var(--color-surface-alt);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
 @media (max-width: 640px) {
   .party-presence-cluster {
     top: 10px;
@@ -4028,5 +4086,9 @@ border: 1px solid #ffedef;
   .party-presence-cluster__member.is-local {
     width: 40px;
     height: 40px;
+  }
+
+  .party-presence-cluster__sage-panel {
+    width: min(68vmin, 420px);
   }
 }
