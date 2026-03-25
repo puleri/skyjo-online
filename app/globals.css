@@ -2553,10 +2553,12 @@ small {
   height: clamp(30px, 4vw, 55px);
 }
 .home-menu-buttons {
+  position: relative;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
-    font-family: "Metrophobic", serif;
+  font-family: "Metrophobic", serif;
   background-color: #D9D9D9;
   letter-spacing: 1.3px;
   font-size: clamp(18px, 6vw, 40px);
@@ -2566,13 +2568,49 @@ small {
   box-shadow: none;
   transition: all 0.3s ease-in-out;
 }
+
+.home-menu-buttons::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: none;
+}
+
+.home-menu-buttons > img {
+  position: relative;
+  z-index: 1;
+}
+
 .home-menu-buttons:hover {
-    background-color: #D9D9D9;
-
+  background-color: #D9D9D9;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.686);
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.686);
   scale: 1.02;
+}
 
+.home-menu-buttons:hover::before {
+  opacity: 1;
+}
+
+.home-menu-buttons--classique::before {
+  background-image: url("/home-assets/classique.webp");
+}
+
+.home-menu-buttons--quickplay::before {
+  background-image: url("/home-assets/quickplay.webp");
+}
+
+.home-menu-buttons--experimental::before {
+  background-image: url("/home-assets/experimental.webp");
+}
+
+.home-menu-buttons--shop::before {
+  background-image: url("/home-assets/shop.webp");
 }
 
 .form-card-font {

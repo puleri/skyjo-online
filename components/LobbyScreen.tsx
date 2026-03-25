@@ -1109,7 +1109,7 @@ export default function LobbyScreen() {
             <div className="lobby-bento-grid">
               <button
                 type="button"
-                className="home-menu-button_main-row home-menu-buttons lobby-bento-grid__classique"
+                className="home-menu-button_main-row home-menu-buttons home-menu-buttons--classique lobby-bento-grid__classique"
                 onClick={() => void handleCreateClassiqueParty(100)}
                 disabled={
                   !firebaseReady ||
@@ -1121,7 +1121,7 @@ export default function LobbyScreen() {
  <img src="/text/Classique.svg" alt="Classique" className="home-menu-words" />              </button>
               <button
                 type="button"
-                className="home-menu-button_main-row home-menu-buttons lobby-bento-grid__quickplay"
+                className="home-menu-button_main-row home-menu-buttons home-menu-buttons--quickplay lobby-bento-grid__quickplay"
                 onClick={() => void handleCreateClassiqueParty(50)}
                 disabled={
                   !firebaseReady ||
@@ -1134,14 +1134,14 @@ export default function LobbyScreen() {
               </button>
               <button
                 type="button"
-                className="home-menu-buttons experimental-button lobby-bento-grid__experimental"
+                className="home-menu-buttons home-menu-buttons--experimental experimental-button lobby-bento-grid__experimental"
                 disabled
               >
                 <img src="/text/Experimental.svg" alt="Experimental" className="home-menu-words" />
               </button>
               <button
                 type="button"
-                className="home-menu-buttons shop-button lobby-bento-grid__shop"
+                className="home-menu-buttons home-menu-buttons--shop shop-button lobby-bento-grid__shop"
                 disabled
               >
                 <img src="/text/Shop.svg" alt="Shop" className="home-menu-words" />
