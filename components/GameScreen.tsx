@@ -1091,7 +1091,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
         setGame({
           status: (data.status as string | undefined) ?? "pending",
           lobbyId: (data.lobbyId as string | null | undefined) ?? null,
-          partyId: (data.partyId as string | null | undefined) ?? null,
+          partyId:
+            (data.partyId as string | null | undefined) ??
+            (data.lobbyId as string | null | undefined) ??
+            null,
           currentPlayerId: (data.currentPlayerId as string | undefined) ?? null,
           activePlayerOrder: Array.isArray(data.activePlayerOrder)
             ? (data.activePlayerOrder as string[])
@@ -1159,14 +1162,15 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   }, [firebaseReady, gameId]);
 
   useEffect(() => {
-    if (!firebaseReady || !game?.lobbyId) {
+    const partyId = game?.partyId ?? game?.lobbyId ?? null;
+    if (!firebaseReady || !partyId) {
       setLobbyName(null);
       return;
     }
 
-    const lobbyRef = doc(db, "lobbies", game.lobbyId);
+    const partyRef = doc(db, "parties", partyId);
     const unsubscribe = onSnapshot(
-      lobbyRef,
+      partyRef,
       (snapshot) => {
         if (!snapshot.exists()) {
           setLobbyName("Unknown lobby");
@@ -1181,7 +1185,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady, game?.lobbyId]);
+  }, [firebaseReady, game?.partyId, game?.lobbyId]);
 
   useEffect(() => {
     if (!firebaseReady || !players.length) {
