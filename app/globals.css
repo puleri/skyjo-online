@@ -4260,6 +4260,40 @@ border: 1px solid #ffedef;
   padding-right: 4px;
 }
 
+.social-circle-panel__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding-bottom: 4px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 98%, transparent),
+    color-mix(in srgb, var(--color-surface) 72%, transparent)
+  );
+}
+
+.social-circle-panel__tab {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: color-mix(in srgb, var(--color-surface-alt) 78%, white 22%);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.social-circle-panel__tab--active {
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent) 52%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent-soft) 34%, var(--color-surface-bright) 66%);
+}
+
 .social-circle-panel__section {
   display: grid;
   gap: 6px;
