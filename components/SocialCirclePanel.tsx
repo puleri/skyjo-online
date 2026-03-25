@@ -2,6 +2,7 @@
 
 import { collection, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePreferences } from "../lib/preferences";
 import {
   buildXpAnimationSegments,
@@ -11,7 +12,7 @@ import {
   type StoredLevelProgress,
   type XpAnimationSegment,
 } from "../lib/progression";
-import { db, isFirebaseConfigured } from "../lib/firebase";
+import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import { useSocialPanel } from "../lib/useSocialPanel";
 import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
@@ -108,6 +109,10 @@ export default function SocialCirclePanel({
   const [playbackAnnouncement, setPlaybackAnnouncement] = useState<string | null>(null);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
+  const leaderboardTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const leaderboardCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const wasLeaderboardOpen = useRef(false);
+  const [isClient, setIsClient] = useState(false);
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const inviteRows = useMemo(
@@ -186,6 +191,10 @@ export default function SocialCirclePanel({
     isPlaybackActive && playbackAnnouncement ? playbackAnnouncement : progressionHelperText;
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     if (!isFirebaseConfigured || !isLeaderboardOpen) {
       return;
     }
@@ -215,6 +224,28 @@ export default function SocialCirclePanel({
     );
 
     return () => unsubscribe();
+  }, [isLeaderboardOpen]);
+
+  useEffect(() => {
+    if (isLeaderboardOpen) {
+      leaderboardCloseButtonRef.current?.focus();
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setIsLeaderboardOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      wasLeaderboardOpen.current = true;
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+
+    if (wasLeaderboardOpen.current) {
+      leaderboardTriggerRef.current?.focus();
+    }
+    wasLeaderboardOpen.current = false;
   }, [isLeaderboardOpen]);
 
   useEffect(() => {
@@ -491,6 +522,7 @@ export default function SocialCirclePanel({
             <button
               type="button"
               className="leaderboard-button social-circle-panel__toggle"
+              ref={leaderboardTriggerRef}
               onClick={() => setIsLeaderboardOpen(true)}
             >
               Open Leaderboard
@@ -940,55 +972,69 @@ export default function SocialCirclePanel({
         </section>
       ) : null}
 
-      {isLeaderboardOpen ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="social-leaderboard-title"
-          onClick={() => setIsLeaderboardOpen(false)}
-        >
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2 className="leaderboard-title" id="social-leaderboard-title">
-              Leaderboard
-            </h2>
-            <p>Lowest 10 scores of the season.</p>
-            <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
-            {leaderboardError ? <p className="notice">{leaderboardError}</p> : null}
-            {leaderboardEntries.length ? (
-              <ol className="leaderboard-list">
-                {leaderboardEntries.map((entry, index) => {
-                  const isPodium = index < podiumLabels.length;
+      {isClient && isLeaderboardOpen
+        ? createPortal(
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="social-leaderboard-title"
+            onClick={() => setIsLeaderboardOpen(false)}
+          >
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <h2 className="leaderboard-title" id="social-leaderboard-title">
+                Leaderboard
+              </h2>
+              <p>Lowest 10 scores of the season.</p>
+              <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
+              {!isFirebaseConfigured ? (
+                <p>
+                  Provide your Firebase environment variables to load leaderboard results. Missing keys:{" "}
+                  {missingFirebaseConfig.length ? missingFirebaseConfig.join(", ") : "Unknown (restart the dev server)."}
+                </p>
+              ) : leaderboardError ? (
+                <p className="notice">{leaderboardError}</p>
+              ) : leaderboardEntries.length ? (
+                <ol className="leaderboard-list">
+                  {leaderboardEntries.map((entry, index) => {
+                    const isPodium = index < podiumLabels.length;
 
-                  return (
-                    <li key={entry.id} className="leaderboard-list__item">
-                      {isPodium ? (
-                        <span
-                          className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
-                          aria-label={`${podiumLabels[index]} place`}
-                        >
-                          {podiumLabels[index]}
-                        </span>
-                      ) : (
-                        <span className="leaderboard-list__rank">{index + 1}.</span>
-                      )}
-                      <span className="leaderboard-list__name">{entry.displayName}</span>
-                      <span className="leaderboard-list__score">{entry.score}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : (
-              <p>No scores yet. Finish a game to claim a spot!</p>
-            )}
-            <div className="modal__actions">
-              <button className="form-button-full-width" type="button" onClick={() => setIsLeaderboardOpen(false)}>
-                Close
-              </button>
+                    return (
+                      <li key={entry.id} className="leaderboard-list__item">
+                        {isPodium ? (
+                          <span
+                            className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
+                            aria-label={`${podiumLabels[index]} place`}
+                          >
+                            {podiumLabels[index]}
+                          </span>
+                        ) : (
+                          <span className="leaderboard-list__rank">{index + 1}.</span>
+                        )}
+                        <span className="leaderboard-list__name">{entry.displayName}</span>
+                        <span className="leaderboard-list__score">{entry.score}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <p>No scores yet. Finish a game to claim a spot!</p>
+              )}
+              <div className="modal__actions">
+                <button
+                  className="form-button-full-width"
+                  type="button"
+                  ref={leaderboardCloseButtonRef}
+                  onClick={() => setIsLeaderboardOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body,
+        )
+        : null}
     </div>
   );
 }
