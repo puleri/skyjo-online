@@ -13,18 +13,20 @@ import { useAnonymousAuth } from "./auth";
 import { db, isFirebaseConfigured } from "./firebase";
 import {
   acceptFriendInvite,
-  acceptPartyInvite,
   declineFriendInvite,
-  declinePartyInvite,
   inviteFriendToCurrentLobby as inviteFriendToCurrentLobbyAction,
   normalizeSocialUser,
   sendFriendInviteByIdentifier,
   subscribeToFriendProfiles,
-  toPendingPartyInvite,
   type SocialFriendInvite,
-  type SocialPartyInvite,
   type SocialUser,
 } from "./socialPanel";
+import {
+  acceptPartyInvite,
+  declinePartyInvite,
+  subscribeToPendingPartyInvites,
+  type SocialPartyInvite,
+} from "./partyInvites";
 
 type SocialPanelInvites = {
   friend: SocialFriendInvite[];
@@ -81,12 +83,6 @@ export function useSocialPanel(): SocialPanelData {
       where("status", "==", "pending"),
     );
 
-    const partyInvitesQuery = query(
-      collection(db, "partyInvites"),
-      where("inviteeId", "==", uid),
-      where("status", "==", "pending"),
-    );
-
     const userRef = doc(db, "users", uid);
     let friendProfilesUnsubscribe: (() => void) | null = null;
 
@@ -114,18 +110,18 @@ export function useSocialPanel(): SocialPanelData {
       handleError,
     );
 
-    const unsubscribePartyInvites = onSnapshot(
-      partyInvitesQuery,
-      (snapshot) => {
-        setPartyInvites(
-          snapshot.docs
-            .map((inviteDoc) => toPendingPartyInvite(inviteDoc.id, inviteDoc.data() as Record<string, unknown>))
-            .filter((invite): invite is SocialPartyInvite => Boolean(invite)),
-        );
+    const unsubscribePartyInvites = subscribeToPendingPartyInvites({
+      db,
+      uid,
+      onNext: (nextInvites) => {
+        setPartyInvites(nextInvites);
         setLoading(false);
       },
-      handleError,
-    );
+      onError: (snapshotError) => {
+        setError(snapshotError.message);
+        setLoading(false);
+      },
+    });
 
     const unsubscribeProfile = onSnapshot(
       userRef,
