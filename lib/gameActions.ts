@@ -2278,6 +2278,19 @@ export const leavePartyGame = async (
       await leaveGame(gameId, leavingPlayerId);
     }
 
+    await runTransaction(db, async (transaction) => {
+      const partySnap = await transaction.get(partyRef);
+      if (!partySnap.exists()) {
+        return;
+      }
+
+      transaction.update(partyRef, {
+        status: "open",
+        activeGameId: null,
+        gameId: null,
+        updatedAt: serverTimestamp(),
+      });
+    });
     return;
   }
 
