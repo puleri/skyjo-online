@@ -26,7 +26,6 @@ type LobbyMeta = {
   hostId: string | null;
   status: string;
   gameId: string | null;
-  source: "party" | "lobby";
 };
 
 export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
@@ -82,15 +81,10 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
     }
 
     const partyRef = doc(db, "parties", lobbyId);
-    let unsubscribeLegacy: (() => void) | null = null;
     const unsubscribe = onSnapshot(
       partyRef,
       (partySnapshot) => {
         setError(null);
-        if (unsubscribeLegacy) {
-          unsubscribeLegacy();
-          unsubscribeLegacy = null;
-        }
         if (partySnapshot.exists()) {
           const data = partySnapshot.data();
           setLobbyState("exists");
@@ -101,37 +95,13 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
               (data.activeGameId as string | undefined) ??
               (data.gameId as string | undefined) ??
               null,
-            source: "party",
           });
           setHostName((data.hostDisplayName as string | undefined) ?? "A player");
           return;
         }
-
-        const legacyLobbyRef = doc(db, "lobbies", lobbyId);
-        unsubscribeLegacy = onSnapshot(
-          legacyLobbyRef,
-          (legacySnapshot) => {
-            if (!legacySnapshot.exists()) {
-              setLobbyState("missing");
-              setLobby(null);
-              setHostName("A player");
-              return;
-            }
-            const data = legacySnapshot.data();
-            setLobbyState("exists");
-            setLobby({
-              hostId: (data.hostId as string | undefined) ?? null,
-              status: (data.status as string | undefined) ?? "open",
-              gameId: (data.gameId as string | undefined) ?? null,
-              source: "lobby",
-            });
-            setHostName((data.hostDisplayName as string | undefined) ?? "A player");
-          },
-          (err) => {
-            setLobbyState("error");
-            setError(err.message);
-          }
-        );
+        setLobbyState("missing");
+        setLobby(null);
+        setHostName("A player");
       },
       (err) => {
         setLobbyState("error");
@@ -139,12 +109,7 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
       }
     );
 
-    return () => {
-      unsubscribe();
-      if (unsubscribeLegacy) {
-        unsubscribeLegacy();
-      }
-    };
+    return () => unsubscribe();
   }, [firebaseReady, lobbyId]);
 
   useEffect(() => {
