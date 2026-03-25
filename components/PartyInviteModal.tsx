@@ -1,10 +1,13 @@
 "use client";
 
-import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured } from "../lib/firebase";
-import { respondToPartyInvite, toPendingPartyInvite, type SocialPartyInvite } from "../lib/socialPanel";
+import {
+  respondToPartyInvite,
+  subscribeToPendingPartyInvites,
+  type SocialPartyInvite,
+} from "../lib/partyInvites";
 
 
 export default function PartyInviteModal() {
@@ -20,25 +23,17 @@ export default function PartyInviteModal() {
       return;
     }
 
-    const invitesQuery = query(
-      collection(db, "partyInvites"),
-      where("inviteeId", "==", uid),
-      where("status", "==", "pending"),
-    );
-
-    const unsubscribe = onSnapshot(
-      invitesQuery,
-      (snapshot) => {
-        const pendingInvite = snapshot.docs
-          .map((inviteDoc) => toPendingPartyInvite(inviteDoc.id, inviteDoc.data() as Record<string, unknown>))
-          .find((nextInvite) => Boolean(nextInvite));
-        setInvite(pendingInvite ?? null);
+    const unsubscribe = subscribeToPendingPartyInvites({
+      db,
+      uid,
+      onNext: (pendingInvites) => {
+        setInvite(pendingInvites[0] ?? null);
         setError(null);
       },
-      (snapshotError) => {
+      onError: (snapshotError) => {
         setError(snapshotError.message);
       },
-    );
+    });
 
     return () => unsubscribe();
   }, [firebaseReady, uid]);
