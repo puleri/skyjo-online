@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCurrentUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isFriend(uidA, uidB) {
+      return exists(/databases/$(database)/documents/users/$(uidA))
+        && uidB in get(/databases/$(database)/documents/users/$(uidA)).data.friends;
+    }
+
+    function acceptedInvitePath(inviteId, userId) {
+      let inviteAfter = getAfter(/databases/$(database)/documents/friendInvites/$(inviteId));
+      let actorUid = request.auth.uid;
+      let actorAfter = getAfter(/databases/$(database)/documents/users/$(actorUid));
+      return inviteAfter.data.status == 'accepted'
+        && inviteAfter.data.toUserId == actorUid
+        && (
+          (inviteAfter.data.fromUserId == userId && actorUid in request.resource.data.friends && userId in actorAfter.data.friends)
+          ||
+          (inviteAfter.data.toUserId == userId && inviteAfter.data.fromUserId in request.resource.data.friends)
+        );
+    }
+
+    function canWriteFriendsOnlyFields() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'friends',
+        'updatedAt',
+        'lastAcceptedFriendInviteId'
+      ]);
+    }
+
+    function canAcceptFriendInviteUserWrite(userId) {
+      return isSignedIn()
+        && request.resource.data.lastAcceptedFriendInviteId is string
+        && canWriteFriendsOnlyFields()
+        && acceptedInvitePath(request.resource.data.lastAcceptedFriendInviteId, userId);
+    }
+
+    function canCreatePartyInvite() {
+      let partyId = request.resource.data.partyId;
+      let partyPath = /databases/$(database)/documents/parties/$(partyId);
+      return isSignedIn()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.inviteeId is string
+        && exists(partyPath)
+        && (
+          get(partyPath).data.hostId == request.auth.uid
+          || request.auth.uid in get(partyPath).data.memberIds
+        );
+    }
+
+    // UI action: Add friend (send friend invite from social panel).
+    match /friendInvites/{inviteId} {
+      allow create: if isSignedIn()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.toUserId is string
+        && request.resource.data.toUserId != request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      // UI action: Add friend (invite inbox read for pending friend requests).
+      allow get, list: if isSignedIn()
+        && (
+          resource.data.toUserId == request.auth.uid
+          || resource.data.fromUserId == request.auth.uid
+        );
+
+      // UI action: Accept invite (only recipient can respond).
+      allow update: if isSignedIn()
+        && resource.data.toUserId == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.fromUserId == resource.data.fromUserId
+        && request.resource.data.toUserId == resource.data.toUserId
+        && request.resource.data.status in ['accepted', 'declined']
+        && (
+          request.resource.data.status == 'declined'
+          || (
+            request.resource.data.status == 'accepted'
+            && getAfter(/databases/$(database)/documents/users/$(resource.data.fromUserId)).data.friends.hasAll([resource.data.toUserId])
+            && getAfter(/databases/$(database)/documents/users/$(resource.data.toUserId)).data.friends.hasAll([resource.data.fromUserId])
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // UI action: Invite friend to lobby (party invite create from social panel).
+    match /partyInvites/{inviteId} {
+      allow create: if canCreatePartyInvite()
+        && request.resource.data.toUserId == request.resource.data.inviteeId;
+
+      // UI action: Invite friend to lobby (recipient inbox read).
+      allow get, list: if isSignedIn()
+        && (
+          resource.data.inviteeId == request.auth.uid
+          || resource.data.toUserId == request.auth.uid
+          || resource.data.fromUserId == request.auth.uid
+        );
+
+      // UI action: Invite friend to lobby (only recipient can accept/decline).
+      allow update: if isSignedIn()
+        && (
+          resource.data.inviteeId == request.auth.uid
+          || resource.data.toUserId == request.auth.uid
+        )
+        && request.resource.data.status in ['accepted', 'declined'];
+
+      allow delete: if false;
+    }
+
+    // UI actions: Add friend + accept invite + social panel friends presence.
+    match /users/{userId} {
+      // Read own profile and friends data needed by inbox/social UI.
+      allow get: if isCurrentUser(userId)
+        || (isSignedIn() && isFriend(userId, request.auth.uid));
+
+      allow list: if false;
+
+      // Self profile maintenance updates (cannot arbitrarily rewrite friends array).
+      allow create: if isCurrentUser(userId);
+
+      allow update: if isCurrentUser(userId)
+        ? request.resource.data.friends == resource.data.friends
+        : canAcceptFriendInviteUserWrite(userId);
+
+      // Preserve user documents from client-side deletion.
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
