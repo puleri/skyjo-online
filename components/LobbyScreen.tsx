@@ -117,7 +117,7 @@ export default function LobbyScreen() {
   const wasSettingsOpen = useRef(false);
   const wasLeaderboardOpen = useRef(false);
   const { uid } = useAnonymousAuth();
-  const { partyId, party, members, isHost, startGame, setPreGameConfig } = useParty();
+  const { partyId, party, members, isHost, startGame, setPreGameConfig, pendingJoinError } = useParty();
   const isPartyGuest = Boolean(partyId && !isHost);
 
   useEffect(() => {
@@ -644,6 +644,11 @@ export default function LobbyScreen() {
       {isSnowEnabled ? <SnowfallLayer height={"180%"} /> : null}
 
       <div className="container">
+        {pendingJoinError ? (
+          <p className="notice" role="status">
+            Couldn&apos;t join invite: {pendingJoinError}
+          </p>
+        ) : null}
         <div className="flex-space-between">
           <h2 className="sage-eyebrow-text">MISTY</h2>
           {/* when this button is clicked, it opens the rules image in another window */}
