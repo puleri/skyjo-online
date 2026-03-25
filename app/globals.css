@@ -28,6 +28,8 @@
   --color-bg: #f5eee9;
   --newcolor-bg: #BEC5B4;
   --on-newbg: #FFF9E2;
+    --menu-button-bg: #D9D9D9;
+
   --color-surface: #f1e8e1;
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
@@ -59,6 +61,9 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-bg: #1f1b18;
+    --newcolor-bg: #1f1b18;
+  --on-newbg: #FFF9E2;
+  --menu-button-bg: #33333351;
   --color-surface: #2a2421;
   --color-surface-alt: #3a322c;
   --color-surface-bright: #332c27;
@@ -2554,7 +2559,7 @@ small {
 }
 .home-menu-buttons {
   --sheen-angle: -24deg;
-  --sheen-offset-y: -58%;
+  --sheen-offset-y: 58%;
   --sheen-delay: 0s;
   --sheen-duration: 3.8s;
   --sheen-hover-duration: 0.85s;
@@ -2564,7 +2569,7 @@ small {
   justify-content: center;
   align-items: center;
   font-family: "Metrophobic", serif;
-  background-color: #D9D9D9;
+  background-color: var(--menu-button-bg);
   letter-spacing: 1.3px;
   font-size: clamp(18px, 6vw, 40px);
   font-weight: 700;
@@ -2573,6 +2578,12 @@ small {
   box-shadow: none;
   transition: all 0.3s ease-in-out;
 }
+.home-menu-buttons:disabled {
+  background: var(--menu-button-bg) !important;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 
 .home-menu-buttons::before {
   content: "";
@@ -2599,9 +2610,9 @@ small {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.18) 40%,
-    rgba(255, 255, 255, 0.3) 50%,
-    rgba(255, 255, 255, 0.2) 60%,
+    rgba(255, 255, 255, 0.01) 40%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.01) 60%,
     rgba(255, 255, 255, 0) 100%
   );
   transform: translateX(0) rotate(var(--sheen-angle));
@@ -2632,13 +2643,13 @@ small {
     105deg,
     rgba(255, 255, 255, 0) 0%,
     rgba(255, 255, 255, 0.04) 32%,
-    rgba(255, 255, 255, 0.48) 50%,
+    rgba(255, 255, 255, 0.28) 50%,
     rgba(255, 255, 255, 0.04) 68%,
     rgba(255, 255, 255, 0) 100%
   );
   animation-name: home-menu-sheen-hover-from-left;
   animation-duration: var(--sheen-hover-duration);
-  animation-timing-function: cubic-bezier(0.94, 0.44, 0.3, .5);
+  animation-timing-function: cubic-bezier(0.14, 0.14, 0.5, .5);
   animation-iteration-count: 1;
   animation-fill-mode: both;
   animation-delay: 0s;
@@ -2650,7 +2661,7 @@ small {
 
 .home-menu-buttons--classique {
   --sheen-angle: 37deg;
-  --sheen-offset-y: -60%;
+  --sheen-offset-y: -135%;
   --sheen-delay: 0.15s;
 }
 
@@ -2660,7 +2671,7 @@ small {
 
 .home-menu-buttons--quickplay {
   --sheen-angle: 32deg;
-  --sheen-offset-y: -10%;
+  --sheen-offset-y: -130%;
   --sheen-delay: 0.5s;
 }
 
@@ -2695,7 +2706,7 @@ small {
 
 @keyframes home-menu-sheen-hover-from-left {
   0% {
-    transform: translateX(-220%) rotate(var(--sheen-angle));
+    transform: translateX(-200%) rotate(var(--sheen-angle));
     opacity: 0;
   }
   15% {
@@ -4262,7 +4273,7 @@ border: 1px solid #ffedef;
   width: var(--sage-panel-width);
   max-height: var(--sage-panel-max-height);
   border-radius: 20px;
-  background: radial-gradient(circle at top, color-mix(in srgb, var(--color-accent-soft), white 26%), var(--color-surface-bright));
+  background: var(--color-surface);
   border: 3px solid var(--color-surface-bright);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
   display: flex;
@@ -4400,11 +4411,6 @@ border: 1px solid #ffedef;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   padding-bottom: 4px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--color-surface) 98%, transparent),
-    color-mix(in srgb, var(--color-surface) 72%, transparent)
-  );
 }
 
 .social-circle-panel__tab {

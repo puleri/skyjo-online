@@ -433,7 +433,7 @@ export default function SocialCirclePanel({
             className={`social-circle-panel__tab ${activeTab === tabKey ? "social-circle-panel__tab--active" : ""}`}
             onClick={() => setActiveTab(tabKey)}
           >
-            {tabKey === "social" ? "Social" : tabKey === "preferences" ? "Preferences" : "Profile"}
+            {tabKey === "social" ? "Social" : tabKey === "preferences" ? "Settings" : "Profile"}
           </button>
         ))}
       </div>
