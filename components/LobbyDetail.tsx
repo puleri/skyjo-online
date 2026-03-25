@@ -59,6 +59,20 @@ const THEME_FADE_IN_SECONDS = 1.5;
 const THEME_TARGET_VOLUME = 1;
 const lobbyBgSnowLight = "/images/misty-lobby-bg-snow.png";
 const lobbyBgSnowDark = "/images/misty-lobby-bg-snow-dark.png";
+const themeLoopAudioUrl = "/sounds/theme/main-theme-loop.wav";
+let themeLoopAudioDataPromise: Promise<ArrayBuffer> | null = null;
+
+const loadThemeLoopAudioData = () => {
+  if (!themeLoopAudioDataPromise) {
+    themeLoopAudioDataPromise = fetch(themeLoopAudioUrl)
+      .then((response) => response.arrayBuffer())
+      .catch((error) => {
+        themeLoopAudioDataPromise = null;
+        throw error;
+      });
+  }
+  return themeLoopAudioDataPromise;
+};
 
 export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -127,14 +141,12 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
       return;
     }
 
-    const audioUrl = "/sounds/theme/main-theme-loop.wav";
     const audioContext = new AudioContext();
     const gainNode = audioContext.createGain();
     gainNode.connect(audioContext.destination);
     audioContextRef.current = audioContext;
 
     let isActive = true;
-    const abortController = new AbortController();
 
     const handleResume = () => {
       audioContext.resume().catch(() => undefined);
@@ -144,9 +156,8 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
     window.addEventListener("keydown", handleResume, { once: true });
     window.addEventListener("touchstart", handleResume, { once: true });
 
-    fetch(audioUrl, { signal: abortController.signal })
-      .then((response) => response.arrayBuffer())
-      .then((buffer) => audioContext.decodeAudioData(buffer))
+    loadThemeLoopAudioData()
+      .then((buffer) => audioContext.decodeAudioData(buffer.slice(0)))
       .then((decodedBuffer) => {
         if (!isActive) {
           return;
@@ -166,7 +177,6 @@ export default function LobbyDetail({ lobbyId }: LobbyDetailProps) {
 
     return () => {
       isActive = false;
-      abortController.abort();
       audioSourceRef.current?.stop();
       audioSourceRef.current?.disconnect();
       audioSourceRef.current = null;
