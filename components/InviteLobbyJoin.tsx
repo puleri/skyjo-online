@@ -3,9 +3,6 @@
 import {
   doc,
   onSnapshot,
-  getDoc,
-  serverTimestamp,
-  setDoc,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +13,7 @@ import {
   usernameStorageKey,
 } from "../lib/auth";
 import { app, db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
+import { joinPartyByIdAction } from "../lib/partyActions";
 import LoadingSwipeOverlay from "./LoadingSwipeOverlay";
 
 type InviteLobbyJoinProps = {
@@ -161,52 +159,12 @@ export default function InviteLobbyJoin({ lobbyId }: InviteLobbyJoinProps) {
         await saveProfileDisplayName(trimmedName);
       }
 
-      const partyRef = doc(db, "parties", lobbyId);
-      const partyMemberRef = doc(db, "parties", lobbyId, "partyMembers", resolvedUid);
-      const partySnapshot = await getDoc(partyRef);
-      if (!partySnapshot.exists()) {
-        throw new Error("This lobby no longer exists.");
-      }
-
-      const partyData = partySnapshot.data();
-      if ((partyData.status as string | undefined) === "in-game") {
-        const gameId =
-          (partyData.activeGameId as string | undefined) ??
-          (partyData.gameId as string | undefined) ??
-          null;
-        if (gameId) {
-          throw new Error("This lobby is already in a game. Spectate instead.");
-        }
-        throw new Error("This lobby is already in a game.");
-      }
-
-      const existingMemberSnapshot = await getDoc(partyMemberRef);
-      const isHost = (partyData.hostId as string | undefined) === resolvedUid;
-      if (existingMemberSnapshot.exists()) {
-        await setDoc(
-          partyMemberRef,
-          {
-            displayName: trimmedName,
-            photoURL: null,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } else {
-        await setDoc(partyMemberRef, {
-          displayName: trimmedName,
-          photoURL: null,
-          joinedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          isHost,
-        });
-      }
-
-      await setDoc(
-        doc(db, "users", resolvedUid),
-        { activePartyId: lobbyId, updatedAt: serverTimestamp() },
-        { merge: true }
-      );
+      await joinPartyByIdAction({
+        db,
+        partyId: lobbyId,
+        uid: resolvedUid,
+        playerDisplayName: trimmedName,
+      });
       setJoinSuccess("Joined party.");
       if (shouldRouteHomeAfterJoinRef.current) {
         router.replace("/");

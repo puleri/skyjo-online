@@ -20,6 +20,7 @@ import { clearPendingPartyJoin, getPendingPartyJoin } from "../lib/pendingPartyJ
 import { useRouter } from "next/navigation";
 import {
   MIN_PARTY_SIZE_TO_START,
+  joinPartyByIdAction,
   isValidPreGameConfig,
   startPartyGameAction,
   type GameType,
@@ -428,81 +429,11 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       storedDisplayName: readStoredUsername(),
     });
 
-    void runTransaction(db, async (transaction) => {
-      const partyRef = doc(db, "parties", pendingPartyId);
-      const memberRef = doc(db, "parties", pendingPartyId, "partyMembers", uid);
-      const userRef = doc(db, "users", uid);
-
-      const [partySnap, existingMemberSnap] = await Promise.all([
-        transaction.get(partyRef),
-        transaction.get(memberRef),
-      ]);
-
-      if (!partySnap.exists()) {
-        throw new Error("That invite is no longer valid because the party no longer exists.");
-      }
-
-      const partyData = partySnap.data();
-      if ((partyData.status as string | undefined) === "in-game") {
-        throw new Error("That party is currently in a game and cannot accept new players.");
-      }
-
-      const existingPlayerIds = Array.isArray(partyData.playerIds)
-        ? partyData.playerIds.filter((id): id is string => typeof id === "string")
-        : [];
-      const existingPlayerNames = Array.isArray(partyData.playerNames)
-        ? partyData.playerNames.filter((name): name is string => typeof name === "string")
-        : [];
-      const availableGlyphs = Array.isArray(partyData.availableGlyphs)
-        ? partyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
-        : [...GLYPHS];
-      const assignedGlyphs = Array.isArray(partyData.assignedGlyphs)
-        ? partyData.assignedGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
-        : [];
-
-      const isExistingMember = existingMemberSnap.exists() || existingPlayerIds.includes(uid);
-      const nextGlyph = availableGlyphs[0] ?? null;
-      const nextPlayerIds = isExistingMember ? existingPlayerIds : [...existingPlayerIds, uid];
-      const nextPlayerNames = isExistingMember ? existingPlayerNames : [...existingPlayerNames, resolvedDisplayName];
-
-      if (existingMemberSnap.exists()) {
-        transaction.update(memberRef, {
-          displayName: resolvedDisplayName,
-          photoURL: null,
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        transaction.set(memberRef, {
-          displayName: resolvedDisplayName,
-          photoURL: null,
-          joinedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          isHost: false,
-        });
-      }
-
-      transaction.update(partyRef, {
-        memberIds: nextPlayerIds,
-        playerIds: nextPlayerIds,
-        playerNames: nextPlayerNames,
-        playerCount: nextPlayerIds.length,
-        players: nextPlayerIds.length,
-        assignedGlyphs: isExistingMember || !nextGlyph ? assignedGlyphs : [...assignedGlyphs, nextGlyph],
-        availableGlyphs:
-          isExistingMember || !nextGlyph
-            ? availableGlyphs
-            : availableGlyphs.filter((glyph) => glyph !== nextGlyph),
-        updatedAt: serverTimestamp(),
-      });
-
-      transaction.set(
-        userRef,
-        {
-          activePartyId: pendingPartyId,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+    void joinPartyByIdAction({
+      db,
+      partyId: pendingPartyId,
+      uid,
+      playerDisplayName: resolvedDisplayName,
     })
       .then(() => {
         clearPendingPartyJoin();

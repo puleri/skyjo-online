@@ -8,6 +8,7 @@ import {
   serverTimestamp,
   type Firestore,
 } from "firebase/firestore";
+import { GLYPHS } from "./constants";
 import {
   createMistyDeck,
   shuffleDeck,
@@ -62,6 +63,21 @@ type StartSoloGameParams = {
   preGameConfig: PreGameConfig;
 };
 
+type JoinPartyInGameBehavior = "reject" | "spectate";
+
+type JoinPartyByIdParams = {
+  db: Firestore;
+  partyId: string;
+  uid: string;
+  playerDisplayName: string;
+  inGameBehavior?: JoinPartyInGameBehavior;
+};
+
+type JoinPartyByIdResult = {
+  joinedAsMember: boolean;
+  activeGameId: string | null;
+};
+
 type PartyMemberSnapshot = {
   id: string;
   displayName: string;
@@ -78,6 +94,117 @@ function toPartyMemberSnapshot(id: string, data: Record<string, unknown>): Party
     isHost: Boolean(data.isHost),
     joinedAt: data.joinedAt,
   };
+}
+
+function filterStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+export async function joinPartyByIdAction({
+  db,
+  partyId,
+  uid,
+  playerDisplayName,
+  inGameBehavior = "reject",
+}: JoinPartyByIdParams): Promise<JoinPartyByIdResult> {
+  const resolvedDisplayName = playerDisplayName.trim() || "Anonymous player";
+
+  return runTransaction(db, async (transaction) => {
+    const partyRef = doc(db, "parties", partyId);
+    const partyMemberRef = doc(db, "parties", partyId, "partyMembers", uid);
+    const userRef = doc(db, "users", uid);
+
+    const [partySnap, existingMemberSnap] = await Promise.all([
+      transaction.get(partyRef),
+      transaction.get(partyMemberRef),
+    ]);
+
+    if (!partySnap.exists()) {
+      throw new Error("Party not found.");
+    }
+
+    const partyData = partySnap.data();
+    const partyStatus = typeof partyData.status === "string" ? partyData.status : "open";
+    const activeGameId =
+      typeof partyData.activeGameId === "string"
+        ? partyData.activeGameId
+        : typeof partyData.gameId === "string"
+          ? partyData.gameId
+          : null;
+    const isInGame = partyStatus === "in-game";
+
+    if (isInGame && inGameBehavior !== "spectate") {
+      throw new Error(activeGameId ? "This lobby is already in a game. Spectate instead." : "This lobby is already in a game.");
+    }
+
+    if (isInGame && inGameBehavior === "spectate") {
+      transaction.set(
+        userRef,
+        {
+          activePartyId: partyId,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      return { joinedAsMember: false, activeGameId };
+    }
+
+    const existingPlayerIds = filterStringArray(partyData.playerIds);
+    const existingPlayerNames = filterStringArray(partyData.playerNames);
+    const availableGlyphs = (() => {
+      const fromDoc = filterStringArray(partyData.availableGlyphs);
+      return fromDoc.length ? fromDoc : [...GLYPHS];
+    })();
+    const assignedGlyphs = filterStringArray(partyData.assignedGlyphs);
+
+    const isExistingMember = existingMemberSnap.exists() || existingPlayerIds.includes(uid);
+    const nextGlyph = availableGlyphs[0] ?? null;
+    const nextPlayerIds = isExistingMember ? existingPlayerIds : [...existingPlayerIds, uid];
+    const nextPlayerNames = isExistingMember ? existingPlayerNames : [...existingPlayerNames, resolvedDisplayName];
+
+    if (existingMemberSnap.exists()) {
+      transaction.update(partyMemberRef, {
+        displayName: resolvedDisplayName,
+        photoURL: null,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      const isHost = (partyData.hostId as string | undefined) === uid;
+      transaction.set(partyMemberRef, {
+        displayName: resolvedDisplayName,
+        photoURL: null,
+        joinedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isHost,
+      });
+    }
+
+    transaction.update(partyRef, {
+      memberIds: nextPlayerIds,
+      playerIds: nextPlayerIds,
+      playerNames: nextPlayerNames,
+      playerCount: nextPlayerIds.length,
+      players: nextPlayerIds.length,
+      assignedGlyphs: isExistingMember || !nextGlyph ? assignedGlyphs : [...assignedGlyphs, nextGlyph],
+      availableGlyphs:
+        isExistingMember || !nextGlyph
+          ? availableGlyphs
+          : availableGlyphs.filter((glyph) => glyph !== nextGlyph),
+      updatedAt: serverTimestamp(),
+    });
+
+    transaction.set(
+      userRef,
+      {
+        activePartyId: partyId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    return { joinedAsMember: true, activeGameId };
+  });
 }
 
 export async function startPartyGameAction({ db, partyId, callerUid }: StartPartyGameParams): Promise<string> {
