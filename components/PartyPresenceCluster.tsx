@@ -1,7 +1,7 @@
 "use client";
 
 import { doc, onSnapshot } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured } from "../lib/firebase";
 import { useParty } from "./LobbyProvider";
@@ -33,8 +33,8 @@ function getFallbackInitial(displayName: string) {
 }
 
 export default function PartyPresenceCluster() {
-  const { uid } = useAnonymousAuth();
-  const { members, partyId } = useParty();
+  const { uid, displayName, profileDisplayName } = useAnonymousAuth();
+  const { members, partyId, leave } = useParty();
   const [profilePhotosById, setProfilePhotosById] = useState<Record<string, string | null>>({});
   const [isSageOpen, setIsSageOpen] = useState(false);
   const [sageAnimationPhase, setSageAnimationPhase] = useState<"opening" | "open" | "closing">("closing");
@@ -42,10 +42,6 @@ export default function PartyPresenceCluster() {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const orderedMembers = useMemo(() => {
-    if (!members.length) {
-      return [];
-    }
-
     const mappedMembers: PresenceMember[] = members.map((member) => ({
       id: member.id,
       displayName: member.displayName,
@@ -53,11 +49,22 @@ export default function PartyPresenceCluster() {
       isHost: member.isHost,
     }));
 
+    if (!mappedMembers.length && uid) {
+      const fallbackLocalDisplayName =
+        profileDisplayName?.trim() || displayName?.trim() || FALLBACK_LABEL;
+      mappedMembers.push({
+        id: uid,
+        displayName: fallbackLocalDisplayName,
+        photoURL: null,
+        isHost: false,
+      });
+    }
+
     const localUser = uid ? mappedMembers.find((member) => member.id === uid) ?? null : null;
     const otherMembers = mappedMembers.filter((member) => member.id !== uid);
 
     return localUser ? [...otherMembers, localUser] : mappedMembers;
-  }, [members, uid]);
+  }, [displayName, members, profileDisplayName, uid]);
 
   const localMember = useMemo(
     () => (uid ? orderedMembers.find((member) => member.id === uid) ?? null : null),
@@ -168,7 +175,7 @@ export default function PartyPresenceCluster() {
     setSageAnimationPhase("closing");
   };
 
-  if (!partyId || !orderedMembers.length) {
+  if (!orderedMembers.length) {
     return null;
   }
 
@@ -196,9 +203,8 @@ export default function PartyPresenceCluster() {
 
           if (isLocalUser) {
             return (
-              <>
+              <Fragment key={member.id}>
                 <button
-                  key={`${member.id}-trigger`}
                   ref={localTriggerRef}
                   type="button"
                   className={`party-presence-cluster__member party-presence-cluster__member-trigger party-presence-cluster__member-trigger--desktop${member.isHost ? " is-host" : ""} is-local`}
@@ -218,7 +224,6 @@ export default function PartyPresenceCluster() {
                   {avatarContent}
                 </button>
                 <div
-                  key={`${member.id}-indicator`}
                   className={`party-presence-cluster__member party-presence-cluster__member-indicator--mobile${member.isHost ? " is-host" : ""} is-local`}
                   title={avatarLabel}
                   aria-label={avatarLabel}
@@ -227,7 +232,7 @@ export default function PartyPresenceCluster() {
                 >
                   {avatarContent}
                 </div>
-              </>
+              </Fragment>
             );
           }
 
@@ -299,7 +304,7 @@ export default function PartyPresenceCluster() {
                 </button>
               </div>
               <div className="party-presence-cluster__sage-body">
-                <SocialCirclePanel partyId={partyId} />
+                <SocialCirclePanel partyId={partyId} onLeaveParty={partyId ? leave : null} />
               </div>
             </div>
           </div>

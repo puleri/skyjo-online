@@ -274,6 +274,14 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
         players: nextPlayerIds.length,
         updatedAt: serverTimestamp(),
       });
+
+      nextMembers.forEach((member) => {
+        const nextMemberRef = doc(db, "parties", partyId, "partyMembers", member.id);
+        transaction.update(nextMemberRef, {
+          isHost: Boolean(nextHostId && member.id === nextHostId),
+          updatedAt: serverTimestamp(),
+        });
+      });
     });
 
     await setActivePartyId(null);
