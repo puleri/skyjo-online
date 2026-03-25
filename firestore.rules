@@ -114,6 +114,123 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+
+
+    function partyDocPath(partyId) {
+      return /databases/$(database)/documents/parties/$(partyId);
+    }
+
+    function partyMemberDocPath(partyId, uid) {
+      return /databases/$(database)/documents/parties/$(partyId)/partyMembers/$(uid);
+    }
+
+    function canReadParty(partyId) {
+      let partyData = get(partyDocPath(partyId)).data;
+      let partyMemberIds = partyData.memberIds is list ? partyData.memberIds : [];
+      return isSignedIn()
+        && (
+          exists(partyMemberDocPath(partyId, request.auth.uid))
+          || request.auth.uid in partyMemberIds
+          || partyData.hostId == request.auth.uid
+          || partyData.status == 'open'
+        );
+    }
+
+    function isValidJoinPartyMemberCreate(partyId, uid) {
+      return isCurrentUser(uid)
+        && request.resource.data.keys().hasOnly([
+          'displayName',
+          'photoURL',
+          'joinedAt',
+          'updatedAt',
+          'isHost'
+        ])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.isHost == false
+        && get(partyDocPath(partyId)).data.status == 'open'
+        && getAfter(partyDocPath(partyId)).data.memberIds.hasAll([uid])
+        && getAfter(partyDocPath(partyId)).data.playerIds.hasAll([uid]);
+    }
+
+    function isValidJoinPartyMemberUpdate(uid) {
+      return isCurrentUser(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName',
+          'photoURL',
+          'updatedAt'
+        ])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.isHost == resource.data.isHost
+        && request.resource.data.joinedAt == resource.data.joinedAt;
+    }
+
+    function isValidJoinPartyAggregateUpdate(partyId) {
+      let uid = request.auth.uid;
+      let beforeMemberIds = resource.data.memberIds is list ? resource.data.memberIds : [];
+      let afterMemberIds = request.resource.data.memberIds;
+      let alreadyMember = beforeMemberIds.hasAny([uid]);
+      let addsOnlySelf = !alreadyMember
+        && afterMemberIds.size() == beforeMemberIds.size() + 1
+        && afterMemberIds.hasAll(beforeMemberIds)
+        && afterMemberIds.hasAll([uid]);
+      let unchangedMembers = alreadyMember && afterMemberIds == beforeMemberIds;
+      return isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'memberIds',
+          'playerIds',
+          'playerNames',
+          'playerCount',
+          'players',
+          'assignedGlyphs',
+          'availableGlyphs',
+          'updatedAt'
+        ])
+        && resource.data.status == 'open'
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.hostId == resource.data.hostId
+        && request.resource.data.hostDisplayName == resource.data.hostDisplayName
+        && afterMemberIds is list
+        && request.resource.data.playerIds is list
+        && request.resource.data.playerNames is list
+        && request.resource.data.playerIds == afterMemberIds
+        && request.resource.data.playerNames.size() == afterMemberIds.size()
+        && request.resource.data.playerCount == afterMemberIds.size()
+        && request.resource.data.players == afterMemberIds.size()
+        && afterMemberIds.size() <= 8
+        && (addsOnlySelf || unchangedMembers)
+        && getAfter(partyMemberDocPath(partyId, uid)).data.isHost == false;
+    }
+
+
+    // UI actions: Create/read/update lobby and roster membership.
+    match /parties/{partyId} {
+      allow create: if isSignedIn()
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.memberIds is list
+        && request.resource.data.memberIds.hasAll([request.auth.uid]);
+
+      allow get: if canReadParty(partyId);
+      allow list: if false;
+
+      // Join flow aggregate update: partyMembers/{uid} + parties/{partyId} in one transaction.
+      allow update: if isValidJoinPartyAggregateUpdate(partyId);
+
+      allow delete: if false;
+
+      match /partyMembers/{uid} {
+        allow get: if isCurrentUser(uid) || canReadParty(partyId);
+        allow list: if canReadParty(partyId);
+
+        allow create: if isValidJoinPartyMemberCreate(partyId, uid);
+        allow update: if isValidJoinPartyMemberUpdate(uid);
+
+        allow delete: if false;
+      }
+    }
+
     // UI actions: Add friend + accept invite + social panel friends presence.
     match /users/{userId} {
       // Read own profile and friends data needed by inbox/social UI.
