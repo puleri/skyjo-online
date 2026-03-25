@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  addDoc,
   collection,
   doc,
   getDocs,
@@ -12,7 +13,8 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useAnonymousAuth } from "../lib/auth";
+import { readStoredUsername, resolvePlayerDisplayName, useAnonymousAuth } from "../lib/auth";
+import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured } from "../lib/firebase";
 import { useRouter } from "next/navigation";
 import {
@@ -53,6 +55,7 @@ type PartyContextValue = {
   toggleReady: () => Promise<void>;
   startGame: () => Promise<void>;
   setActivePartyId: (nextPartyId: string | null) => Promise<void>;
+  ensurePartyId: () => Promise<string>;
 };
 
 const PartyContext = createContext<PartyContextValue | null>(null);
@@ -125,7 +128,7 @@ function toParty(id: string, data: Record<string, unknown>): Party {
 }
 
 export default function LobbyProvider({ children }: { children: ReactNode }) {
-  const { uid } = useAnonymousAuth();
+  const { uid, displayName, profileDisplayName } = useAnonymousAuth();
   const [partyId, setPartyId] = useState<string | null>(null);
   const [party, setParty] = useState<Party | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
@@ -227,6 +230,53 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
 
     return inviteLink;
   }, [partyId]);
+
+  const ensurePartyId = useCallback(async () => {
+    if (!uid) {
+      throw new Error("Sign in before inviting friends.");
+    }
+
+    if (partyId) {
+      return partyId;
+    }
+
+    const resolvedName = resolvePlayerDisplayName({
+      profileDisplayName,
+      authDisplayName: displayName,
+      storedDisplayName: readStoredUsername(),
+    });
+    const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
+
+    const partyRef = await addDoc(collection(db, "parties"), {
+      name: `${resolvedName}'s party`,
+      hostId: uid,
+      memberIds: [uid],
+      activeGameId: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      status: "open",
+      playerCount: 1,
+      hostDisplayName: resolvedName,
+      playerIds: [uid],
+      playerNames: [resolvedName],
+      players: 1,
+      assignedGlyphs: [hostGlyph],
+      availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
+      preGameConfig: null,
+      isPrivate: true,
+    });
+
+    await setDoc(doc(db, "parties", partyRef.id, "partyMembers", uid), {
+      displayName: resolvedName,
+      photoURL: null,
+      joinedAt: serverTimestamp(),
+      isHost: true,
+      isReady: false,
+    });
+
+    await setActivePartyId(partyRef.id);
+    return partyRef.id;
+  }, [displayName, partyId, profileDisplayName, setActivePartyId, uid]);
 
   const leave = useCallback(async () => {
     if (!uid || !partyId) {
@@ -377,8 +427,23 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       toggleReady,
       startGame,
       setActivePartyId,
+      ensurePartyId,
     }),
-    [invite, leave, loadingParty, loadingUser, members, party, partyId, setActivePartyId, setPreGameConfig, startGame, toggleReady, uid],
+    [
+      ensurePartyId,
+      invite,
+      leave,
+      loadingParty,
+      loadingUser,
+      members,
+      party,
+      partyId,
+      setActivePartyId,
+      setPreGameConfig,
+      startGame,
+      toggleReady,
+      uid,
+    ],
   );
 
   return <PartyContext.Provider value={value}>{children}</PartyContext.Provider>;
