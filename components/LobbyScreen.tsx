@@ -1,13 +1,10 @@
 "use client";
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
   onSnapshot,
   orderBy,
-  serverTimestamp,
-  setDoc,
   query,
   Timestamp,
 } from "firebase/firestore";
@@ -22,7 +19,6 @@ import {
   useState,
 } from "react";
 import { readStoredUsername, resolvePlayerDisplayName, useAnonymousAuth } from "../lib/auth";
-import { GLYPHS } from "../lib/constants";
 import { usePreferences } from "../lib/preferences";
 import CreateLobbyForm from "./CreateLobbyForm";
 import PartyInviteModal from "./PartyInviteModal";
@@ -42,6 +38,7 @@ import {
   type XpAnimationSegment,
 } from "../lib/progression";
 import { formatPlacementLabel } from "../lib/userProfile";
+import { startSoloGameAction } from "../lib/partyActions";
 import { MIN_PARTY_SIZE_TO_START, type PreGameConfig, useParty } from "./LobbyProvider";
 
 type LeaderboardEntry = {
@@ -591,7 +588,6 @@ export default function LobbyScreen() {
       authDisplayName,
       storedDisplayName: readStoredUsername(),
     });
-    const hostGlyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? GLYPHS[0];
     if (isQuickplay) {
       setIsCreatingQuickplayParty(true);
       setQuickplayError(null);
@@ -600,21 +596,10 @@ export default function LobbyScreen() {
       setClassiqueError(null);
     }
     try {
-      const partyRef = await addDoc(collection(db, "parties"), {
-        name: `${resolvedName}'s ${modeName} party`,
-        hostId: uid,
-        memberIds: [uid],
-        activeGameId: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        status: "open",
-        playerCount: 1,
-        hostDisplayName: resolvedName,
-        playerIds: [uid],
-        playerNames: [resolvedName],
-        players: 1,
-        assignedGlyphs: [hostGlyph],
-        availableGlyphs: GLYPHS.filter((glyph) => glyph !== hostGlyph),
+      const gameId = await startSoloGameAction({
+        db,
+        callerUid: uid,
+        playerDisplayName: resolvedName,
         preGameConfig: isQuickplay
           ? {
               gameType: "spike",
@@ -632,26 +617,12 @@ export default function LobbyScreen() {
               spikeEndGameBonuses: false,
               targetScore,
             },
-        isPrivate: true,
       });
 
-      await setDoc(doc(db, "parties", partyRef.id, "partyMembers", uid), {
-        displayName: resolvedName,
-        photoURL: null,
-        joinedAt: serverTimestamp(),
-        isHost: true,
-      });
-
-      await setDoc(
-        doc(db, "users", uid),
-        { activePartyId: partyRef.id, updatedAt: serverTimestamp() },
-        { merge: true },
-      );
-
-      router.push(`/lobby/${partyRef.id}`);
+      router.push(`/game/${gameId}`);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : `Unable to create a ${modeName} party right now.`;
+        error instanceof Error ? error.message : `Unable to start a ${modeName} game right now.`;
       if (isQuickplay) {
         setQuickplayError(message);
       } else {
@@ -1143,7 +1114,7 @@ export default function LobbyScreen() {
                   isPartyGuest
                 }
               >
-                {isCreatingClassiqueParty ? "Creating Classique party..." : "Classique"}
+                {isCreatingClassiqueParty ? "Starting Classique game..." : "Classique"}
               </button>
               <button
                 type="button"
@@ -1156,7 +1127,7 @@ export default function LobbyScreen() {
                   isPartyGuest
                 }
               >
-                {isCreatingQuickplayParty ? "Creating Quickplay party..." : "Quickplay"}
+                {isCreatingQuickplayParty ? "Starting Quickplay game..." : "Quickplay"}
               </button>
               <button
                 type="button"

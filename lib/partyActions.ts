@@ -55,6 +55,12 @@ type StartPartyGameParams = {
   partyId: string;
   callerUid: string;
 };
+type StartSoloGameParams = {
+  db: Firestore;
+  callerUid: string;
+  playerDisplayName: string;
+  preGameConfig: PreGameConfig;
+};
 
 type PartyMemberSnapshot = {
   id: string;
@@ -204,6 +210,108 @@ export async function startPartyGameAction({ db, partyId, callerUid }: StartPart
       activeGameId: gameRef.id,
       gameId: gameRef.id,
       updatedAt: serverTimestamp(),
+    });
+  });
+
+  return gameRef.id;
+}
+
+export async function startSoloGameAction({
+  db,
+  callerUid,
+  playerDisplayName,
+  preGameConfig,
+}: StartSoloGameParams): Promise<string> {
+  if (!isValidPreGameConfig(preGameConfig)) {
+    throw new Error("Invalid game settings.");
+  }
+
+  const gameRef = doc(collection(db, "games"));
+  const playerOrder = [callerUid];
+  const partyMembers: PartyMemberSnapshot[] = [
+    {
+      id: callerUid,
+      displayName: playerDisplayName.trim() || "Anonymous player",
+      photoURL: null,
+      isHost: true,
+      joinedAt: null,
+    },
+  ];
+  const { spikeMode, spikeItemCount, spikeRowClear, spikeEndGameBonuses, targetScore } =
+    preGameConfig;
+
+  await runTransaction(db, async (transaction) => {
+    let shuffledDeck: Card[] = shuffleDeck(createMistyDeck());
+    const grid: number[] = [];
+    for (let i = 0; i < 12; i += 1) {
+      const card = shuffledDeck.pop();
+      if (typeof card !== "number") {
+        throw new Error("Not enough cards to deal opening hand.");
+      }
+      grid.push(card);
+    }
+
+    if (spikeMode) {
+      shuffledDeck = shuffleDeckWithDelayedSwapCards(shuffledDeck, spikeItemCount, playerOrder.length);
+    }
+
+    const discardCard = shuffledDeck.pop();
+    if (discardCard === undefined) {
+      throw new Error("Deck is empty after dealing.");
+    }
+
+    transaction.set(gameRef, {
+      status: "playing",
+      partyId: null,
+      hostId: callerUid,
+      roundNumber: 1,
+      currentPlayerId: callerUid,
+      activePlayerOrder: playerOrder,
+      turnPhase: "choose-draw",
+      deck: shuffledDeck,
+      discard: [discardCard],
+      graveyard: [],
+      preGameConfig,
+      targetScore,
+      partyMembersSnapshot: partyMembers,
+      spikeMode,
+      ...(spikeMode ? { spikeItemCount, spikeRowClear, spikeEndGameBonuses } : {}),
+      lastTurnPlayerId: null,
+      lastTurnAction: null,
+      lastTurnActionAt: null,
+      createdAt: serverTimestamp(),
+    });
+
+    const initialRevealed = Array.from({ length: 12 }, () => false);
+    transaction.set(doc(db, "games", gameRef.id, "players", callerUid), {
+      displayName: partyMembers[0].displayName,
+      seatIndex: 0,
+      isReady: false,
+      roundScore: 0,
+      totalScore: 0,
+      pointsClearedFromRows: 0,
+      pointsDiscarded: 0,
+      discardedCardCount: 0,
+      revealedCardValueTotal: 0,
+      revealedCardCount: 0,
+      itemCardsDrawn: 0,
+      revealed: initialRevealed,
+      publicGrid: Array.from({ length: 12 }, () => null),
+      revealedCount: 0,
+    });
+
+    transaction.set(doc(db, "games", gameRef.id, "playerStates", callerUid), {
+      grid,
+      revealed: initialRevealed,
+      pendingDraw: null,
+      pendingDrawSource: null,
+      totalScore: 0,
+      pointsClearedFromRows: 0,
+      pointsDiscarded: 0,
+      discardedCardCount: 0,
+      revealedCardValueTotal: 0,
+      revealedCardCount: 0,
+      itemCardsDrawn: 0,
     });
   });
 
