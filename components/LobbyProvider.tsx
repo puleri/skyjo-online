@@ -12,10 +12,11 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { readStoredUsername, resolvePlayerDisplayName, useAnonymousAuth } from "../lib/auth";
 import { GLYPHS } from "../lib/constants";
 import { db, isFirebaseConfigured } from "../lib/firebase";
+import { clearPendingPartyJoin, getPendingPartyJoin } from "../lib/pendingPartyJoin";
 import { useRouter } from "next/navigation";
 import {
   MIN_PARTY_SIZE_TO_START,
@@ -49,6 +50,7 @@ type PartyContextValue = {
   members: PartyMember[];
   isHost: boolean;
   loading: boolean;
+  pendingJoinError: string | null;
   invite: () => Promise<string>;
   leave: () => Promise<void>;
   setPreGameConfig: (config: PreGameConfig) => Promise<void>;
@@ -128,12 +130,14 @@ function toParty(id: string, data: Record<string, unknown>): Party {
 }
 
 export default function LobbyProvider({ children }: { children: ReactNode }) {
-  const { uid, displayName, profileDisplayName } = useAnonymousAuth();
+  const { uid, displayName, profileDisplayName, isAuthStateReady } = useAnonymousAuth();
   const [partyId, setPartyId] = useState<string | null>(null);
   const [party, setParty] = useState<Party | null>(null);
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingParty, setLoadingParty] = useState(false);
+  const [pendingJoinError, setPendingJoinError] = useState<string | null>(null);
+  const pendingJoinInFlightRef = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -405,6 +409,114 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
     });
   }, [party, partyId, uid]);
 
+  useEffect(() => {
+    if (!isFirebaseConfigured || !isAuthStateReady || !uid || pendingJoinInFlightRef.current) {
+      return;
+    }
+
+    const pendingPartyId = getPendingPartyJoin();
+    if (!pendingPartyId) {
+      return;
+    }
+
+    pendingJoinInFlightRef.current = true;
+    setPendingJoinError(null);
+
+    const resolvedDisplayName = resolvePlayerDisplayName({
+      profileDisplayName,
+      authDisplayName: displayName,
+      storedDisplayName: readStoredUsername(),
+    });
+
+    void runTransaction(db, async (transaction) => {
+      const partyRef = doc(db, "parties", pendingPartyId);
+      const memberRef = doc(db, "parties", pendingPartyId, "partyMembers", uid);
+      const userRef = doc(db, "users", uid);
+
+      const [partySnap, existingMemberSnap] = await Promise.all([
+        transaction.get(partyRef),
+        transaction.get(memberRef),
+      ]);
+
+      if (!partySnap.exists()) {
+        throw new Error("That invite is no longer valid because the party no longer exists.");
+      }
+
+      const partyData = partySnap.data();
+      if ((partyData.status as string | undefined) === "in-game") {
+        throw new Error("That party is currently in a game and cannot accept new players.");
+      }
+
+      const existingPlayerIds = Array.isArray(partyData.playerIds)
+        ? partyData.playerIds.filter((id): id is string => typeof id === "string")
+        : [];
+      const existingPlayerNames = Array.isArray(partyData.playerNames)
+        ? partyData.playerNames.filter((name): name is string => typeof name === "string")
+        : [];
+      const availableGlyphs = Array.isArray(partyData.availableGlyphs)
+        ? partyData.availableGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
+        : [...GLYPHS];
+      const assignedGlyphs = Array.isArray(partyData.assignedGlyphs)
+        ? partyData.assignedGlyphs.filter((glyph): glyph is string => typeof glyph === "string")
+        : [];
+
+      const isExistingMember = existingMemberSnap.exists() || existingPlayerIds.includes(uid);
+      const nextGlyph = availableGlyphs[0] ?? null;
+      const nextPlayerIds = isExistingMember ? existingPlayerIds : [...existingPlayerIds, uid];
+      const nextPlayerNames = isExistingMember ? existingPlayerNames : [...existingPlayerNames, resolvedDisplayName];
+
+      if (existingMemberSnap.exists()) {
+        transaction.update(memberRef, {
+          displayName: resolvedDisplayName,
+          photoURL: null,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        transaction.set(memberRef, {
+          displayName: resolvedDisplayName,
+          photoURL: null,
+          joinedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          isHost: false,
+        });
+      }
+
+      transaction.update(partyRef, {
+        memberIds: nextPlayerIds,
+        playerIds: nextPlayerIds,
+        playerNames: nextPlayerNames,
+        playerCount: nextPlayerIds.length,
+        players: nextPlayerIds.length,
+        assignedGlyphs: isExistingMember || !nextGlyph ? assignedGlyphs : [...assignedGlyphs, nextGlyph],
+        availableGlyphs:
+          isExistingMember || !nextGlyph
+            ? availableGlyphs
+            : availableGlyphs.filter((glyph) => glyph !== nextGlyph),
+        updatedAt: serverTimestamp(),
+      });
+
+      transaction.set(
+        userRef,
+        {
+          activePartyId: pendingPartyId,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    })
+      .then(() => {
+        clearPendingPartyJoin();
+        router.replace("/");
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : "Unable to join the party from this invite.";
+        setPendingJoinError(message);
+      })
+      .finally(() => {
+        pendingJoinInFlightRef.current = false;
+      });
+  }, [displayName, isAuthStateReady, profileDisplayName, router, uid]);
+
 
   useEffect(() => {
     if (!party?.activeGameId) {
@@ -421,6 +533,7 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       members,
       isHost: Boolean(uid && party?.hostId && uid === party.hostId),
       loading: loadingUser || loadingParty,
+      pendingJoinError,
       invite,
       leave,
       setPreGameConfig,
@@ -436,6 +549,7 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       loadingParty,
       loadingUser,
       members,
+      pendingJoinError,
       party,
       partyId,
       setActivePartyId,
