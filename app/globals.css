@@ -27,6 +27,7 @@
   font-family: "Metrophobic", "sans-serif";
   --color-bg: #f5eee9;
   --newcolor-bg: #BEC5B4;
+  --on-newbg: #FFF9E2;
   --color-surface: #f1e8e1;
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
@@ -2548,15 +2549,29 @@ small {
   aspect-ratio: 1/1;
 }
 
+.home-menu-words {
+  height: clamp(30px, 4vw, 55px);
+}
 .home-menu-buttons {
   display: flex;
   justify-content: center;
   align-items: center;
     font-family: "Metrophobic", serif;
+  background-color: #D9D9D9;
   letter-spacing: 1.3px;
   font-size: clamp(18px, 6vw, 40px);
   font-weight: 700;
-  color: var(--color-dark);
+  color: var(--on-newbg);
+  filter: none;
+  box-shadow: none;
+  transition: all 0.3s ease-in-out;
+}
+.home-menu-buttons:hover {
+    background-color: #D9D9D9;
+
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.686);
+  scale: 1.02;
 
 }
 

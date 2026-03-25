@@ -284,17 +284,17 @@ export default function LobbyScreen() {
   );
   const displayedProgress = isPlaybackActive
     ? {
-        currentLevel: displayedLeftLevel,
-        nextLevel: displayedRightLevel,
-        progressPercent: displayedPercent,
-        xpGainedTowardCurrentLevel: activePlaybackSegment.startXp,
-        xpRequiredForCurrentLevel: activePlaybackSegment.xpRequiredForLevel,
-        xpRemainingToNextLevel: Math.max(
-          0,
-          activePlaybackSegment.xpRequiredForLevel -
-            activePlaybackSegment.startXp,
-        ),
-      }
+      currentLevel: displayedLeftLevel,
+      nextLevel: displayedRightLevel,
+      progressPercent: displayedPercent,
+      xpGainedTowardCurrentLevel: activePlaybackSegment.startXp,
+      xpRequiredForCurrentLevel: activePlaybackSegment.xpRequiredForLevel,
+      xpRemainingToNextLevel: Math.max(
+        0,
+        activePlaybackSegment.xpRequiredForLevel -
+        activePlaybackSegment.startXp,
+      ),
+    }
     : finalProgress;
   const showRewardPreview = isNextLevelMultipleOfFive(finalProgress.nextLevel);
   const totalLifetimeXp = useMemo(
@@ -539,21 +539,21 @@ export default function LobbyScreen() {
 
       const classiqueConfig: PreGameConfig = isQuickplay
         ? {
-            gameType: "spike",
-            spikeMode: true,
-            spikeItemCount: "high",
-            spikeRowClear: true,
-            spikeEndGameBonuses: true,
-            targetScore,
-          }
+          gameType: "spike",
+          spikeMode: true,
+          spikeItemCount: "high",
+          spikeRowClear: true,
+          spikeEndGameBonuses: true,
+          targetScore,
+        }
         : {
-            gameType: "classic",
-            spikeMode: false,
-            spikeItemCount: "none",
-            spikeRowClear: false,
-            spikeEndGameBonuses: false,
-            targetScore,
-          };
+          gameType: "classic",
+          spikeMode: false,
+          spikeItemCount: "none",
+          spikeRowClear: false,
+          spikeEndGameBonuses: false,
+          targetScore,
+        };
 
       if (isQuickplay) {
         setIsCreatingQuickplayParty(true);
@@ -602,13 +602,13 @@ export default function LobbyScreen() {
         playerDisplayName: resolvedName,
         preGameConfig: isQuickplay
           ? {
-              gameType: "spike",
-              spikeMode: true,
-              spikeItemCount: "high",
-              spikeRowClear: true,
-              spikeEndGameBonuses: true,
-              targetScore,
-            }
+            gameType: "spike",
+            spikeMode: true,
+            spikeItemCount: "high",
+            spikeRowClear: true,
+            spikeEndGameBonuses: true,
+            targetScore,
+          }
           : {
               gameType: "classic",
               spikeMode: false,
@@ -705,7 +705,7 @@ export default function LobbyScreen() {
               {isProfileLoading ? (
                 <p className="notice">Loading account settings…</p>
               ) : null}
-              
+
               {profileError ? (
                 <p className="notice">Profile error: {profileError}</p>
               ) : null}
@@ -1118,8 +1118,7 @@ export default function LobbyScreen() {
                   isPartyGuest
                 }
               >
-                {isCreatingClassiqueParty ? "Starting Classique game..." : "Classique"}
-              </button>
+ <img src="/text/Classique.svg" alt="Classique" className="home-menu-words" />              </button>
               <button
                 type="button"
                 className="home-menu-button_main-row home-menu-buttons lobby-bento-grid__quickplay"
@@ -1131,21 +1130,22 @@ export default function LobbyScreen() {
                   isPartyGuest
                 }
               >
-                {isCreatingQuickplayParty ? "Starting Quickplay game..." : "Quickplay"}
+                 <img src="/text/Quickplay.svg" alt="Quickplay" className="home-menu-words" />
               </button>
               <button
                 type="button"
                 className="home-menu-buttons experimental-button lobby-bento-grid__experimental"
                 disabled
               >
-                Experimental
+                <img src="/text/Experimental.svg" alt="Experimental" className="home-menu-words" />
               </button>
               <button
                 type="button"
                 className="home-menu-buttons shop-button lobby-bento-grid__shop"
                 disabled
               >
-                Shop
+                <img src="/text/Shop.svg" alt="Shop" className="home-menu-words" />
+
               </button>
             </div>
           ) : null}
