@@ -119,6 +119,16 @@ async function ensureUserProfile(user: User) {
     userRef,
     {
       ...(existingProfile.displayName ? {} : { displayName: user.displayName }),
+      ...(Array.isArray(existingProfile.friends) ? {} : { friends: [] }),
+      ...(typeof existingProfile.activeGameId === "string" || existingProfile.activeGameId === null
+        ? {}
+        : { activeGameId: null }),
+      ...(existingProfile.presenceState === "online" ||
+      existingProfile.presenceState === "in_game" ||
+      existingProfile.presenceState === "offline"
+        ? {}
+        : { presenceState: "offline" }),
+      ...(existingProfile.lastSeenAt ? {} : { lastSeenAt: null }),
       email: user.email,
       photoURL: user.photoURL,
       updatedAt: serverTimestamp(),

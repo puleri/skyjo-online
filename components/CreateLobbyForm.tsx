@@ -122,8 +122,10 @@ export default function CreateLobbyForm() {
       const inviteRef = await addDoc(collection(db, "partyInvites"), {
         partyId: partyRef.id,
         hostId: uid,
+        fromUserId: uid,
         hostDisplayName: resolvedName,
         inviteeId: trimmedInviteeId,
+        toUserId: trimmedInviteeId,
         status: "pending",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

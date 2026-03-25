@@ -67,6 +67,15 @@ async function ensureUserProfile(user: User) {
       ...(typeof existingProfile.email === "string" ? {} : { email: user.email }),
       ...(typeof existingProfile.photoURL === "string" ? {} : { photoURL: user.photoURL }),
       ...(Array.isArray(existingProfile.friends) ? {} : { friends: defaultProfile.friends }),
+      ...(typeof existingProfile.activeGameId === "string" || existingProfile.activeGameId === null
+        ? {}
+        : { activeGameId: defaultProfile.activeGameId }),
+      ...(existingProfile.presenceState === "online" ||
+      existingProfile.presenceState === "in_game" ||
+      existingProfile.presenceState === "offline"
+        ? {}
+        : { presenceState: defaultProfile.presenceState }),
+      ...(existingProfile.lastSeenAt ? {} : { lastSeenAt: defaultProfile.lastSeenAt }),
       ...(Array.isArray(existingProfile.lastFiveGames)
         ? {}
         : { lastFiveGames: defaultProfile.lastFiveGames }),
