@@ -4024,39 +4024,67 @@ border: 1px solid #ffedef;
   border-color: var(--color-accent-secondary-strong);
 }
 
-.party-presence-cluster__sage-modal {
+.party-presence-cluster__sage-modal,
+.party-presence-cluster__sage-backdrop {
   position: fixed;
   inset: 0;
   z-index: 120;
-  display: grid;
-  place-items: center;
   background: color-mix(in srgb, black 42%, transparent);
   opacity: 0;
   transition: opacity 220ms ease;
 }
 
 .party-presence-cluster__sage-modal--opening,
-.party-presence-cluster__sage-modal--open {
+.party-presence-cluster__sage-modal--open,
+.party-presence-cluster__sage-backdrop--entering,
+.party-presence-cluster__sage-backdrop--open,
+.party-presence-cluster__sage-backdrop--exiting {
   opacity: 1;
 }
 
+.party-presence-cluster__sage-modal--closing,
+.party-presence-cluster__sage-backdrop--exiting {
+  opacity: 0;
+}
+
 .party-presence-cluster__sage-panel {
-  width: min(50vmin, 460px);
-  aspect-ratio: 1;
+  --sage-panel-size-open: clamp(280px, 50vw, 620px);
+  --sage-panel-size-open-mobile: clamp(220px, min(78vw, 78vh), 520px);
+  --sage-panel-size-closed: 44px;
+  --sage-panel-anchor-top: 34px;
+  --sage-panel-anchor-right: 34px;
+  position: fixed;
+  top: var(--sage-panel-anchor-top);
+  left: calc(100% - var(--sage-panel-anchor-right));
+  width: var(--sage-panel-size-closed);
+  height: var(--sage-panel-size-closed);
   border-radius: 50%;
   background: radial-gradient(circle at top, color-mix(in srgb, var(--color-accent-soft), white 26%), var(--color-surface-bright));
   border: 3px solid var(--color-surface-bright);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
   display: grid;
   place-items: center;
-  transform-origin: top right;
-  transform: scale(0.09);
-  transition: transform 220ms ease;
+  transform: translate(-50%, -50%);
+  transition: top 260ms ease, left 260ms ease, width 260ms ease, height 260ms ease, transform 260ms ease;
 }
 
 .party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
-.party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel {
-  transform: scale(1);
+.party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
+.party-presence-cluster__sage-panel--entering,
+.party-presence-cluster__sage-panel--open,
+.party-presence-cluster__sage-panel--exiting {
+  top: 50%;
+  left: 50%;
+  width: var(--sage-panel-size-open);
+  height: var(--sage-panel-size-open);
+}
+
+.party-presence-cluster__sage-modal--closing .party-presence-cluster__sage-panel,
+.party-presence-cluster__sage-panel--exiting {
+  top: var(--sage-panel-anchor-top);
+  left: calc(100% - var(--sage-panel-anchor-right));
+  width: var(--sage-panel-size-closed);
+  height: var(--sage-panel-size-closed);
 }
 
 .party-presence-cluster__sage-title {
@@ -4069,6 +4097,33 @@ border: 1px solid #ffedef;
 :root[data-theme="dark"] .party-presence-cluster__sage-panel {
   border-color: var(--color-surface-alt);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .party-presence-cluster__sage-modal,
+  .party-presence-cluster__sage-backdrop,
+  .party-presence-cluster__sage-panel {
+    transition: none;
+  }
+
+  .party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
+  .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
+  .party-presence-cluster__sage-panel--entering,
+  .party-presence-cluster__sage-panel--open,
+  .party-presence-cluster__sage-panel--exiting {
+    top: 50%;
+    left: 50%;
+    width: var(--sage-panel-size-open);
+    height: var(--sage-panel-size-open);
+  }
+
+  .party-presence-cluster__sage-modal--closing .party-presence-cluster__sage-panel {
+    top: var(--sage-panel-anchor-top);
+    left: calc(100% - var(--sage-panel-anchor-right));
+    width: var(--sage-panel-size-closed);
+    height: var(--sage-panel-size-closed);
+  }
 }
 
 @media (max-width: 640px) {
@@ -4088,7 +4143,13 @@ border: 1px solid #ffedef;
     height: 40px;
   }
 
-  .party-presence-cluster__sage-panel {
-    width: min(68vmin, 420px);
+  .party-presence-cluster__sage-panel,
+  .party-presence-cluster__sage-modal--opening .party-presence-cluster__sage-panel,
+  .party-presence-cluster__sage-modal--open .party-presence-cluster__sage-panel,
+  .party-presence-cluster__sage-panel--entering,
+  .party-presence-cluster__sage-panel--open,
+  .party-presence-cluster__sage-panel--exiting {
+    width: var(--sage-panel-size-open-mobile);
+    height: var(--sage-panel-size-open-mobile);
   }
 }
