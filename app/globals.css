@@ -26,6 +26,7 @@
   color-scheme: light;
   font-family: "Metrophobic", "sans-serif";
   --color-bg: #f5eee9;
+  --newcolor-bg: #BEC5B4;
   --color-surface: #f1e8e1;
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
@@ -94,7 +95,7 @@ main {
 
 body {
   margin: 0;
-  background: var(--color-bg);
+  background: var(--newcolor-bg);
   color: var(--color-text);
   height: 100%;
   overflow-x: hidden;
@@ -104,9 +105,13 @@ body {
 
 .container {
   position: relative;
-  max-width: 960px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 24px;
+}
+
+.home-logo {
+  width: clamp(200px, 25vw, 300px);
 }
 
 h1 {
@@ -2527,6 +2532,33 @@ small {
   }
 }
 
+.form-card {
+  margin-top: 30px;
+}
+
+.home-menu-button_main-row {
+  aspect-ratio: 1/1;
+}
+
+.experimental-button {
+  aspect-ratio: 13/4;
+}
+
+.shop-button {
+  aspect-ratio: 1/1;
+}
+
+.home-menu-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+    font-family: "Metrophobic", serif;
+  letter-spacing: 1.3px;
+  font-size: clamp(18px, 6vw, 40px);
+  font-weight: 700;
+  color: var(--color-dark);
+
+}
 
 .form-card-font {
   font-family: "Metrophobic", serif;
@@ -2653,7 +2685,7 @@ small {
 .lobby-bento-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 30px;
 }
 
 .lobby-bento-grid .form-button-full-width {

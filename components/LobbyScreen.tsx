@@ -650,7 +650,7 @@ export default function LobbyScreen() {
           </p>
         ) : null}
         <div className="flex-space-between">
-          <h2 className="sage-eyebrow-text">MISTY</h2>
+          <img className="home-logo" src="/images/misty-logo.svg" alt="Misty logo" />
           {/* when this button is clicked, it opens the rules image in another window */}
           <div className="menu-action-buttons">
             <button
@@ -1104,13 +1104,12 @@ export default function LobbyScreen() {
           </div>
         ) : null}
 
-        <section className="form-card">
-          <CreateLobbyForm />
+        <div className="form-card">
           {isSignedIn ? (
             <div className="lobby-bento-grid">
               <button
                 type="button"
-                className="form-button-full-width form-card-font lobby-bento-grid__classique"
+                className="home-menu-button_main-row home-menu-buttons lobby-bento-grid__classique"
                 onClick={() => void handleCreateClassiqueParty(100)}
                 disabled={
                   !firebaseReady ||
@@ -1123,7 +1122,7 @@ export default function LobbyScreen() {
               </button>
               <button
                 type="button"
-                className="form-button-full-width form-card-font lobby-bento-grid__quickplay"
+                className="home-menu-button_main-row home-menu-buttons lobby-bento-grid__quickplay"
                 onClick={() => void handleCreateClassiqueParty(50)}
                 disabled={
                   !firebaseReady ||
@@ -1136,17 +1135,17 @@ export default function LobbyScreen() {
               </button>
               <button
                 type="button"
-                className="form-button-full-width form-card-font lobby-bento-grid__experimental"
+                className="home-menu-buttons experimental-button lobby-bento-grid__experimental"
                 disabled
               >
-                Experimental (WIP)
+                Experimental
               </button>
               <button
                 type="button"
-                className="form-button-full-width form-card-font lobby-bento-grid__shop"
+                className="home-menu-buttons shop-button lobby-bento-grid__shop"
                 disabled
               >
-                Shop (WIP)
+                Shop
               </button>
             </div>
           ) : null}
@@ -1156,7 +1155,7 @@ export default function LobbyScreen() {
               {quickplayError ? <p className="notice">{quickplayError}</p> : null}
             </>
           ) : null}
-        </section>
+        </div>
         <PartyInviteModal />
 
         {isLeaderboardOpen ? (
