@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { readStoredUsername, useAnonymousAuth, usernameUpdatedEvent } from "../lib/auth";
+import { setPendingPartyJoin } from "../lib/pendingPartyJoin";
 import LobbyScreen from "./LobbyScreen";
 import UnauthenticatedHome from "./UnauthenticatedHome";
 
@@ -31,6 +32,16 @@ export default function HomeGate() {
       window.removeEventListener(usernameUpdatedEvent, refreshStoredUsername);
       window.removeEventListener("storage", refreshStoredUsername);
     };
+  }, []);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const joinPartyId = searchParams.get("joinPartyId");
+    if (!joinPartyId) {
+      return;
+    }
+
+    setPendingPartyJoin(joinPartyId);
   }, []);
 
   const isReadyForLobby = useMemo(() => {
