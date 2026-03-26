@@ -1,6 +1,8 @@
 "use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { usePreferences } from "../lib/preferences";
 import {
   buildXpAnimationSegments,
@@ -13,6 +15,10 @@ import {
 import { useSocialPanel } from "../lib/useSocialPanel";
 import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
+import { useAnonymousAuth } from "../lib/auth";
+import { db } from "../lib/firebase";
+import { useParty } from "./LobbyProvider";
+import { buildRemoveStoredUserGameUpdate } from "../lib/userGames";
 
 type SocialCirclePanelProps = {
   partyId: string | null;
@@ -21,10 +27,9 @@ type SocialCirclePanelProps = {
 };
 
 type PartyLinkStatus = "idle" | "copying" | "copied" | "error";
+type SocialLinkStatus = "idle" | "copying" | "copied" | "error";
 type SocialModalTab = "social" | "preferences" | "profile";
-
 const signInRoute = "/";
-
 function getFriendInviteLabel(fromUserId: string) {
   return fromUserId.trim() ? `Friend request from ${fromUserId}` : "Friend request";
 }
@@ -46,6 +51,7 @@ export default function SocialCirclePanel({
     acceptPartyInvite,
     declinePartyInvite,
     inviteFriendToCurrentLobby,
+    yourGames,
   } = useSocialPanel();
   const {
     profile,
@@ -58,6 +64,9 @@ export default function SocialCirclePanel({
     signInWithGoogleSso,
     signOutUser,
   } = useUserProfile();
+  const { uid } = useAnonymousAuth();
+  const { members } = useParty();
+  const router = useRouter();
   const { preferences, setPreference } = usePreferences();
   const {
     firstTimeTips: showFirstTimeTips,
@@ -69,16 +78,20 @@ export default function SocialCirclePanel({
   } = preferences;
 
   const [activeTab, setActiveTab] = useState<SocialModalTab>("social");
-  const [isInvitesOpen, setIsInvitesOpen] = useState(true);
+  const [isInvitesOpen, setIsInvitesOpen] = useState(false);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [isOnlineOpen, setIsOnlineOpen] = useState(false);
+  const [isYourGamesOpen, setIsYourGamesOpen] = useState(false);
   const [isUiPreferencesOpen, setIsUiPreferencesOpen] = useState(true);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(true);
   const [friendIdentifierInput, setFriendIdentifierInput] = useState("");
   const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
+  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
+  const [joinGameError, setJoinGameError] = useState<string | null>(null);
   const [partyLinkStatus, setPartyLinkStatus] = useState<PartyLinkStatus>("idle");
+  const [socialLinkStatus, setSocialLinkStatus] = useState<SocialLinkStatus>("idle");
   const [profileName, setProfileName] = useState("");
   const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -373,6 +386,90 @@ export default function SocialCirclePanel({
     }
   };
 
+  const onClickJoinSavedGame = async (savedGameId: string, savedPartyId: string | null, savedPlayerIds: string[]) => {
+    if (!uid || joiningGameId) {
+      return;
+    }
+
+    const isAloneWithoutParty = !partyId;
+    const isAloneInParty = Boolean(partyId && members.length === 1);
+    const isExactPartyMatch =
+      Boolean(partyId) &&
+      members.length > 1 &&
+      members.length === savedPlayerIds.length &&
+      members.every((member) => savedPlayerIds.includes(member.id));
+    const canJoin = isAloneWithoutParty || isAloneInParty || isExactPartyMatch;
+    if (!canJoin) {
+      setJoinGameError(
+        "You can only rejoin with an exactly matching party, alone in a party, or while solo.",
+      );
+      return;
+    }
+
+    setJoiningGameId(savedGameId);
+    setJoinGameError(null);
+    try {
+      const gameRef = doc(db, "games", savedGameId);
+      const gameSnapshot = await getDoc(gameRef);
+      if (!gameSnapshot.exists()) {
+        await setDoc(doc(db, "users", uid), buildRemoveStoredUserGameUpdate(savedGameId), { merge: true });
+        throw new Error("This saved game no longer exists.");
+      }
+
+      const gameData = gameSnapshot.data() as Record<string, unknown>;
+      const gameStatus = typeof gameData.status === "string" ? gameData.status : "playing";
+      if (gameStatus === "game-complete") {
+        await setDoc(doc(db, "users", uid), buildRemoveStoredUserGameUpdate(savedGameId), { merge: true });
+        throw new Error("This game is already finished.");
+      }
+
+      if (partyId) {
+        await setDoc(
+          doc(db, "parties", partyId),
+          {
+            status: "in-game",
+            activeGameId: savedGameId,
+            gameId: savedGameId,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      } else if (savedPartyId) {
+        await setDoc(
+          gameRef,
+          {
+            partyId: null,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+
+      router.push(`/game/${savedGameId}`);
+    } catch (joinError) {
+      const message = joinError instanceof Error ? joinError.message : "Could not rejoin that game.";
+      setJoinGameError(message);
+    } finally {
+      setJoiningGameId(null);
+    }
+  };
+
+  const onClickCopySocialLink = async () => {
+    if (!uid || socialLinkStatus === "copying") {
+      return;
+    }
+
+    setSocialLinkStatus("copying");
+    try {
+      const params = new URLSearchParams({ friendInviteFrom: uid });
+      const socialInviteUrl = `${window.location.origin}${signInRoute}?${params.toString()}`;
+      await navigator.clipboard.writeText(socialInviteUrl);
+      setSocialLinkStatus("copied");
+    } catch {
+      setSocialLinkStatus("error");
+    }
+  };
+
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = profileName.trim();
@@ -420,6 +517,14 @@ export default function SocialCirclePanel({
         : partyLinkStatus === "copying"
           ? "Copying…"
           : null;
+  const socialLinkStatusText =
+    socialLinkStatus === "copied"
+      ? "Copied!"
+      : socialLinkStatus === "error"
+        ? "Couldn't copy social link."
+        : socialLinkStatus === "copying"
+          ? "Copying…"
+          : null;
 
   return (
     <div className="social-circle-panel">
@@ -463,6 +568,22 @@ export default function SocialCirclePanel({
             </form>
           </section>
 
+          <section className="social-circle-panel__section">
+            <h3 className="social-circle-panel__heading">Your Social Link</h3>
+            <p className="notice">Send to a friend to add them on Misty!</p>
+            <button
+              type="button"
+              className="modal__inline-save-button social-circle-panel__toggle"
+              onClick={() => {
+                void onClickCopySocialLink();
+              }}
+              disabled={!uid || socialLinkStatus === "copying"}
+            >
+              {socialLinkStatus === "copying" ? "Copying…" : "Copy Social Link"}
+            </button>
+            {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
+          </section>
+
           {partyId || onEnsurePartyId ? (
             <section className="social-circle-panel__section">
               <div className="social-circle-panel__row-actions">
@@ -492,6 +613,41 @@ export default function SocialCirclePanel({
               {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
             </section>
           ) : null}
+
+          <section className="social-circle-panel__section">
+            <button
+              type="button"
+              className="profile-progression__replay-button social-circle-panel__toggle"
+              onClick={() => setIsYourGamesOpen((current) => !current)}
+              aria-expanded={isYourGamesOpen}
+            >
+              Your games ({yourGames.length})
+            </button>
+            {isYourGamesOpen ? (
+              <div className="social-circle-panel__list" role="list">
+                {yourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
+                {yourGames.map((savedGame) => (
+                  <article key={savedGame.gameId} className="social-circle-panel__row" role="listitem">
+                    <p className="social-circle-panel__row-text">
+                      {savedGame.playerNames.join(", ") || "Unnamed players"}
+                    </p>
+                    <div className="social-circle-panel__row-actions">
+                      <button
+                        type="button"
+                        className="modal__inline-save-button"
+                        onClick={() => {
+                          void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
+                        }}
+                        disabled={Boolean(joiningGameId)}
+                      >
+                        {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
 
           <section className="social-circle-panel__section">
             <button
@@ -592,6 +748,7 @@ export default function SocialCirclePanel({
           </section>
 
           {loading && !hasInvites && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
+          {joinGameError ? <p className="notice">{joinGameError}</p> : null}
           {error ? <p className="notice">{error}</p> : null}
         </>
       ) : null}
@@ -882,6 +1039,7 @@ export default function SocialCirclePanel({
           )}
         </section>
       ) : null}
+
     </div>
   );
 }
