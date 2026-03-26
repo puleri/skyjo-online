@@ -13,6 +13,7 @@ import {
 import { useSocialPanel } from "../lib/useSocialPanel";
 import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
+import { useAnonymousAuth } from "../lib/auth";
 
 type SocialCirclePanelProps = {
   partyId: string | null;
@@ -21,6 +22,7 @@ type SocialCirclePanelProps = {
 };
 
 type PartyLinkStatus = "idle" | "copying" | "copied" | "error";
+type SocialLinkStatus = "idle" | "copying" | "copied" | "error";
 type SocialModalTab = "social" | "preferences" | "profile";
 const signInRoute = "/";
 function getFriendInviteLabel(fromUserId: string) {
@@ -56,6 +58,7 @@ export default function SocialCirclePanel({
     signInWithGoogleSso,
     signOutUser,
   } = useUserProfile();
+  const { uid } = useAnonymousAuth();
   const { preferences, setPreference } = usePreferences();
   const {
     firstTimeTips: showFirstTimeTips,
@@ -77,6 +80,7 @@ export default function SocialCirclePanel({
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
   const [partyLinkStatus, setPartyLinkStatus] = useState<PartyLinkStatus>("idle");
+  const [socialLinkStatus, setSocialLinkStatus] = useState<SocialLinkStatus>("idle");
   const [profileName, setProfileName] = useState("");
   const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -371,6 +375,22 @@ export default function SocialCirclePanel({
     }
   };
 
+  const onClickCopySocialLink = async () => {
+    if (!uid || socialLinkStatus === "copying") {
+      return;
+    }
+
+    setSocialLinkStatus("copying");
+    try {
+      const params = new URLSearchParams({ friendInviteFrom: uid });
+      const socialInviteUrl = `${window.location.origin}${signInRoute}?${params.toString()}`;
+      await navigator.clipboard.writeText(socialInviteUrl);
+      setSocialLinkStatus("copied");
+    } catch {
+      setSocialLinkStatus("error");
+    }
+  };
+
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = profileName.trim();
@@ -418,6 +438,14 @@ export default function SocialCirclePanel({
         : partyLinkStatus === "copying"
           ? "Copying…"
           : null;
+  const socialLinkStatusText =
+    socialLinkStatus === "copied"
+      ? "Copied!"
+      : socialLinkStatus === "error"
+        ? "Couldn't copy social link."
+        : socialLinkStatus === "copying"
+          ? "Copying…"
+          : null;
 
   return (
     <div className="social-circle-panel">
@@ -459,6 +487,22 @@ export default function SocialCirclePanel({
                 +
               </button>
             </form>
+          </section>
+
+          <section className="social-circle-panel__section">
+            <h3 className="social-circle-panel__heading">Your Social Link</h3>
+            <p className="notice">Send to a friend to add them on Misty!</p>
+            <button
+              type="button"
+              className="modal__inline-save-button social-circle-panel__toggle"
+              onClick={() => {
+                void onClickCopySocialLink();
+              }}
+              disabled={!uid || socialLinkStatus === "copying"}
+            >
+              {socialLinkStatus === "copying" ? "Copying…" : "Copy Social Link"}
+            </button>
+            {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
           </section>
 
           {partyId || onEnsurePartyId ? (
