@@ -17,6 +17,7 @@ import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
 import { useAnonymousAuth } from "../lib/auth";
 import { db } from "../lib/firebase";
+import { leaveGame } from "../lib/gameActions";
 import { deleteSavedGameForUser } from "../lib/userSavedGamesRepo";
 import { useParty } from "./LobbyProvider";
 
@@ -90,7 +91,10 @@ export default function SocialCirclePanel({
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
   const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
+  const [leavingGameId, setLeavingGameId] = useState<string | null>(null);
+  const [confirmLeaveGameId, setConfirmLeaveGameId] = useState<string | null>(null);
   const [joinGameError, setJoinGameError] = useState<string | null>(null);
+  const [leaveGameError, setLeaveGameError] = useState<string | null>(null);
   const [partyLinkStatus, setPartyLinkStatus] = useState<PartyLinkStatus>("idle");
   const [socialLinkStatus, setSocialLinkStatus] = useState<SocialLinkStatus>("idle");
   const [profileName, setProfileName] = useState("");
@@ -477,6 +481,35 @@ export default function SocialCirclePanel({
     }
   };
 
+  const onClickConfirmLeaveSavedGame = async () => {
+    if (!uid || !confirmLeaveGameId || leavingGameId) {
+      return;
+    }
+
+    setLeavingGameId(confirmLeaveGameId);
+    setLeaveGameError(null);
+    try {
+      try {
+        await leaveGame(confirmLeaveGameId, uid);
+      } catch (leaveError) {
+        const leaveMessage = leaveError instanceof Error ? leaveError.message : "";
+        const isAlreadyRemoved =
+          leaveMessage === "Player is not active in this game." || leaveMessage === "Player state not found.";
+        if (!isAlreadyRemoved) {
+          throw leaveError;
+        }
+      }
+
+      await deleteSavedGameForUser(uid, confirmLeaveGameId);
+      setConfirmLeaveGameId(null);
+    } catch (leaveError) {
+      const message = leaveError instanceof Error ? leaveError.message : "Could not leave that game.";
+      setLeaveGameError(message);
+    } finally {
+      setLeavingGameId(null);
+    }
+  };
+
   const onClickCopySocialLink = async () => {
     if (!uid || socialLinkStatus === "copying") {
       return;
@@ -658,16 +691,29 @@ export default function SocialCirclePanel({
                       {savedGame.gameId === currentGameId ? (
                         <span className="social-circle-panel__badge">Current</span>
                       ) : (
-                        <button
-                          type="button"
-                          className="modal__inline-save-button"
-                          onClick={() => {
-                            void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
-                          }}
-                          disabled={Boolean(joiningGameId)}
-                        >
-                          {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="modal__inline-save-button"
+                            onClick={() => {
+                              void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
+                            }}
+                            disabled={Boolean(joiningGameId) || Boolean(leavingGameId)}
+                          >
+                            {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
+                          </button>
+                          <button
+                            type="button"
+                            className="modal__inline-save-button"
+                            onClick={() => {
+                              setLeaveGameError(null);
+                              setConfirmLeaveGameId(savedGame.gameId);
+                            }}
+                            disabled={Boolean(joiningGameId) || Boolean(leavingGameId)}
+                          >
+                            {leavingGameId === savedGame.gameId ? "Leaving…" : "Leave game"}
+                          </button>
+                        </>
                       )}
                     </div>
                   </article>
@@ -776,6 +822,7 @@ export default function SocialCirclePanel({
 
           {loading && !hasInvites && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
           {joinGameError ? <p className="notice">{joinGameError}</p> : null}
+          {leaveGameError ? <p className="notice">{leaveGameError}</p> : null}
           {error ? <p className="notice">{error}</p> : null}
         </>
       ) : null}
@@ -1065,6 +1112,51 @@ export default function SocialCirclePanel({
             </div>
           )}
         </section>
+      ) : null}
+
+      {confirmLeaveGameId ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => {
+            if (!leavingGameId) {
+              setConfirmLeaveGameId(null);
+            }
+          }}
+        >
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leave-saved-game-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 id="leave-saved-game-title">Leave this saved game?</h3>
+            <p className="notice">
+              You&apos;ll be removed from this game, and it will be deleted from your saved games list.
+            </p>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="modal__inline-save-button"
+                onClick={() => setConfirmLeaveGameId(null)}
+                disabled={Boolean(leavingGameId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="modal__inline-save-button"
+                onClick={() => {
+                  void onClickConfirmLeaveSavedGame();
+                }}
+                disabled={Boolean(leavingGameId)}
+              >
+                {leavingGameId ? "Leaving…" : "Leave game"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
     </div>
