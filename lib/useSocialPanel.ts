@@ -27,6 +27,7 @@ import {
   subscribeToPendingPartyInvites,
   type SocialPartyInvite,
 } from "./partyInvites";
+import { subscribeToSavedGames, type SavedGameRecord } from "./userSavedGamesRepo";
 
 type SocialPanelInvites = {
   friend: SocialFriendInvite[];
@@ -52,6 +53,54 @@ type SocialPanelData = {
   declinePartyInvite: (inviteId: string) => Promise<void>;
   inviteFriendToCurrentLobby: (friendUid: string, partyId: string) => Promise<void>;
 };
+
+function parseLegacySavedGames(userData: Record<string, unknown> | undefined): SavedGameRecord[] {
+  const rawSavedGames =
+    userData?.savedGames && typeof userData.savedGames === "object"
+      ? (userData.savedGames as Record<string, unknown>)
+      : {};
+
+  return Object.values(rawSavedGames)
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+      const candidate = entry as Record<string, unknown>;
+      const gameId = typeof candidate.gameId === "string" ? candidate.gameId : "";
+      if (!gameId.trim()) {
+        return null;
+      }
+      return {
+        gameId,
+        partyId: typeof candidate.partyId === "string" ? candidate.partyId : null,
+        playerIds: Array.isArray(candidate.playerIds)
+          ? candidate.playerIds.filter((id): id is string => typeof id === "string")
+          : [],
+        playerNames: Array.isArray(candidate.playerNames)
+          ? candidate.playerNames.filter((name): name is string => typeof name === "string")
+          : [],
+        status: typeof candidate.status === "string" ? candidate.status : "playing",
+      };
+    })
+    .filter((entry): entry is SavedGameRecord => Boolean(entry));
+}
+
+function mergeSavedGames(
+  subcollectionSavedGames: SavedGameRecord[],
+  legacySavedGames: SavedGameRecord[],
+): SocialPanelData["yourGames"] {
+  const deduped = new Map<string, SavedGameRecord>();
+  legacySavedGames.forEach((entry) => {
+    deduped.set(entry.gameId, entry);
+  });
+  subcollectionSavedGames.forEach((entry) => {
+    deduped.set(entry.gameId, entry);
+  });
+
+  return Array.from(deduped.values())
+    .filter((entry) => entry.status !== "game-complete")
+    .map(({ status: _status, ...entry }) => entry);
+}
 
 export function useSocialPanel(): SocialPanelData {
   const { uid, displayName, profileDisplayName } = useAnonymousAuth();
@@ -93,10 +142,18 @@ export function useSocialPanel(): SocialPanelData {
 
     const userRef = doc(db, "users", uid);
     let friendProfilesUnsubscribe: (() => void) | null = null;
+    let latestLegacySavedGames: SavedGameRecord[] = [];
+    let latestSubcollectionSavedGames: SavedGameRecord[] = [];
 
     const handleError = (snapshotError: FirestoreError) => {
       setError(snapshotError.message);
       setLoading(false);
+    };
+
+    const syncSavedGames = () => {
+      setYourGames(
+        mergeSavedGames(latestSubcollectionSavedGames, latestLegacySavedGames),
+      );
     };
 
     const unsubscribeFriendInvites = onSnapshot(
@@ -138,36 +195,8 @@ export function useSocialPanel(): SocialPanelData {
         const friendUids = Array.isArray(userData?.friends)
           ? userData.friends.filter((friendUid): friendUid is string => typeof friendUid === "string")
           : [];
-        const rawSavedGames =
-          userData?.savedGames && typeof userData.savedGames === "object"
-            ? (userData.savedGames as Record<string, unknown>)
-            : {};
-        const parsedSavedGames = Object.values(rawSavedGames)
-          .map((entry) => {
-            if (!entry || typeof entry !== "object") {
-              return null;
-            }
-            const candidate = entry as Record<string, unknown>;
-            const gameId = typeof candidate.gameId === "string" ? candidate.gameId : "";
-            if (!gameId.trim()) {
-              return null;
-            }
-            return {
-              gameId,
-              partyId: typeof candidate.partyId === "string" ? candidate.partyId : null,
-              playerIds: Array.isArray(candidate.playerIds)
-                ? candidate.playerIds.filter((id): id is string => typeof id === "string")
-                : [],
-              playerNames: Array.isArray(candidate.playerNames)
-                ? candidate.playerNames.filter((name): name is string => typeof name === "string")
-                : [],
-              status: typeof candidate.status === "string" ? candidate.status : "playing",
-            };
-          })
-          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
-          .filter((entry) => entry.status !== "game-complete")
-          .map(({ status: _status, ...entry }) => entry);
-        setYourGames(parsedSavedGames);
+        latestLegacySavedGames = parseLegacySavedGames(userData);
+        syncSavedGames();
 
         if (friendProfilesUnsubscribe) {
           friendProfilesUnsubscribe();
@@ -189,11 +218,20 @@ export function useSocialPanel(): SocialPanelData {
       },
       handleError,
     );
+    const unsubscribeSavedGames = subscribeToSavedGames(
+      uid,
+      (savedGames) => {
+        latestSubcollectionSavedGames = savedGames;
+        syncSavedGames();
+      },
+      handleError,
+    );
 
     return () => {
       unsubscribeFriendInvites();
       unsubscribePartyInvites();
       unsubscribeProfile();
+      unsubscribeSavedGames();
       if (friendProfilesUnsubscribe) {
         friendProfilesUnsubscribe();
       }

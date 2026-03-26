@@ -63,7 +63,7 @@ import {
   type UserProfileGamePlacement,
   type UserProfileLastXpGainAnimation,
 } from "../lib/userProfile";
-import { buildRemoveStoredUserGameUpdate } from "../lib/userGames";
+import { deleteSavedGameForUser } from "../lib/userSavedGamesRepo";
 import {
   applyEarnedExperience,
   getNewlyUnlockedRewardIds,
@@ -2955,11 +2955,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     }
     userSavedGameCleanupRef.current.add(gameId);
 
-    setDoc(
-      doc(db, "users", uid),
-      buildRemoveStoredUserGameUpdate(gameId),
-      { merge: true },
-    ).catch((err: Error) => {
+    deleteSavedGameForUser(uid, gameId).catch((err: Error) => {
       userSavedGameCleanupRef.current.delete(gameId);
       setError(err.message);
     });

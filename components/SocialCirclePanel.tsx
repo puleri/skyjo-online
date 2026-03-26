@@ -17,8 +17,8 @@ import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
 import { useAnonymousAuth } from "../lib/auth";
 import { db } from "../lib/firebase";
+import { deleteSavedGameForUser } from "../lib/userSavedGamesRepo";
 import { useParty } from "./LobbyProvider";
-import { buildRemoveStoredUserGameUpdate } from "../lib/userGames";
 
 type SocialCirclePanelProps = {
   partyId: string | null;
@@ -412,14 +412,14 @@ export default function SocialCirclePanel({
       const gameRef = doc(db, "games", savedGameId);
       const gameSnapshot = await getDoc(gameRef);
       if (!gameSnapshot.exists()) {
-        await setDoc(doc(db, "users", uid), buildRemoveStoredUserGameUpdate(savedGameId), { merge: true });
+        await deleteSavedGameForUser(uid, savedGameId);
         throw new Error("This saved game no longer exists.");
       }
 
       const gameData = gameSnapshot.data() as Record<string, unknown>;
       const gameStatus = typeof gameData.status === "string" ? gameData.status : "playing";
       if (gameStatus === "game-complete") {
-        await setDoc(doc(db, "users", uid), buildRemoveStoredUserGameUpdate(savedGameId), { merge: true });
+        await deleteSavedGameForUser(uid, savedGameId);
         throw new Error("This game is already finished.");
       }
 
