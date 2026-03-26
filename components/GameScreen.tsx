@@ -63,6 +63,7 @@ import {
   type UserProfileGamePlacement,
   type UserProfileLastXpGainAnimation,
 } from "../lib/userProfile";
+import { buildRemoveStoredUserGameUpdate } from "../lib/userGames";
 import {
   applyEarnedExperience,
   getNewlyUnlockedRewardIds,
@@ -450,6 +451,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   >([]);
   const leaderboardUpdateRef = useRef(new Set<string>());
   const userLastFiveGamesUpdateRef = useRef(new Set<string>());
+  const userSavedGameCleanupRef = useRef(new Set<string>());
   const [isFinalScoresOpen, setIsFinalScoresOpen] = useState(false);
   const [revealedBonusCount, setRevealedBonusCount] = useState(0);
   const hasGameCompletedRef = useRef(false);
@@ -2943,6 +2945,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     isGameComplete,
     uid,
   ]);
+
+  useEffect(() => {
+    if (!firebaseReady || !gameId || !uid || isAnonymousUser || !isGameComplete) {
+      return;
+    }
+    if (userSavedGameCleanupRef.current.has(gameId)) {
+      return;
+    }
+    userSavedGameCleanupRef.current.add(gameId);
+
+    setDoc(
+      doc(db, "users", uid),
+      buildRemoveStoredUserGameUpdate(gameId),
+      { merge: true },
+    ).catch((err: Error) => {
+      userSavedGameCleanupRef.current.delete(gameId);
+      setError(err.message);
+    });
+  }, [firebaseReady, gameId, isAnonymousUser, isGameComplete, uid]);
 
   useEffect(() => {
     if (!canSelectGridCard) {
