@@ -43,6 +43,7 @@ type SocialPanelData = {
     partyId: string | null;
     playerIds: string[];
     playerNames: string[];
+    updatedAt: number | null;
   }>;
   loading: boolean;
   error: string | null;
@@ -80,6 +81,7 @@ function parseLegacySavedGames(userData: Record<string, unknown> | undefined): S
           ? candidate.playerNames.filter((name): name is string => typeof name === "string")
           : [],
         status: typeof candidate.status === "string" ? candidate.status : "playing",
+        updatedAt: null,
       };
     })
     .filter((entry): entry is SavedGameRecord => Boolean(entry));
