@@ -1,4 +1,4 @@
-import { deleteField, serverTimestamp, type FieldValue } from "firebase/firestore";
+import { serverTimestamp, type FieldValue } from "firebase/firestore";
 
 export type StoredUserGame = {
   gameId: string;
@@ -23,17 +23,6 @@ export function buildStoredUserGame(params: {
     playerNames: params.playerNames,
     status: "playing",
     createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-}
-
-export function getUserGameStoragePath(gameId: string) {
-  return `savedGames.${gameId}`;
-}
-
-export function buildRemoveStoredUserGameUpdate(gameId: string) {
-  return {
-    [getUserGameStoragePath(gameId)]: deleteField(),
     updatedAt: serverTimestamp(),
   };
 }

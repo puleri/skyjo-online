@@ -16,7 +16,7 @@ import {
   type Card,
 } from "./game/deck";
 import type { SpikeItemCount } from "./game/deck";
-import { buildStoredUserGame, getUserGameStoragePath } from "./userGames";
+import { buildStoredUserGame } from "./userGames";
 
 export type GameType = "classic" | "spike";
 
@@ -336,16 +336,18 @@ export async function startPartyGameAction({ db, partyId, callerUid }: StartPart
     const playerIds = partyMembers.map((member) => member.id);
     const playerNames = partyMembers.map((member) => member.displayName);
     partyMembers.forEach((member) => {
-      const userRef = doc(db, "users", member.id);
       transaction.set(
-        userRef,
+        doc(db, "users", member.id, "savedGames", gameRef.id),
+        buildStoredUserGame({
+          gameId: gameRef.id,
+          partyId,
+          playerIds,
+          playerNames,
+        }),
+      );
+      transaction.set(
+        doc(db, "users", member.id),
         {
-          [getUserGameStoragePath(gameRef.id)]: buildStoredUserGame({
-            gameId: gameRef.id,
-            partyId,
-            playerIds,
-            playerNames,
-          }),
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -462,14 +464,17 @@ export async function startSoloGameAction({
     });
 
     transaction.set(
+      doc(db, "users", callerUid, "savedGames", gameRef.id),
+      buildStoredUserGame({
+        gameId: gameRef.id,
+        partyId: null,
+        playerIds: [callerUid],
+        playerNames: [partyMembers[0].displayName],
+      }),
+    );
+    transaction.set(
       doc(db, "users", callerUid),
       {
-        [getUserGameStoragePath(gameRef.id)]: buildStoredUserGame({
-          gameId: gameRef.id,
-          partyId: null,
-          playerIds: [callerUid],
-          playerNames: [partyMembers[0].displayName],
-        }),
         updatedAt: serverTimestamp(),
       },
       { merge: true },

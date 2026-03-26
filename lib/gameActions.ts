@@ -10,7 +10,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { buildRemoveStoredUserGameUpdate } from "./userGames";
 import {
   Card,
   ItemCard,
@@ -2191,11 +2190,7 @@ export const leaveGame = async (gameId: string, playerId: string) => {
 
     transaction.delete(playerStateRef);
     transaction.delete(playerSummaryRef);
-    transaction.set(
-      doc(db, "users", playerId),
-      buildRemoveStoredUserGameUpdate(gameId),
-      { merge: true },
-    );
+    transaction.delete(doc(db, "users", playerId, "savedGames", gameId));
     transaction.update(gameRef, {
       activePlayerOrder: nextActiveOrder,
       currentPlayerId:
