@@ -1,6 +1,8 @@
 "use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { usePreferences } from "../lib/preferences";
 import {
   buildXpAnimationSegments,
@@ -14,6 +16,9 @@ import { useSocialPanel } from "../lib/useSocialPanel";
 import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
 import { useAnonymousAuth } from "../lib/auth";
+import { db } from "../lib/firebase";
+import { useParty } from "./LobbyProvider";
+import { buildRemoveStoredUserGameUpdate } from "../lib/userGames";
 
 type SocialCirclePanelProps = {
   partyId: string | null;
@@ -46,6 +51,7 @@ export default function SocialCirclePanel({
     acceptPartyInvite,
     declinePartyInvite,
     inviteFriendToCurrentLobby,
+    yourGames,
   } = useSocialPanel();
   const {
     profile,
@@ -59,6 +65,8 @@ export default function SocialCirclePanel({
     signOutUser,
   } = useUserProfile();
   const { uid } = useAnonymousAuth();
+  const { members } = useParty();
+  const router = useRouter();
   const { preferences, setPreference } = usePreferences();
   const {
     firstTimeTips: showFirstTimeTips,
@@ -73,12 +81,15 @@ export default function SocialCirclePanel({
   const [isInvitesOpen, setIsInvitesOpen] = useState(true);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [isOnlineOpen, setIsOnlineOpen] = useState(false);
+  const [isYourGamesOpen, setIsYourGamesOpen] = useState(false);
   const [isUiPreferencesOpen, setIsUiPreferencesOpen] = useState(true);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(true);
   const [friendIdentifierInput, setFriendIdentifierInput] = useState("");
   const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
+  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
+  const [joinGameError, setJoinGameError] = useState<string | null>(null);
   const [partyLinkStatus, setPartyLinkStatus] = useState<PartyLinkStatus>("idle");
   const [socialLinkStatus, setSocialLinkStatus] = useState<SocialLinkStatus>("idle");
   const [profileName, setProfileName] = useState("");
@@ -375,6 +386,74 @@ export default function SocialCirclePanel({
     }
   };
 
+  const onClickJoinSavedGame = async (savedGameId: string, savedPartyId: string | null, savedPlayerIds: string[]) => {
+    if (!uid || joiningGameId) {
+      return;
+    }
+
+    const isAloneWithoutParty = !partyId;
+    const isAloneInParty = Boolean(partyId && members.length === 1);
+    const isExactPartyMatch =
+      Boolean(partyId) &&
+      members.length > 1 &&
+      members.length === savedPlayerIds.length &&
+      members.every((member) => savedPlayerIds.includes(member.id));
+    const canJoin = isAloneWithoutParty || isAloneInParty || isExactPartyMatch;
+    if (!canJoin) {
+      setJoinGameError(
+        "You can only rejoin with an exactly matching party, alone in a party, or while solo.",
+      );
+      return;
+    }
+
+    setJoiningGameId(savedGameId);
+    setJoinGameError(null);
+    try {
+      const gameRef = doc(db, "games", savedGameId);
+      const gameSnapshot = await getDoc(gameRef);
+      if (!gameSnapshot.exists()) {
+        await setDoc(doc(db, "users", uid), buildRemoveStoredUserGameUpdate(savedGameId), { merge: true });
+        throw new Error("This saved game no longer exists.");
+      }
+
+      const gameData = gameSnapshot.data() as Record<string, unknown>;
+      const gameStatus = typeof gameData.status === "string" ? gameData.status : "playing";
+      if (gameStatus === "game-complete") {
+        await setDoc(doc(db, "users", uid), buildRemoveStoredUserGameUpdate(savedGameId), { merge: true });
+        throw new Error("This game is already finished.");
+      }
+
+      if (partyId) {
+        await setDoc(
+          doc(db, "parties", partyId),
+          {
+            status: "in-game",
+            activeGameId: savedGameId,
+            gameId: savedGameId,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      } else if (savedPartyId) {
+        await setDoc(
+          gameRef,
+          {
+            partyId: null,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+
+      router.push(`/game/${savedGameId}`);
+    } catch (joinError) {
+      const message = joinError instanceof Error ? joinError.message : "Could not rejoin that game.";
+      setJoinGameError(message);
+    } finally {
+      setJoiningGameId(null);
+    }
+  };
+
   const onClickCopySocialLink = async () => {
     if (!uid || socialLinkStatus === "copying") {
       return;
@@ -539,6 +618,41 @@ export default function SocialCirclePanel({
             <button
               type="button"
               className="profile-progression__replay-button social-circle-panel__toggle"
+              onClick={() => setIsYourGamesOpen((current) => !current)}
+              aria-expanded={isYourGamesOpen}
+            >
+              Your games ({yourGames.length})
+            </button>
+            {isYourGamesOpen ? (
+              <div className="social-circle-panel__list" role="list">
+                {yourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
+                {yourGames.map((savedGame) => (
+                  <article key={savedGame.gameId} className="social-circle-panel__row" role="listitem">
+                    <p className="social-circle-panel__row-text">
+                      {savedGame.playerNames.join(", ") || "Unnamed players"}
+                    </p>
+                    <div className="social-circle-panel__row-actions">
+                      <button
+                        type="button"
+                        className="modal__inline-save-button"
+                        onClick={() => {
+                          void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
+                        }}
+                        disabled={Boolean(joiningGameId)}
+                      >
+                        {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="social-circle-panel__section">
+            <button
+              type="button"
+              className="profile-progression__replay-button social-circle-panel__toggle"
               onClick={() => setIsInvitesOpen((current) => !current)}
               aria-expanded={isInvitesOpen}
             >
@@ -634,6 +748,7 @@ export default function SocialCirclePanel({
           </section>
 
           {loading && !hasInvites && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
+          {joinGameError ? <p className="notice">{joinGameError}</p> : null}
           {error ? <p className="notice">{error}</p> : null}
         </>
       ) : null}

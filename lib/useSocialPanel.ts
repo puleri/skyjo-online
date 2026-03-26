@@ -37,6 +37,12 @@ type SocialPanelData = {
   invites: SocialPanelInvites;
   friends: SocialUser[];
   online: SocialUser[];
+  yourGames: Array<{
+    gameId: string;
+    partyId: string | null;
+    playerIds: string[];
+    playerNames: string[];
+  }>;
   loading: boolean;
   error: string | null;
   sendFriendInvite: (targetIdentifier: string) => Promise<void>;
@@ -54,6 +60,7 @@ export function useSocialPanel(): SocialPanelData {
   const [friendInvites, setFriendInvites] = useState<SocialFriendInvite[]>([]);
   const [partyInvites, setPartyInvites] = useState<SocialPartyInvite[]>([]);
   const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [yourGames, setYourGames] = useState<SocialPanelData["yourGames"]>([]);
 
   const playerDisplayName = useMemo(() => {
     const trimmedProfileName = profileDisplayName?.trim();
@@ -70,6 +77,7 @@ export function useSocialPanel(): SocialPanelData {
       setFriendInvites([]);
       setPartyInvites([]);
       setFriends([]);
+      setYourGames([]);
       setLoading(false);
       return;
     }
@@ -130,6 +138,36 @@ export function useSocialPanel(): SocialPanelData {
         const friendUids = Array.isArray(userData?.friends)
           ? userData.friends.filter((friendUid): friendUid is string => typeof friendUid === "string")
           : [];
+        const rawSavedGames =
+          userData?.savedGames && typeof userData.savedGames === "object"
+            ? (userData.savedGames as Record<string, unknown>)
+            : {};
+        const parsedSavedGames = Object.values(rawSavedGames)
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") {
+              return null;
+            }
+            const candidate = entry as Record<string, unknown>;
+            const gameId = typeof candidate.gameId === "string" ? candidate.gameId : "";
+            if (!gameId.trim()) {
+              return null;
+            }
+            return {
+              gameId,
+              partyId: typeof candidate.partyId === "string" ? candidate.partyId : null,
+              playerIds: Array.isArray(candidate.playerIds)
+                ? candidate.playerIds.filter((id): id is string => typeof id === "string")
+                : [],
+              playerNames: Array.isArray(candidate.playerNames)
+                ? candidate.playerNames.filter((name): name is string => typeof name === "string")
+                : [],
+              status: typeof candidate.status === "string" ? candidate.status : "playing",
+            };
+          })
+          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+          .filter((entry) => entry.status !== "game-complete")
+          .map(({ status: _status, ...entry }) => entry);
+        setYourGames(parsedSavedGames);
 
         if (friendProfilesUnsubscribe) {
           friendProfilesUnsubscribe();
@@ -252,6 +290,7 @@ export function useSocialPanel(): SocialPanelData {
     },
     friends,
     online,
+    yourGames,
     loading,
     error,
     sendFriendInvite: sendFriendInviteHandler,
