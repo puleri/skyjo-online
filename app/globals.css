@@ -4498,6 +4498,27 @@ border: 1px solid #ffedef;
   background: color-mix(in srgb, var(--color-accent-soft) 68%, white 32%);
 }
 
+.friend-link-card {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+  border-radius: 14px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--color-surface) 88%, white 12%);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+
+.friend-link-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 :root[data-theme="dark"] .party-presence-cluster__sage-panel {
   border-color: var(--color-surface-alt);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);

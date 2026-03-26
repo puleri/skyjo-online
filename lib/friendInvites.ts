@@ -135,3 +135,20 @@ export async function declineFriendInvite(inviteId: string, currentUserId: strin
     } satisfies Partial<FriendInvite>);
   });
 }
+
+export async function acceptFriendLinkInvite(fromUserId: string, toUserId: string) {
+  if (!fromUserId.trim() || !toUserId.trim()) {
+    throw new Error("Both fromUserId and toUserId are required.");
+  }
+
+  if (fromUserId === toUserId) {
+    throw new Error("You cannot add yourself as a friend.");
+  }
+
+  const inviteId = await sendFriendInvite(fromUserId, toUserId);
+  if (!inviteId) {
+    throw new Error("Unable to create friend invite.");
+  }
+
+  await acceptFriendInvite(inviteId, toUserId);
+}
