@@ -1,8 +1,6 @@
 "use client";
 
-import { collection, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { usePreferences } from "../lib/preferences";
 import {
   buildXpAnimationSegments,
@@ -12,7 +10,6 @@ import {
   type StoredLevelProgress,
   type XpAnimationSegment,
 } from "../lib/progression";
-import { db, isFirebaseConfigured, missingFirebaseConfig } from "../lib/firebase";
 import { useSocialPanel } from "../lib/useSocialPanel";
 import { useUserProfile } from "../lib/useUserProfile";
 import { formatPlacementLabel } from "../lib/userProfile";
@@ -25,21 +22,9 @@ type SocialCirclePanelProps = {
 
 type PartyLinkStatus = "idle" | "copying" | "copied" | "error";
 type SocialModalTab = "social" | "preferences" | "profile";
-type LeaderboardEntry = {
-  id: string;
-  displayName: string;
-  score: number;
-};
-
 const signInRoute = "/";
-const podiumLabels = ["🥇", "🥈", "🥉"] as const;
-
 function getFriendInviteLabel(fromUserId: string) {
   return fromUserId.trim() ? `Friend request from ${fromUserId}` : "Friend request";
-}
-
-function isLeaderboardEntryActive(expiresAt: unknown) {
-  return expiresAt instanceof Timestamp && expiresAt.toMillis() > Date.now();
 }
 
 export default function SocialCirclePanel({
@@ -95,9 +80,6 @@ export default function SocialCirclePanel({
   const [profileName, setProfileName] = useState("");
   const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
-  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [playbackSegmentIndex, setPlaybackSegmentIndex] = useState(0);
   const [displayedPercent, setDisplayedPercent] = useState(0);
   const [progressTransitionDurationMs, setProgressTransitionDurationMs] = useState(0);
@@ -109,10 +91,6 @@ export default function SocialCirclePanel({
   const [playbackAnnouncement, setPlaybackAnnouncement] = useState<string | null>(null);
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
-  const leaderboardTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const leaderboardCloseButtonRef = useRef<HTMLButtonElement | null>(null);
-  const wasLeaderboardOpen = useRef(false);
-  const [isClient, setIsClient] = useState(false);
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const inviteRows = useMemo(
@@ -189,64 +167,6 @@ export default function SocialCirclePanel({
   const xpReplayStatusText = latestXpAnimation ? `+${latestXpAnimation.awardedXp} XP from your last game` : null;
   const displayedProgressionHelperText =
     isPlaybackActive && playbackAnnouncement ? playbackAnnouncement : progressionHelperText;
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isFirebaseConfigured || !isLeaderboardOpen) {
-      return;
-    }
-
-    const leaderboardQuery = query(collection(db, "leaderboard"), orderBy("score", "asc"));
-    const unsubscribe = onSnapshot(
-      leaderboardQuery,
-      (snapshot) => {
-        setLeaderboardError(null);
-        setLeaderboardEntries(
-          snapshot.docs
-            .filter((entry) => isLeaderboardEntryActive(entry.data().expiresAt))
-            .slice(0, 10)
-            .map((entry) => {
-              const data = entry.data();
-              return {
-                id: entry.id,
-                displayName: (data.displayName as string | undefined) ?? "Anonymous player",
-                score: (data.score as number | undefined) ?? 0,
-              };
-            }),
-        );
-      },
-      (snapshotError) => {
-        setLeaderboardError(snapshotError.message);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [isLeaderboardOpen]);
-
-  useEffect(() => {
-    if (isLeaderboardOpen) {
-      leaderboardCloseButtonRef.current?.focus();
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          setIsLeaderboardOpen(false);
-        }
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      wasLeaderboardOpen.current = true;
-      return () => {
-        window.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-
-    if (wasLeaderboardOpen.current) {
-      leaderboardTriggerRef.current?.focus();
-    }
-    wasLeaderboardOpen.current = false;
-  }, [isLeaderboardOpen]);
 
   useEffect(() => {
     if (!shouldPlayXpAnimation || xpPlayback.length === 0) {
@@ -518,17 +438,6 @@ export default function SocialCirclePanel({
 
       {activeTab === "social" ? (
         <>
-          <section className="social-circle-panel__section">
-            <button
-              type="button"
-              className="leaderboard-button social-circle-panel__toggle"
-              ref={leaderboardTriggerRef}
-              onClick={() => setIsLeaderboardOpen(true)}
-            >
-              Open Leaderboard
-            </button>
-          </section>
-
           <section className="social-circle-panel__section">
             <h3 className="social-circle-panel__heading">Add Friend</h3>
             <form className="modal__text-input-row" onSubmit={onSubmitFriendInvite}>
@@ -972,69 +881,6 @@ export default function SocialCirclePanel({
         </section>
       ) : null}
 
-      {isClient && isLeaderboardOpen
-        ? createPortal(
-          <div
-            className="modal-backdrop"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="social-leaderboard-title"
-            onClick={() => setIsLeaderboardOpen(false)}
-          >
-            <div className="modal" onClick={(event) => event.stopPropagation()}>
-              <h2 className="leaderboard-title" id="social-leaderboard-title">
-                Leaderboard
-              </h2>
-              <p>Lowest 10 scores of the season.</p>
-              <p className="leaderboard-sub text-xs">Entries expire after 90 days</p>
-              {!isFirebaseConfigured ? (
-                <p>
-                  Provide your Firebase environment variables to load leaderboard results. Missing keys:{" "}
-                  {missingFirebaseConfig.length ? missingFirebaseConfig.join(", ") : "Unknown (restart the dev server)."}
-                </p>
-              ) : leaderboardError ? (
-                <p className="notice">{leaderboardError}</p>
-              ) : leaderboardEntries.length ? (
-                <ol className="leaderboard-list">
-                  {leaderboardEntries.map((entry, index) => {
-                    const isPodium = index < podiumLabels.length;
-
-                    return (
-                      <li key={entry.id} className="leaderboard-list__item">
-                        {isPodium ? (
-                          <span
-                            className={`leaderboard-list__badge leaderboard-list__badge--${index + 1}`}
-                            aria-label={`${podiumLabels[index]} place`}
-                          >
-                            {podiumLabels[index]}
-                          </span>
-                        ) : (
-                          <span className="leaderboard-list__rank">{index + 1}.</span>
-                        )}
-                        <span className="leaderboard-list__name">{entry.displayName}</span>
-                        <span className="leaderboard-list__score">{entry.score}</span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : (
-                <p>No scores yet. Finish a game to claim a spot!</p>
-              )}
-              <div className="modal__actions">
-                <button
-                  className="form-button-full-width"
-                  type="button"
-                  ref={leaderboardCloseButtonRef}
-                  onClick={() => setIsLeaderboardOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )
-        : null}
     </div>
   );
 }
