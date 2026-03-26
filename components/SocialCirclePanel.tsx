@@ -1,7 +1,7 @@
 "use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { usePreferences } from "../lib/preferences";
 import {
@@ -67,6 +67,7 @@ export default function SocialCirclePanel({
   const { uid } = useAnonymousAuth();
   const { members } = useParty();
   const router = useRouter();
+  const pathname = usePathname();
   const { preferences, setPreference } = usePreferences();
   const {
     firstTimeTips: showFirstTimeTips,
@@ -108,6 +109,28 @@ export default function SocialCirclePanel({
   const playbackFrameRef = useRef<number | null>(null);
 
   const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
+  const currentGameId = useMemo(() => {
+    const gameRouteMatch = pathname.match(/^\/game\/([^/]+)$/);
+    if (!gameRouteMatch) {
+      return null;
+    }
+    return decodeURIComponent(gameRouteMatch[1]);
+  }, [pathname]);
+  const sortedYourGames = useMemo(
+    () =>
+      [...yourGames].sort((leftGame, rightGame) => {
+        const leftIsCurrent = leftGame.gameId === currentGameId;
+        const rightIsCurrent = rightGame.gameId === currentGameId;
+        if (leftIsCurrent !== rightIsCurrent) {
+          return leftIsCurrent ? -1 : 1;
+        }
+
+        const leftUpdatedAt = leftGame.updatedAt ?? 0;
+        const rightUpdatedAt = rightGame.updatedAt ?? 0;
+        return rightUpdatedAt - leftUpdatedAt;
+      }),
+    [currentGameId, yourGames],
+  );
   const inviteRows = useMemo(
     () => [
       ...invites.friend.map((invite) => ({
@@ -625,23 +648,27 @@ export default function SocialCirclePanel({
             </button>
             {isYourGamesOpen ? (
               <div className="social-circle-panel__list" role="list">
-                {yourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
-                {yourGames.map((savedGame) => (
+                {sortedYourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
+                {sortedYourGames.map((savedGame) => (
                   <article key={savedGame.gameId} className="social-circle-panel__row" role="listitem">
                     <p className="social-circle-panel__row-text">
                       {savedGame.playerNames.join(", ") || "Unnamed players"}
                     </p>
                     <div className="social-circle-panel__row-actions">
-                      <button
-                        type="button"
-                        className="modal__inline-save-button"
-                        onClick={() => {
-                          void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
-                        }}
-                        disabled={Boolean(joiningGameId)}
-                      >
-                        {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
-                      </button>
+                      {savedGame.gameId === currentGameId ? (
+                        <span className="social-circle-panel__badge">Current</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="modal__inline-save-button"
+                          onClick={() => {
+                            void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
+                          }}
+                          disabled={Boolean(joiningGameId)}
+                        >
+                          {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))}

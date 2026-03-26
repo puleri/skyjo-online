@@ -5,6 +5,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  Timestamp,
   type FirestoreError,
   type FieldValue,
   type Unsubscribe,
@@ -28,6 +29,7 @@ export type SavedGameRecord = {
   playerIds: string[];
   playerNames: string[];
   status: string;
+  updatedAt: number | null;
 };
 
 export async function upsertSavedGameForUsers(userIds: string[], payload: SavedGamePayload) {
@@ -82,6 +84,7 @@ export function subscribeToSavedGames(
               ? data.playerNames.filter((entry): entry is string => typeof entry === "string")
               : [],
             status: typeof data.status === "string" ? data.status : "playing",
+            updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : null,
           };
         })
         .filter((entry): entry is SavedGameRecord => Boolean(entry));
