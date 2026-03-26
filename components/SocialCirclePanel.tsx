@@ -78,7 +78,7 @@ export default function SocialCirclePanel({
   } = preferences;
 
   const [activeTab, setActiveTab] = useState<SocialModalTab>("social");
-  const [isInvitesOpen, setIsInvitesOpen] = useState(true);
+  const [isInvitesOpen, setIsInvitesOpen] = useState(false);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [isOnlineOpen, setIsOnlineOpen] = useState(false);
   const [isYourGamesOpen, setIsYourGamesOpen] = useState(false);
