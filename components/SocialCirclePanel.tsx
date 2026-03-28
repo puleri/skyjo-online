@@ -585,7 +585,7 @@ onClick={() => {
             <div className="social-circle-panel__section social-circle-panel__section--games">
               <h3 className="social-circle-panel__heading">Games ({yourGames.length})</h3>
               <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
-                {sortedYourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
+                {sortedYourGames.length === 0 ? <p className="">No unfinished games saved.</p> : null}
                 {sortedYourGames.map((savedGame) => (
                   <article key={savedGame.gameId} className="social-circle-panel__row" role="listitem">
                     <p className="social-circle-panel__row-text">

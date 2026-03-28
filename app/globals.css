@@ -4580,6 +4580,9 @@ border: 1px solid #ffedef;
 }
 
 .social-circle-panel__section--games {
+  background-color: var(--cluster-button-bg);
+  padding: 8px 14px;
+  border-radius: 4px;
   grid-column: 1 / 3;
   grid-row: 2 / 3;
   min-height: 0;
@@ -4604,6 +4607,7 @@ border: 1px solid #ffedef;
 }
 
 .social-circle-panel__heading {
+  color: var(--new-color-text);
   margin: 0;
   font-size: 0.92rem;
   letter-spacing: 0.03em;
