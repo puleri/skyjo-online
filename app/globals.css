@@ -4574,6 +4574,9 @@ border: 1px solid #ffedef;
 }
 
 .social-circle-panel__section--friends {
+    background-color: var(--cluster-button-bg);
+  padding: 8px 14px;
+  border-radius: 4px;
   grid-column: 2 / 4;
   grid-row: 1 / 2;
   min-height: 0;
