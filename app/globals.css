@@ -4448,6 +4448,49 @@ border: 1px solid #ffedef;
   gap: 6px;
 }
 
+.social-circle-panel__bento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 110px 130px;
+  gap: 10px;
+}
+
+.social-circle-panel__section--social-link {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  align-content: center;
+}
+
+.social-circle-panel__section--friends {
+  grid-column: 2 / 4;
+  grid-row: 1 / 2;
+  min-height: 0;
+}
+
+.social-circle-panel__section--games {
+  grid-column: 1 / 3;
+  grid-row: 2 / 3;
+  min-height: 0;
+}
+
+.social-circle-panel__section--party-actions {
+  grid-column: 3 / 4;
+  grid-row: 2 / 3;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.social-circle-panel__section--party-actions:has(button + button) {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.social-circle-panel__section--party-actions .notice {
+  grid-column: 1 / -1;
+  margin: 0;
+  align-self: end;
+}
+
 .social-circle-panel__heading {
   margin: 0;
   font-size: 0.92rem;
@@ -4463,6 +4506,12 @@ border: 1px solid #ffedef;
 .social-circle-panel__list {
   display: grid;
   gap: 8px;
+}
+
+.social-circle-panel__list--scroll {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .social-circle-panel__row {
@@ -4486,6 +4535,27 @@ border: 1px solid #ffedef;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .social-circle-panel__bento {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .social-circle-panel__section--social-link,
+  .social-circle-panel__section--friends,
+  .social-circle-panel__section--games,
+  .social-circle-panel__section--party-actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .social-circle-panel__section--friends .social-circle-panel__list--scroll,
+  .social-circle-panel__section--games .social-circle-panel__list--scroll {
+    max-height: 180px;
+  }
 }
 
 .social-circle-panel__badge {
