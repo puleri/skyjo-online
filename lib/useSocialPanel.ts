@@ -56,6 +56,32 @@ type SocialPanelData = {
   inviteFriendToCurrentLobby: (friendUid: string, partyId: string) => Promise<void>;
 };
 
+const FRIEND_LIST_REVALIDATION_MS = 60 * 60 * 1000;
+
+type FriendListCacheEntry = {
+  fetchedAt: number;
+  friendUids: string[];
+  friends: SocialUser[];
+};
+
+const friendListCache = new Map<string, FriendListCacheEntry>();
+
+function areFriendIdsEqual(first: string[], second: string[]): boolean {
+  if (first.length !== second.length) {
+    return false;
+  }
+
+  return first.every((uid, index) => uid === second[index]);
+}
+
+function isFriendListCacheFresh(entry: FriendListCacheEntry | undefined): entry is FriendListCacheEntry {
+  if (!entry) {
+    return false;
+  }
+
+  return Date.now() - entry.fetchedAt < FRIEND_LIST_REVALIDATION_MS;
+}
+
 function parseLegacySavedGames(userData: Record<string, unknown> | undefined): SavedGameListItem[] {
   const rawSavedGames =
     userData?.savedGames && typeof userData.savedGames === "object"
@@ -116,6 +142,12 @@ export function useSocialPanel(): SocialPanelData {
 
     setLoading(true);
     setError(null);
+
+    const cachedFriendList = friendListCache.get(uid);
+    if (cachedFriendList) {
+      setFriends(cachedFriendList.friends);
+      setLoading(false);
+    }
 
     const friendInvitesQuery = query(
       collection(db, "friendInvites"),
@@ -178,6 +210,10 @@ export function useSocialPanel(): SocialPanelData {
         const friendUids = Array.isArray(userData?.friends)
           ? userData.friends.filter((friendUid): friendUid is string => typeof friendUid === "string")
           : [];
+        const latestCachedFriendList = friendListCache.get(uid);
+        const shouldUseCachedFriendList =
+          isFriendListCacheFresh(latestCachedFriendList) &&
+          areFriendIdsEqual(latestCachedFriendList.friendUids, friendUids);
         latestLegacySavedGames = parseLegacySavedGames(userData);
         syncSavedGames();
 
@@ -186,11 +222,30 @@ export function useSocialPanel(): SocialPanelData {
           friendProfilesUnsubscribe = null;
         }
 
+        if (shouldUseCachedFriendList) {
+          setFriends(latestCachedFriendList.friends);
+          setLoading(false);
+          return;
+        }
+
+        if (!friendUids.length) {
+          friendListCache.set(uid, {
+            fetchedAt: Date.now(),
+            friendUids: [],
+            friends: [],
+          });
+        }
+
         friendProfilesUnsubscribe = subscribeToFriendProfiles({
           db,
           friendUids,
           onNext: (profiles) => {
             setFriends(profiles);
+            friendListCache.set(uid, {
+              fetchedAt: Date.now(),
+              friendUids,
+              friends: profiles,
+            });
             setLoading(false);
           },
           onError: (friendProfileError) => {
