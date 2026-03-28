@@ -13,6 +13,23 @@ import {
 import { db } from "./firebase";
 import { parseSavedGameListItem, type SavedGameListItem } from "./userGames";
 
+const SAVED_GAMES_REVALIDATION_MS = 60 * 60 * 1000;
+
+type SavedGamesSubscriber = {
+  onNext: (savedGames: SavedGameListItem[]) => void;
+  onError?: (error: FirestoreError) => void;
+};
+
+type SavedGamesSubscriptionState = {
+  lastSnapshotAt: number;
+  latestSavedGames: SavedGameListItem[];
+  subscribers: Set<SavedGamesSubscriber>;
+  firestoreUnsubscribe: Unsubscribe | null;
+  teardownTimer: ReturnType<typeof setTimeout> | null;
+};
+
+const savedGamesSubscriptions = new Map<string, SavedGamesSubscriptionState>();
+
 export type SavedGamePayload = {
   gameId: string;
   partyId: string | null;
@@ -55,15 +72,96 @@ export function subscribeToSavedGames(
   onNext: (savedGames: SavedGameListItem[]) => void,
   onError?: (error: FirestoreError) => void,
 ): Unsubscribe {
-  return onSnapshot(
-    query(collection(db, "users", uid, "savedGames"), orderBy("updatedAt", "desc")),
-    (snapshot) => {
-      const savedGames = snapshot.docs
-        .map((savedGameDoc) => parseSavedGameListItem(savedGameDoc.data(), { docId: savedGameDoc.id }))
-        .filter((entry): entry is SavedGameListItem => Boolean(entry));
+  const trimmedUid = uid.trim();
+  if (!trimmedUid) {
+    onNext([]);
+    return () => undefined;
+  }
 
-      onNext(savedGames);
-    },
+  const subscriber: SavedGamesSubscriber = {
+    onNext,
     onError,
-  );
+  };
+
+  let state = savedGamesSubscriptions.get(trimmedUid);
+  if (!state) {
+    state = {
+      lastSnapshotAt: 0,
+      latestSavedGames: [],
+      subscribers: new Set(),
+      firestoreUnsubscribe: null,
+      teardownTimer: null,
+    };
+    savedGamesSubscriptions.set(trimmedUid, state);
+  }
+
+  if (state.teardownTimer) {
+    clearTimeout(state.teardownTimer);
+    state.teardownTimer = null;
+  }
+
+  state.subscribers.add(subscriber);
+
+  if (state.lastSnapshotAt > 0) {
+    onNext(state.latestSavedGames);
+  }
+
+  if (!state.firestoreUnsubscribe) {
+    state.firestoreUnsubscribe = onSnapshot(
+      query(collection(db, "users", trimmedUid, "savedGames"), orderBy("updatedAt", "desc")),
+      (snapshot) => {
+        const savedGames = snapshot.docs
+          .map((savedGameDoc) => parseSavedGameListItem(savedGameDoc.data(), { docId: savedGameDoc.id }))
+          .filter((entry): entry is SavedGameListItem => Boolean(entry));
+
+        const nextState = savedGamesSubscriptions.get(trimmedUid);
+        if (!nextState) {
+          return;
+        }
+
+        nextState.lastSnapshotAt = Date.now();
+        nextState.latestSavedGames = savedGames;
+        nextState.subscribers.forEach((activeSubscriber) => {
+          activeSubscriber.onNext(savedGames);
+        });
+      },
+      (snapshotError) => {
+        const nextState = savedGamesSubscriptions.get(trimmedUid);
+        if (!nextState) {
+          return;
+        }
+        nextState.subscribers.forEach((activeSubscriber) => {
+          activeSubscriber.onError?.(snapshotError);
+        });
+      },
+    );
+  }
+
+  return () => {
+    const nextState = savedGamesSubscriptions.get(trimmedUid);
+    if (!nextState) {
+      return;
+    }
+
+    nextState.subscribers.delete(subscriber);
+    if (nextState.subscribers.size > 0 || nextState.teardownTimer) {
+      return;
+    }
+
+    nextState.teardownTimer = setTimeout(() => {
+      const stateAtTeardown = savedGamesSubscriptions.get(trimmedUid);
+      if (!stateAtTeardown || stateAtTeardown.subscribers.size > 0) {
+        return;
+      }
+
+      if (
+        stateAtTeardown.firestoreUnsubscribe &&
+        Date.now() - stateAtTeardown.lastSnapshotAt >= SAVED_GAMES_REVALIDATION_MS
+      ) {
+        stateAtTeardown.firestoreUnsubscribe();
+        stateAtTeardown.firestoreUnsubscribe = null;
+      }
+      stateAtTeardown.teardownTimer = null;
+    }, SAVED_GAMES_REVALIDATION_MS);
+  };
 }
