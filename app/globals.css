@@ -30,6 +30,8 @@
   --on-newbg: #FFF9E2;
     --menu-button-bg: #D9D9D9;
     --new-grey: #d9d9d9;
+    --cluster-button-bg: #C2C2C2;
+    --new-color-text: #FFF9E2;
   --color-surface: #f1e8e1;
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
@@ -4456,12 +4458,33 @@ border: 1px solid #ffedef;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: 260px 300px;
   gap: 10px;
+  border-radius: 0;
 }
 
 .social-circle-panel__section--social-link {
+  background-color: var(--cluster-button-bg);
+  border-radius: 4px;
+  filter: none;
+  box-shadow: none;
+  color: var(--new-color-text);
+  text-transform: uppercase;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  letter-spacing: 0.15em;
   grid-column: 1 / 2;
   grid-row: 1 / 2;
   align-content: center;
+}
+
+.social-circle-panel__section--party-link {
+    background-color: var(--cluster-button-bg);
+  border-radius: 4px;
+  filter: none;
+  box-shadow: none;
+  color: var(--new-color-text);
+  text-transform: uppercase;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  letter-spacing: 0.15em;
+
 }
 
 .social-circle-panel__section--friends {
@@ -4539,16 +4562,6 @@ border: 1px solid #ffedef;
   gap: 6px;
 }
 
-.active-panel::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  z-index: -1;
-  height: 100vw;
-  width: 100vw;
-  top: 110px;
-  background-color: pink;
-}
 
 @media (max-width: 720px) {
   .social-circle-panel__bento {

@@ -629,7 +629,7 @@ onClick={() => {
               <div className="social-circle-panel__section social-circle-panel__section--party-actions">
                 <button
                   type="button"
-                  className="modal__inline-save-button social-circle-panel__toggle"
+                  className="social-circle-panel__section--social-link social-circle-panel__toggle"
                   onClick={() => {
                     void onClickSharePartyLink();
                   }}
@@ -640,7 +640,7 @@ onClick={() => {
                 {partyId ? (
                   <button
                     type="button"
-                    className="modal__inline-save-button social-circle-panel__toggle"
+                    className="social-circle-panel__section--party-link social-circle-panel__toggle"
                     onClick={() => {
                       void onClickLeaveParty();
                     }}
