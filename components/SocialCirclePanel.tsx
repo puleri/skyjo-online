@@ -31,26 +31,15 @@ type PartyLinkStatus = "idle" | "copying" | "copied" | "error";
 type SocialLinkStatus = "idle" | "copying" | "copied" | "error";
 type SocialModalTab = "social" | "preferences" | "profile";
 const signInRoute = "/";
-function getFriendInviteLabel(fromUserId: string) {
-  return fromUserId.trim() ? `Friend request from ${fromUserId}` : "Friend request";
-}
-
 export default function SocialCirclePanel({
   partyId,
   onLeaveParty = null,
   onEnsurePartyId = null,
 }: SocialCirclePanelProps) {
   const {
-    invites,
     friends,
-    online,
     loading,
     error,
-    sendFriendInvite,
-    acceptFriendInvite,
-    declineFriendInvite,
-    acceptPartyInvite,
-    declinePartyInvite,
     inviteFriendToCurrentLobby,
     yourGames,
   } = useSocialPanel();
@@ -80,14 +69,8 @@ export default function SocialCirclePanel({
   } = preferences;
 
   const [activeTab, setActiveTab] = useState<SocialModalTab>("social");
-  const [isInvitesOpen, setIsInvitesOpen] = useState(false);
-  const [isFriendsOpen, setIsFriendsOpen] = useState(false);
-  const [isOnlineOpen, setIsOnlineOpen] = useState(false);
-  const [isYourGamesOpen, setIsYourGamesOpen] = useState(false);
   const [isUiPreferencesOpen, setIsUiPreferencesOpen] = useState(true);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(true);
-  const [friendIdentifierInput, setFriendIdentifierInput] = useState("");
-  const [isSubmittingFriendInvite, setIsSubmittingFriendInvite] = useState(false);
   const [isLeavingParty, setIsLeavingParty] = useState(false);
   const [invitingFriendUid, setInvitingFriendUid] = useState<string | null>(null);
   const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
@@ -112,7 +95,6 @@ export default function SocialCirclePanel({
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackFrameRef = useRef<number | null>(null);
 
-  const hasInvites = invites.friend.length > 0 || invites.party.length > 0;
   const currentGameId = useMemo(() => {
     const gameRouteMatch = pathname.match(/^\/game\/([^/]+)$/);
     if (!gameRouteMatch) {
@@ -135,24 +117,6 @@ export default function SocialCirclePanel({
       }),
     [currentGameId, yourGames],
   );
-  const inviteRows = useMemo(
-    () => [
-      ...invites.friend.map((invite) => ({
-        key: `friend-${invite.id}`,
-        label: getFriendInviteLabel(invite.fromUserId),
-        onAccept: () => acceptFriendInvite(invite.id),
-        onDecline: () => declineFriendInvite(invite.id),
-      })),
-      ...invites.party.map((invite) => ({
-        key: `party-${invite.id}`,
-        label: `${invite.hostDisplayName} invited you to party ${invite.partyId}`,
-        onAccept: () => acceptPartyInvite(invite.id),
-        onDecline: () => declinePartyInvite(invite.id),
-      })),
-    ],
-    [acceptFriendInvite, acceptPartyInvite, declineFriendInvite, declinePartyInvite, invites.friend, invites.party],
-  );
-
   useEffect(() => {
     const nextProfileName = profile?.displayName?.trim() || authDisplayName?.trim() || "";
     setProfileName(nextProfileName);
@@ -343,22 +307,6 @@ export default function SocialCirclePanel({
     shouldPlayXpAnimation,
     xpPlayback,
   ]);
-
-  const onSubmitFriendInvite = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmedIdentifier = friendIdentifierInput.trim();
-    if (!trimmedIdentifier) {
-      return;
-    }
-
-    setIsSubmittingFriendInvite(true);
-    try {
-      await sendFriendInvite(trimmedIdentifier);
-      setFriendIdentifierInput("");
-    } finally {
-      setIsSubmittingFriendInvite(false);
-    }
-  };
 
   const onClickLeaveParty = async () => {
     if (!partyId || !onLeaveParty || isLeavingParty) {
@@ -601,86 +549,50 @@ export default function SocialCirclePanel({
 
       {activeTab === "social" ? (
         <>
-          <section className="social-circle-panel__section">
-            <h3 className="social-circle-panel__heading">Add Friend</h3>
-            <form className="modal__text-input-row" onSubmit={onSubmitFriendInvite}>
-              <input
-                type="text"
-                className="modal__text-input"
-                placeholder="User ID, name, or email"
-                value={friendIdentifierInput}
-                onChange={(event) => setFriendIdentifierInput(event.target.value)}
-                aria-label="Friend identifier"
-                disabled={isSubmittingFriendInvite}
-              />
+          <div className="social-circle-panel__bento">
+            <section className="social-circle-panel__section social-circle-panel__section--social-link">
+              <h3 className="social-circle-panel__heading">Your social link</h3>
+              <p className="notice">Click to copy and send to connect with a friend.</p>
               <button
-                type="submit"
-                className="modal__inline-save-button"
-                aria-label="Send friend invite"
-                disabled={isSubmittingFriendInvite || !friendIdentifierInput.trim()}
+                type="button"
+                className="modal__inline-save-button social-circle-panel__toggle"
+                onClick={() => {
+                  void onClickCopySocialLink();
+                }}
+                disabled={!uid || socialLinkStatus === "copying"}
               >
-                +
+                {socialLinkStatus === "copying" ? "Copying…" : "Copy social link"}
               </button>
-            </form>
-          </section>
-
-          <section className="social-circle-panel__section">
-            <h3 className="social-circle-panel__heading">Your Social Link</h3>
-            <p className="notice">Send to a friend to add them on Misty!</p>
-            <button
-              type="button"
-              className="modal__inline-save-button social-circle-panel__toggle"
-              onClick={() => {
-                void onClickCopySocialLink();
-              }}
-              disabled={!uid || socialLinkStatus === "copying"}
-            >
-              {socialLinkStatus === "copying" ? "Copying…" : "Copy Social Link"}
-            </button>
-            {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
-          </section>
-
-          {partyId || onEnsurePartyId ? (
-            <section className="social-circle-panel__section">
-              <div className="social-circle-panel__row-actions">
-                {partyId ? (
-                  <button
-                    type="button"
-                    className="modal__inline-save-button social-circle-panel__toggle"
-                    onClick={() => {
-                      void onClickLeaveParty();
-                    }}
-                    disabled={isLeavingParty || !onLeaveParty}
-                  >
-                    {isLeavingParty ? "Leaving party…" : "Leave Party"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="modal__inline-save-button social-circle-panel__toggle"
-                  onClick={() => {
-                    void onClickSharePartyLink();
-                  }}
-                  disabled={partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId)}
-                >
-                  {partyLinkStatus === "copying" ? "Copying…" : "Copy Party Link"}
-                </button>
-              </div>
-              {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
+              {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
             </section>
-          ) : null}
 
-          <section className="social-circle-panel__section">
-            <button
-              type="button"
-              className="profile-progression__replay-button social-circle-panel__toggle"
-              onClick={() => setIsYourGamesOpen((current) => !current)}
-              aria-expanded={isYourGamesOpen}
-            >
-              Your games ({yourGames.length})
-            </button>
-            {isYourGamesOpen ? (
-              <div className="social-circle-panel__list" role="list">
+            <section className="social-circle-panel__section social-circle-panel__section--friends">
+              <h3 className="social-circle-panel__heading">Friends ({friends.length})</h3>
+              <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
+                {friends.length === 0 ? <p className="notice">No friends yet.</p> : null}
+                {friends.map((friend) => (
+                  <article key={friend.uid} className="social-circle-panel__row" role="listitem">
+                    <p className="social-circle-panel__row-text">{friend.displayName}</p>
+                    <div className="social-circle-panel__row-actions">
+                      <button
+                        type="button"
+                        className="modal__inline-save-button"
+                        onClick={() => {
+                          void onClickInviteFriend(friend.uid);
+                        }}
+                        disabled={Boolean(invitingFriendUid)}
+                      >
+                        {invitingFriendUid === friend.uid ? "Inviting…" : "Invite to Lobby"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="social-circle-panel__section social-circle-panel__section--games">
+              <h3 className="social-circle-panel__heading">Games ({yourGames.length})</h3>
+              <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
                 {sortedYourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
                 {sortedYourGames.map((savedGame) => (
                   <article key={savedGame.gameId} className="social-circle-panel__row" role="listitem">
@@ -719,108 +631,38 @@ export default function SocialCirclePanel({
                   </article>
                 ))}
               </div>
-            ) : null}
-          </section>
+            </section>
 
-          <section className="social-circle-panel__section">
-            <button
-              type="button"
-              className="profile-progression__replay-button social-circle-panel__toggle"
-              onClick={() => setIsInvitesOpen((current) => !current)}
-              aria-expanded={isInvitesOpen}
-            >
-              Invites ({inviteRows.length})
-            </button>
-            {isInvitesOpen ? (
-              <div className="social-circle-panel__list" role="list">
-                {inviteRows.length === 0 ? <p className="notice">No pending invites.</p> : null}
-                {inviteRows.map((invite) => (
-                  <article key={invite.key} className="social-circle-panel__row" role="listitem">
-                    <p className="social-circle-panel__row-text">{invite.label}</p>
-                    <div className="social-circle-panel__row-actions">
-                      <button
-                        type="button"
-                        className="modal__inline-save-button"
-                        onClick={() => {
-                          void invite.onAccept();
-                        }}
-                      >
-                        Accept
-                      </button>
-                      <button
-                        type="button"
-                        className="modal__inline-save-button"
-                        onClick={() => {
-                          void invite.onDecline();
-                        }}
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+            {partyId || onEnsurePartyId ? (
+              <section className="social-circle-panel__section social-circle-panel__section--party-actions">
+                <button
+                  type="button"
+                  className="modal__inline-save-button social-circle-panel__toggle"
+                  onClick={() => {
+                    void onClickSharePartyLink();
+                  }}
+                  disabled={partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId)}
+                >
+                  {partyLinkStatus === "copying" ? "Copying…" : "Copy party invite link"}
+                </button>
+                {partyId ? (
+                  <button
+                    type="button"
+                    className="modal__inline-save-button social-circle-panel__toggle"
+                    onClick={() => {
+                      void onClickLeaveParty();
+                    }}
+                    disabled={isLeavingParty || !onLeaveParty}
+                  >
+                    {isLeavingParty ? "Leaving party…" : "Leave party"}
+                  </button>
+                ) : null}
+                {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
+              </section>
             ) : null}
-          </section>
+          </div>
 
-          <section className="social-circle-panel__section">
-            <button
-              type="button"
-              className="profile-progression__replay-button social-circle-panel__toggle"
-              onClick={() => setIsFriendsOpen((current) => !current)}
-              aria-expanded={isFriendsOpen}
-            >
-              Friends ({friends.length})
-            </button>
-            {isFriendsOpen ? (
-              <div className="social-circle-panel__list" role="list">
-                {friends.length === 0 ? <p className="notice">No friends yet.</p> : null}
-                {friends.map((friend) => (
-                  <article key={friend.uid} className="social-circle-panel__row" role="listitem">
-                    <p className="social-circle-panel__row-text">{friend.displayName}</p>
-                    <div className="social-circle-panel__row-actions">
-                      <button
-                        type="button"
-                        className="modal__inline-save-button"
-                        onClick={() => {
-                          void onClickInviteFriend(friend.uid);
-                        }}
-                        disabled={Boolean(invitingFriendUid)}
-                      >
-                        {invitingFriendUid === friend.uid ? "Inviting…" : "Invite to Lobby"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="social-circle-panel__section">
-            <button
-              type="button"
-              className="profile-progression__replay-button social-circle-panel__toggle"
-              onClick={() => setIsOnlineOpen((current) => !current)}
-              aria-expanded={isOnlineOpen}
-            >
-              Online ({online.length})
-            </button>
-            {isOnlineOpen ? (
-              <div className="social-circle-panel__list" role="list">
-                {online.length === 0 ? <p className="notice">No friends currently in a game.</p> : null}
-                {online.map((friend) => (
-                  <article key={friend.uid} className="social-circle-panel__row" role="listitem">
-                    <p className="social-circle-panel__row-text">
-                      {friend.displayName}
-                      {friend.activeGameId ? <span className="social-circle-panel__badge">In Game</span> : null}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          {loading && !hasInvites && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
+          {loading && friends.length === 0 ? <p className="notice">Loading social panel…</p> : null}
           {joinGameError ? <p className="notice">{joinGameError}</p> : null}
           {leaveGameError ? <p className="notice">{leaveGameError}</p> : null}
           {error ? <p className="notice">{error}</p> : null}
