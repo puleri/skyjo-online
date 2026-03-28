@@ -2568,6 +2568,11 @@ small {
 .home-menu-words {
   height: clamp(30px, 4vw, 55px);
 }
+
+.home-menu-words-shop {
+  height: clamp(24px, 3.5vw, 45px);
+}
+
 .home-menu-buttons {
   --sheen-angle: -24deg;
   --sheen-offset-y: 58%;

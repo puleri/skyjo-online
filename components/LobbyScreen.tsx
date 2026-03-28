@@ -341,7 +341,7 @@ export default function LobbyScreen() {
                 className="home-menu-buttons home-menu-buttons--shop shop-button lobby-bento-grid__shop"
                 disabled
               >
-                <img src="/text/Shop.svg" alt="Shop" className="home-menu-words" />
+                <img src="/text/Shop.svg" alt="Shop" className="home-menu-words-shop" />
 
               </button>
             </div>
