@@ -4451,7 +4451,7 @@ border: 1px solid #ffedef;
 .social-circle-panel__bento {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: 110px 130px;
+  grid-template-rows: 340px 380px;
   gap: 10px;
 }
 
