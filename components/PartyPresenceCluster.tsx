@@ -4,6 +4,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured } from "../lib/firebase";
+import { useUserProfile } from "../lib/useUserProfile";
 import { useParty } from "./LobbyProvider";
 import SocialCirclePanel from "./SocialCirclePanel";
 
@@ -39,9 +40,13 @@ export default function PartyPresenceCluster() {
   const [isSageOpen, setIsSageOpen] = useState(false);
   const [sageAnimationPhase, setSageAnimationPhase] = useState<"opening" | "open" | "closing">("closing");
   const [didCopyUserId, setDidCopyUserId] = useState(false);
+  const [isEditingDisplayName, setIsEditingDisplayName] = useState(false);
+  const [displayNameDraft, setDisplayNameDraft] = useState("");
+  const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
   const localTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { updateProfile } = useUserProfile();
 
   const orderedMembers = useMemo(() => {
     const mappedMembers: PresenceMember[] = members.map((member) => ({
@@ -155,6 +160,15 @@ export default function PartyPresenceCluster() {
   }, []);
 
   const localUserDisplayName = localMember?.displayName.trim() || FALLBACK_LABEL;
+  const localUserPhotoUrl = localMember ? (profilePhotosById[localMember.id] ?? localMember.photoURL) : null;
+
+  useEffect(() => {
+    if (isEditingDisplayName) {
+      return;
+    }
+
+    setDisplayNameDraft(localUserDisplayName);
+  }, [isEditingDisplayName, localUserDisplayName]);
 
   const copyUserId = async () => {
     if (!localMember?.id) {
@@ -198,7 +212,40 @@ export default function PartyPresenceCluster() {
       return;
     }
 
+    setIsEditingDisplayName(false);
+    setIsSavingDisplayName(false);
+    setDisplayNameDraft(localUserDisplayName);
     setSageAnimationPhase("closing");
+  };
+
+  const beginDisplayNameEdit = () => {
+    setDisplayNameDraft(localUserDisplayName);
+    setIsEditingDisplayName(true);
+  };
+
+  const cancelDisplayNameEdit = () => {
+    setDisplayNameDraft(localUserDisplayName);
+    setIsEditingDisplayName(false);
+  };
+
+  const saveDisplayNameEdit = async () => {
+    const nextDisplayName = displayNameDraft.trim();
+    if (!nextDisplayName || nextDisplayName === localUserDisplayName || isSavingDisplayName) {
+      setDisplayNameDraft(localUserDisplayName);
+      setIsEditingDisplayName(false);
+      return;
+    }
+
+    try {
+      setIsSavingDisplayName(true);
+      await updateProfile({ displayName: nextDisplayName });
+      setIsEditingDisplayName(false);
+    } catch {
+      setDisplayNameDraft(localUserDisplayName);
+      setIsEditingDisplayName(false);
+    } finally {
+      setIsSavingDisplayName(false);
+    }
   };
 
   if (!orderedMembers.length) {
@@ -318,9 +365,82 @@ export default function PartyPresenceCluster() {
             <div className="party-presence-cluster__sage-content">
               <div className="party-presence-cluster__sage-header">
                 <div className="party-presence-cluster__sage-title-group">
-                  <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
-                    {localUserDisplayName}
-                  </h2>
+                  <div className="party-presence-cluster__sage-profile-heading">
+                    <span className="party-presence-cluster__sage-profile-photo" aria-hidden="true">
+                      {localUserPhotoUrl ? (
+                        <img
+                          className="party-presence-cluster__photo"
+                          src={localUserPhotoUrl}
+                          alt=""
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="party-presence-cluster__fallback">
+                          {getFallbackInitial(localUserDisplayName)}
+                        </span>
+                      )}
+                    </span>
+                    {isEditingDisplayName ? (
+                      <>
+                        <input
+                          id="party-presence-sage-title"
+                          className="party-presence-cluster__sage-title-input"
+                          value={displayNameDraft}
+                          onChange={(event) => setDisplayNameDraft(event.target.value)}
+                          aria-label="Display name"
+                          disabled={isSavingDisplayName}
+                          autoFocus
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void saveDisplayNameEdit();
+                            }
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              cancelDisplayNameEdit();
+                            }
+                          }}
+                        />
+                        <div className="party-presence-cluster__sage-profile-actions">
+                          <button
+                            type="button"
+                            className="party-presence-cluster__sage-icon-button"
+                            aria-label="Cancel display name edit"
+                            onClick={cancelDisplayNameEdit}
+                            disabled={isSavingDisplayName}
+                          >
+                            ×
+                          </button>
+                          <button
+                            type="button"
+                            className="party-presence-cluster__sage-icon-button party-presence-cluster__sage-icon-button--confirm"
+                            aria-label="Save display name"
+                            onClick={() => {
+                              void saveDisplayNameEdit();
+                            }}
+                            disabled={isSavingDisplayName}
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
+                          {localUserDisplayName}
+                        </h2>
+                        <button
+                          type="button"
+                          className="party-presence-cluster__sage-icon-button party-presence-cluster__sage-edit-button"
+                          aria-label="Edit display name"
+                          onClick={beginDisplayNameEdit}
+                        >
+                          ✎
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"
