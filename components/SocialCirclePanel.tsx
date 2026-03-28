@@ -551,8 +551,6 @@ export default function SocialCirclePanel({
         <>
           <div className="social-circle-panel__bento">
             <section className="social-circle-panel__section social-circle-panel__section--social-link">
-              <h3 className="social-circle-panel__heading">Your social link</h3>
-              <p className="notice">Click to copy and send to connect with a friend.</p>
               <button
                 type="button"
                 className="modal__inline-save-button social-circle-panel__toggle"
@@ -561,7 +559,7 @@ export default function SocialCirclePanel({
                 }}
                 disabled={!uid || socialLinkStatus === "copying"}
               >
-                {socialLinkStatus === "copying" ? "Copying…" : "Copy social link"}
+                {socialLinkStatus === "copying" ? "Copying…" : "Your social link"}
               </button>
               {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
             </section>
