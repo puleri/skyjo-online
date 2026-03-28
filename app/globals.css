@@ -669,7 +669,6 @@ section {
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
 }
 
 .modal__inline-save-button:hover:not(:disabled) {
@@ -4504,7 +4503,6 @@ border: 1px solid #ffedef;
 }
 
 .social-circle-panel__toggle {
-  width: 100%;
   justify-self: stretch;
 }
 

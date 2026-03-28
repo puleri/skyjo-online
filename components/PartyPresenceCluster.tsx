@@ -321,18 +321,6 @@ export default function PartyPresenceCluster() {
                   <h2 id="party-presence-sage-title" className="party-presence-cluster__sage-title">
                     {localUserDisplayName}
                   </h2>
-                  <div className="party-presence-cluster__sage-user-id-row">
-                    <span className="party-presence-cluster__sage-user-id">{localMember?.id}</span>
-                    <button
-                      type="button"
-                      className="party-presence-cluster__copy-user-id"
-                      onClick={copyUserId}
-                      aria-label="Copy your user ID"
-                      title={didCopyUserId ? "Copied!" : "Copy user ID"}
-                    >
-                      📋
-                    </button>
-                  </div>
                 </div>
                 <button
                   type="button"

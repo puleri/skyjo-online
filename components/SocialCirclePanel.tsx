@@ -558,7 +558,7 @@ onClick={() => {
               {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
             </button>
 
-            <section className="social-circle-panel__section social-circle-panel__section--friends">
+            <div className="social-circle-panel__section social-circle-panel__section--friends">
               <h3 className="social-circle-panel__heading">Friends ({friends.length})</h3>
               <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
                 {friends.length === 0 ? <p className="notice">No friends yet.</p> : null}
@@ -580,9 +580,9 @@ onClick={() => {
                   </article>
                 ))}
               </div>
-            </section>
+            </div>
 
-            <section className="social-circle-panel__section social-circle-panel__section--games">
+            <div className="social-circle-panel__section social-circle-panel__section--games">
               <h3 className="social-circle-panel__heading">Games ({yourGames.length})</h3>
               <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
                 {sortedYourGames.length === 0 ? <p className="notice">No unfinished games saved.</p> : null}
@@ -623,7 +623,7 @@ onClick={() => {
                   </article>
                 ))}
               </div>
-            </section>
+            </div>
 
             {partyId || onEnsurePartyId ? (
               <div className="social-circle-panel__section social-circle-panel__section--party-actions">
@@ -663,7 +663,7 @@ onClick={() => {
 
       {activeTab === "preferences" ? (
         <>
-          <section className="social-circle-panel__section">
+          <div className="social-circle-panel__section">
             <button
               type="button"
               className="modal__section-dropdown"
@@ -742,9 +742,9 @@ onClick={() => {
                 </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <section className="social-circle-panel__section">
+          <div className="social-circle-panel__section">
             <button
               type="button"
               className="modal__section-dropdown"
@@ -793,7 +793,7 @@ onClick={() => {
                 </div>
               </div>
             </div>
-          </section>
+          </div>
         </>
       ) : null}
 
