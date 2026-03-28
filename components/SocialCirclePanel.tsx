@@ -550,19 +550,13 @@ export default function SocialCirclePanel({
       {activeTab === "social" ? (
         <>
           <div className="social-circle-panel__bento active-panel">
-            <section className="social-circle-panel__section social-circle-panel__section--social-link">
-              <button
-                type="button"
-                className="modal__inline-save-button social-circle-panel__toggle"
-                onClick={() => {
+            <button                 disabled={!uid || socialLinkStatus === "copying"}
+onClick={() => {
                   void onClickCopySocialLink();
-                }}
-                disabled={!uid || socialLinkStatus === "copying"}
-              >
+                }} className="social-circle-panel__section social-circle-panel__section--social-link">
                 {socialLinkStatus === "copying" ? "Copying…" : "Your social link"}
-              </button>
               {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
-            </section>
+            </button>
 
             <section className="social-circle-panel__section social-circle-panel__section--friends">
               <h3 className="social-circle-panel__heading">Friends ({friends.length})</h3>
@@ -632,7 +626,7 @@ export default function SocialCirclePanel({
             </section>
 
             {partyId || onEnsurePartyId ? (
-              <section className="social-circle-panel__section social-circle-panel__section--party-actions">
+              <div className="social-circle-panel__section social-circle-panel__section--party-actions">
                 <button
                   type="button"
                   className="modal__inline-save-button social-circle-panel__toggle"
@@ -656,7 +650,7 @@ export default function SocialCirclePanel({
                   </button>
                 ) : null}
                 {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
-              </section>
+              </div>
             ) : null}
           </div>
 

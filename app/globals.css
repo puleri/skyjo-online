@@ -4542,6 +4542,17 @@ border: 1px solid #ffedef;
   gap: 6px;
 }
 
+.active-panel::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  z-index: -1;
+  height: 100vw;
+  width: 100vw;
+  top: 110px;
+  background-color: pink;
+}
+
 @media (max-width: 720px) {
   .social-circle-panel__bento {
     grid-template-columns: minmax(0, 1fr);
