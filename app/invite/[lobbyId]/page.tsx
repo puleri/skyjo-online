@@ -41,13 +41,19 @@ const fetchHostDisplayName = async (lobbyId: string): Promise<string | null> => 
 
 export async function generateMetadata({ params }: InvitePageProps): Promise<Metadata> {
   const hostName = (await fetchHostDisplayName(params.lobbyId)) ?? "A player";
-  const message = `${hostName} invited you to join their lobby`;
+  const title = `${hostName} invited you to their party`;
+  const description = `Connect with ${hostName} on Misty`;
+
   return {
-    title: message,
-    description: "Misty",
+    title,
+    description,
     openGraph: {
-      title: message,
-      description: "Misty",
+      title,
+      description,
+    },
+    twitter: {
+      title,
+      description,
     },
   };
 }
