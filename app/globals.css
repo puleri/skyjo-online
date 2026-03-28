@@ -4281,7 +4281,7 @@ border: 1px solid #ffedef;
 }
 
 .party-presence-cluster__sage-panel {
-  --sage-panel-width: min(380px, calc(100vw - 32px));
+  --sage-panel-width: min(420px, calc(100vw - 32px));
   --sage-panel-max-height: min(760px, calc(100vh - 32px));
   position: fixed;
   top: 16px;

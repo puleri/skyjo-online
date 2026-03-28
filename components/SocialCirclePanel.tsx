@@ -549,7 +549,7 @@ export default function SocialCirclePanel({
 
       {activeTab === "social" ? (
         <>
-          <div className="social-circle-panel__bento">
+          <div className="social-circle-panel__bento active-panel">
             <section className="social-circle-panel__section social-circle-panel__section--social-link">
               <button
                 type="button"
