@@ -29,7 +29,7 @@
   --newcolor-bg: #BEC5B4;
   --on-newbg: #FFF9E2;
     --menu-button-bg: #D9D9D9;
-
+    --new-grey: #d9d9d9;
   --color-surface: #f1e8e1;
   --color-surface-alt: #ddd5c8;
   --color-surface-bright: #faf9f6;
@@ -4288,8 +4288,7 @@ border: 1px solid #ffedef;
   width: var(--sage-panel-width);
   max-height: var(--sage-panel-max-height);
   border-radius: 20px;
-  background: var(--color-surface);
-  border: 3px solid var(--color-surface-bright);
+  background: var(--new-grey);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
@@ -4455,7 +4454,7 @@ border: 1px solid #ffedef;
 .social-circle-panel__bento {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: 340px 380px;
+  grid-template-rows: 260px 300px;
   gap: 10px;
 }
 
