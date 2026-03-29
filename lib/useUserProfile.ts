@@ -11,13 +11,12 @@ import {
 } from "firebase/auth";
 import {
   doc,
-  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
   type FirestoreError,
 } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { app, db, isFirebaseConfigured } from "./firebase";
 import {
   cacheProfileDisplayName,
@@ -30,6 +29,10 @@ import {
   type UserProfile,
   type UserProfileUpdate,
 } from "./userProfile";
+import {
+  getUserProfileBootstrapState,
+  subscribeUserProfileBootstrap,
+} from "./userProfileBootstrap";
 
 type UseUserProfileState = {
   profile: UserProfile | null;
@@ -43,69 +46,6 @@ type UseUserProfileState = {
   signInWithGoogleSso: () => Promise<void>;
   signOutUser: () => Promise<void>;
 };
-
-async function ensureUserProfile(user: User) {
-  const userRef = doc(db, "users", user.uid);
-  const userSnapshot = await getDoc(userRef);
-  const defaultProfile = defaultUserProfile(user);
-
-  if (!userSnapshot.exists()) {
-    await setDoc(userRef, {
-      ...defaultProfile,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return;
-  }
-
-  const existingProfile = userSnapshot.data();
-
-  await setDoc(
-    userRef,
-    {
-      ...(typeof existingProfile.displayName === "string" ? {} : { displayName: user.displayName }),
-      ...(typeof existingProfile.email === "string" ? {} : { email: user.email }),
-      ...(typeof existingProfile.photoURL === "string" ? {} : { photoURL: user.photoURL }),
-      ...(Array.isArray(existingProfile.friends) ? {} : { friends: defaultProfile.friends }),
-      ...(typeof existingProfile.activeGameId === "string" || existingProfile.activeGameId === null
-        ? {}
-        : { activeGameId: defaultProfile.activeGameId }),
-      ...(existingProfile.presenceState === "online" ||
-      existingProfile.presenceState === "in_game" ||
-      existingProfile.presenceState === "offline"
-        ? {}
-        : { presenceState: defaultProfile.presenceState }),
-      ...(existingProfile.lastSeenAt ? {} : { lastSeenAt: defaultProfile.lastSeenAt }),
-      ...(Array.isArray(existingProfile.lastFiveGames)
-        ? {}
-        : { lastFiveGames: defaultProfile.lastFiveGames }),
-      ...(existingProfile.settingsPreferences &&
-      typeof existingProfile.settingsPreferences === "object"
-        ? {}
-        : { settingsPreferences: defaultProfile.settingsPreferences }),
-      ...(typeof existingProfile.level === "number" ? {} : { level: defaultProfile.level }),
-      ...(typeof existingProfile.experience === "number"
-        ? {}
-        : { experience: defaultProfile.experience }),
-      ...(Array.isArray(existingProfile.unlockedSpells)
-        ? {}
-        : { unlockedSpells: defaultProfile.unlockedSpells }),
-      ...(Array.isArray(existingProfile.rewardedGameIds)
-        ? {}
-        : { rewardedGameIds: defaultProfile.rewardedGameIds }),
-      ...(existingProfile.lastXpGainAnimation &&
-      typeof existingProfile.lastXpGainAnimation === "object"
-        ? {}
-        : { lastXpGainAnimation: defaultProfile.lastXpGainAnimation }),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error.";
-}
 
 function mapFirestoreProfile(user: User, value: unknown): UserProfile {
   const baseProfile = defaultUserProfile(user);
@@ -125,6 +65,12 @@ export function useUserProfile(): UseUserProfileState {
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isAnonymousUser, setIsAnonymousUser] = useState(false);
+
+  const bootstrapState = useSyncExternalStore(
+    subscribeUserProfileBootstrap,
+    () => getUserProfileBootstrapState(currentUid),
+    () => getUserProfileBootstrapState(currentUid)
+  );
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -178,18 +124,19 @@ export function useUserProfile(): UseUserProfileState {
       return;
     }
 
+    if (bootstrapState.status === "error") {
+      setError(bootstrapState.error ?? "Unknown error.");
+      setLoading(false);
+      return;
+    }
+
+    if (bootstrapState.status !== "ready") {
+      setLoading(true);
+      return;
+    }
+
     let isMounted = true;
     setLoading(true);
-
-    void ensureUserProfile(user).catch((err) => {
-      if (!isMounted) {
-        return;
-      }
-
-      console.error("[useUserProfile] Failed to ensure user profile", err);
-      setError(getErrorMessage(err));
-      setLoading(false);
-    });
 
     const unsubscribe = onSnapshot(
       doc(db, "users", currentUid),
@@ -216,7 +163,7 @@ export function useUserProfile(): UseUserProfileState {
       isMounted = false;
       unsubscribe();
     };
-  }, [currentUid]);
+  }, [bootstrapState.error, bootstrapState.status, currentUid]);
 
   const updateProfile = useCallback(async (updates: UserProfileUpdate) => {
     const auth = getAuth(app);

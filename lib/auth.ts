@@ -9,12 +9,14 @@ import {
   signInAnonymously,
   signInWithPopup,
   signOut,
-  type User,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { app, db, isFirebaseConfigured } from "./firebase";
-import { defaultUserProfile } from "./userProfile";
+import {
+  ensureUserProfile,
+  startUserProfileBootstrapSession,
+} from "./userProfileBootstrap";
 
 type AuthMode = "anonymous" | "google" | null;
 
@@ -94,52 +96,6 @@ type AuthState = {
   saveProfileDisplayName: (nextDisplayName: string) => Promise<void>;
 };
 
-async function ensureUserProfile(user: User) {
-  const userRef = doc(db, "users", user.uid);
-  const userSnapshot = await getDoc(userRef);
-
-  if (!userSnapshot.exists()) {
-    const defaultProfile = defaultUserProfile(user);
-
-    await setDoc(userRef, {
-      ...defaultProfile,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    return defaultProfile.displayName;
-  }
-
-  const existingProfile = userSnapshot.data();
-  const resolvedDisplayName =
-    typeof existingProfile.displayName === "string" && existingProfile.displayName.trim()
-      ? existingProfile.displayName
-      : user.displayName;
-
-  await setDoc(
-    userRef,
-    {
-      ...(existingProfile.displayName ? {} : { displayName: user.displayName }),
-      ...(Array.isArray(existingProfile.friends) ? {} : { friends: [] }),
-      ...(typeof existingProfile.activeGameId === "string" || existingProfile.activeGameId === null
-        ? {}
-        : { activeGameId: null }),
-      ...(existingProfile.presenceState === "online" ||
-      existingProfile.presenceState === "in_game" ||
-      existingProfile.presenceState === "offline"
-        ? {}
-        : { presenceState: "offline" }),
-      ...(existingProfile.lastSeenAt ? {} : { lastSeenAt: null }),
-      email: user.email,
-      photoURL: user.photoURL,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-
-  return resolvedDisplayName;
-}
-
 function loadStoredAuthMode(): AuthMode {
   if (typeof window === "undefined") {
     return null;
@@ -201,6 +157,7 @@ export function useAnonymousAuth(): AuthState {
     });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      startUserProfileBootstrapSession(user);
       profileRequestId += 1;
       const currentProfileRequestId = profileRequestId;
       if (!isMounted) {
