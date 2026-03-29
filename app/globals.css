@@ -4617,6 +4617,13 @@ border: 1px solid #ffedef;
   text-transform: uppercase;
 }
 
+.social-circle-panel__friends-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .social-circle-panel__toggle {
   justify-self: stretch;
 }
@@ -4630,6 +4637,12 @@ border: 1px solid #ffedef;
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.social-circle-panel__list--disabled {
+  opacity: 0.55;
+  filter: grayscale(0.2);
+  pointer-events: none;
 }
 
 .social-circle-panel__row {

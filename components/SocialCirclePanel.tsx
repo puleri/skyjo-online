@@ -559,8 +559,26 @@ onClick={() => {
             </button>
 
             <div className="social-circle-panel__section social-circle-panel__section--friends">
-              <h3 className="social-circle-panel__heading">Friends ({friends.length})</h3>
-              <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
+              <div className="social-circle-panel__friends-header">
+                <h3 className="social-circle-panel__heading">Friends ({friends.length})</h3>
+                {isAnonymousUser ? (
+                  <button
+                    type="button"
+                    className="modal__inline-save-button"
+                    onClick={() => {
+                      void signInWithGoogleSso();
+                    }}
+                  >
+                    Sign in with Google SSO
+                  </button>
+                ) : null}
+              </div>
+              <div
+                className={`social-circle-panel__list social-circle-panel__list--scroll ${isAnonymousUser ? "social-circle-panel__list--disabled" : ""}`}
+                role="list"
+                aria-disabled={isAnonymousUser}
+              >
+                {isAnonymousUser ? <p className="notice">Sign in with Google SSO to unlock friends.</p> : null}
                 {friends.length === 0 ? <p className="notice">No friends yet.</p> : null}
                 {friends.map((friend) => (
                   <article key={friend.uid} className="social-circle-panel__row" role="listitem">
@@ -572,7 +590,7 @@ onClick={() => {
                         onClick={() => {
                           void onClickInviteFriend(friend.uid);
                         }}
-                        disabled={Boolean(invitingFriendUid)}
+                        disabled={Boolean(invitingFriendUid) || isAnonymousUser}
                       >
                         {invitingFriendUid === friend.uid ? "Inviting…" : "Invite to Lobby"}
                       </button>
