@@ -32,6 +32,52 @@ export type SocialFriendInvite = {
   status: string;
 };
 
+const IDENTIFIER_LOOKUP_CACHE_MAX_ENTRIES = 200;
+const IDENTIFIER_LOOKUP_HIT_TTL_MS = 10 * 60 * 1000;
+const IDENTIFIER_LOOKUP_MISS_TTL_MS = 45 * 1000;
+const IDENTIFIER_NOT_FOUND = "not-found";
+
+type IdentifierLookupValue = string | typeof IDENTIFIER_NOT_FOUND;
+type IdentifierLookupCacheEntry = {
+  value: IdentifierLookupValue;
+  expiresAt: number;
+};
+
+const identifierLookupCache = new Map<string, IdentifierLookupCacheEntry>();
+const identifierLookupInFlight = new Map<string, Promise<string>>();
+
+function readIdentifierLookupCache(cacheKey: string): IdentifierLookupValue | null {
+  const entry = identifierLookupCache.get(cacheKey);
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() >= entry.expiresAt) {
+    identifierLookupCache.delete(cacheKey);
+    return null;
+  }
+
+  // Refresh recency for LRU behavior.
+  identifierLookupCache.delete(cacheKey);
+  identifierLookupCache.set(cacheKey, entry);
+  return entry.value;
+}
+
+function writeIdentifierLookupCache(cacheKey: string, value: IdentifierLookupValue) {
+  const ttlMs = value === IDENTIFIER_NOT_FOUND ? IDENTIFIER_LOOKUP_MISS_TTL_MS : IDENTIFIER_LOOKUP_HIT_TTL_MS;
+  identifierLookupCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  });
+
+  while (identifierLookupCache.size > IDENTIFIER_LOOKUP_CACHE_MAX_ENTRIES) {
+    const oldestCacheKey = identifierLookupCache.keys().next().value;
+    if (!oldestCacheKey) {
+      return;
+    }
+    identifierLookupCache.delete(oldestCacheKey);
+  }
+}
 
 export function normalizeSocialUser(uid: string, data: Record<string, unknown>): SocialUser {
   const fallbackName = uid ? `Player ${uid.slice(0, 6)}` : "Anonymous player";
@@ -59,28 +105,55 @@ export async function resolveUserIdFromIdentifier(db: Firestore, identifier: str
     throw new Error("Provide a user ID or display name.");
   }
 
-  const byUidRef = doc(db, "users", trimmedIdentifier);
-  const byUidSnap = await getDoc(byUidRef);
-  if (byUidSnap.exists()) {
-    return byUidSnap.id;
+  const cacheKey = trimmedIdentifier;
+  const cachedLookupResult = readIdentifierLookupCache(cacheKey);
+  if (cachedLookupResult) {
+    if (cachedLookupResult === IDENTIFIER_NOT_FOUND) {
+      throw new Error("No matching user was found for that identifier.");
+    }
+    return cachedLookupResult;
   }
 
-  const [byDisplayNameSnap, byEmailSnap] = await Promise.all([
-    getDocs(query(collection(db, "users"), where("displayName", "==", trimmedIdentifier), limit(1))),
-    getDocs(query(collection(db, "users"), where("email", "==", trimmedIdentifier), limit(1))),
-  ]);
-
-  const byDisplayNameDoc = byDisplayNameSnap.docs[0];
-  if (byDisplayNameDoc) {
-    return byDisplayNameDoc.id;
+  const inFlightLookup = identifierLookupInFlight.get(cacheKey);
+  if (inFlightLookup) {
+    return inFlightLookup;
   }
 
-  const byEmailDoc = byEmailSnap.docs[0];
-  if (byEmailDoc) {
-    return byEmailDoc.id;
-  }
+  const lookupPromise = (async () => {
+    const byUidRef = doc(db, "users", trimmedIdentifier);
+    const byUidSnap = await getDoc(byUidRef);
+    if (byUidSnap.exists()) {
+      writeIdentifierLookupCache(cacheKey, byUidSnap.id);
+      return byUidSnap.id;
+    }
 
-  throw new Error("No matching user was found for that identifier.");
+    const [byDisplayNameSnap, byEmailSnap] = await Promise.all([
+      getDocs(query(collection(db, "users"), where("displayName", "==", trimmedIdentifier), limit(1))),
+      getDocs(query(collection(db, "users"), where("email", "==", trimmedIdentifier), limit(1))),
+    ]);
+
+    const byDisplayNameDoc = byDisplayNameSnap.docs[0];
+    if (byDisplayNameDoc) {
+      writeIdentifierLookupCache(cacheKey, byDisplayNameDoc.id);
+      return byDisplayNameDoc.id;
+    }
+
+    const byEmailDoc = byEmailSnap.docs[0];
+    if (byEmailDoc) {
+      writeIdentifierLookupCache(cacheKey, byEmailDoc.id);
+      return byEmailDoc.id;
+    }
+
+    writeIdentifierLookupCache(cacheKey, IDENTIFIER_NOT_FOUND);
+    throw new Error("No matching user was found for that identifier.");
+  })();
+
+  identifierLookupInFlight.set(cacheKey, lookupPromise);
+  try {
+    return await lookupPromise;
+  } finally {
+    identifierLookupInFlight.delete(cacheKey);
+  }
 }
 
 export async function sendFriendInviteByIdentifier(
