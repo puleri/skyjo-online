@@ -24,14 +24,12 @@ function emitChange() {
   listeners.forEach((listener) => listener());
 }
 
-function defaultBootstrapState(): BootstrapState {
-  return {
-    status: "idle",
-    profileDisplayName: null,
-    error: null,
-    sessionId: 0,
-  };
-}
+const DEFAULT_BOOTSTRAP_STATE: BootstrapState = Object.freeze({
+  status: "idle",
+  profileDisplayName: null,
+  error: null,
+  sessionId: 0,
+});
 
 function setBootstrapState(uid: string, nextState: BootstrapState) {
   bootstrapStateByUid.set(uid, nextState);
@@ -61,10 +59,10 @@ export function subscribeUserProfileBootstrap(listener: () => void) {
 
 export function getUserProfileBootstrapState(uid: string | null): BootstrapState {
   if (!uid) {
-    return defaultBootstrapState();
+    return DEFAULT_BOOTSTRAP_STATE;
   }
 
-  return bootstrapStateByUid.get(uid) ?? defaultBootstrapState();
+  return bootstrapStateByUid.get(uid) ?? DEFAULT_BOOTSTRAP_STATE;
 }
 
 export async function ensureUserProfile(user: User) {
