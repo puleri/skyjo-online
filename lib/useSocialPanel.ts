@@ -8,7 +8,7 @@ import {
   where,
   type FirestoreError,
 } from "firebase/firestore";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAnonymousAuth } from "./auth";
 import { db, isFirebaseConfigured } from "./firebase";
 import {
@@ -76,12 +76,14 @@ function areFriendIdsEqual(first: string[], second: string[]): boolean {
   return first.every((uid, index) => uid === second[index]);
 }
 
-function selectHotFriendUids(friendProfiles: SocialUser[]) {
-  const activeFriendUids = friendProfiles.filter((friend) => Boolean(friend.activeGameId)).map((friend) => friend.uid);
-  const nonActiveFriendUids = friendProfiles
-    .filter((friend) => !friend.activeGameId)
-    .map((friend) => friend.uid)
-    .slice(0, Math.max(0, HOT_FRIEND_REALTIME_LIMIT - activeFriendUids.length));
+function createFriendIdsKey(friendUids: string[]): string {
+  return friendUids.join("\u0001");
+}
+
+function isFriendListCacheFresh(entry: FriendListCacheEntry | undefined): entry is FriendListCacheEntry {
+  if (!entry) {
+    return false;
+  }
 
   return [...activeFriendUids, ...nonActiveFriendUids].slice(0, HOT_FRIEND_REALTIME_LIMIT);
 }
@@ -117,6 +119,7 @@ function mergeSavedGames(
 
 export function useSocialPanel(): SocialPanelData {
   const { uid, displayName, profileDisplayName } = useAnonymousAuth();
+  const previousFriendIdsKeyRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [friendInvites, setFriendInvites] = useState<SocialFriendInvite[]>([]);
@@ -146,6 +149,7 @@ export function useSocialPanel(): SocialPanelData {
 
     setLoading(true);
     setError(null);
+    previousFriendIdsKeyRef.current = null;
 
     const cachedFriendList = getFriendListCache(uid);
     const cachedInvites = getPendingInvitesCache(uid);
@@ -310,19 +314,24 @@ export function useSocialPanel(): SocialPanelData {
         const friendUids = Array.isArray(userData?.friends)
           ? userData.friends.filter((friendUid): friendUid is string => typeof friendUid === "string")
           : [];
-        const latestCachedFriendList = getFriendListCache(uid);
-        const latestCachedFriendEntry = latestCachedFriendList.entry;
-        const shouldUseCachedFriendList = latestCachedFriendEntry
-          ? areFriendIdsEqual(latestCachedFriendEntry.friendUids, friendUids)
-          : false;
+        const friendIdsKey = createFriendIdsKey(friendUids);
+        const friendIdsChanged = previousFriendIdsKeyRef.current !== friendIdsKey;
+        previousFriendIdsKeyRef.current = friendIdsKey;
+        const latestCachedFriendList = friendListCache.get(uid);
+        const cachedFriendIdsMatch =
+          Boolean(latestCachedFriendList) &&
+          createFriendIdsKey(latestCachedFriendList.friendUids) === friendIdsKey;
+        const shouldUseCachedFriendList =
+          isFriendListCacheFresh(latestCachedFriendList) &&
+          areFriendIdsEqual(latestCachedFriendList.friendUids, friendUids);
+        const shouldRevalidateFriendProfiles =
+          cachedFriendIdsMatch && !isFriendListCacheFresh(latestCachedFriendList);
         latestLegacySavedGames = parseLegacySavedGames(userData);
         syncSavedGames();
 
-        currentFriendUids = friendUids;
-
-        if (revalidationIntervalId) {
-          clearInterval(revalidationIntervalId);
-          revalidationIntervalId = null;
+        if (friendProfilesUnsubscribe && (friendIdsChanged || shouldRevalidateFriendProfiles)) {
+          friendProfilesUnsubscribe();
+          friendProfilesUnsubscribe = null;
         }
 
         if (shouldUseCachedFriendList) {
@@ -355,10 +364,39 @@ export function useSocialPanel(): SocialPanelData {
           return;
         }
 
-        void revalidateAllFriendProfiles(friendUids);
-        revalidationIntervalId = setInterval(() => {
-          void revalidateAllFriendProfiles(friendUids);
-        }, FRIEND_LIST_REVALIDATION_MS);
+        if (!friendUids.length) {
+          setFriends([]);
+          friendListCache.set(uid, {
+            fetchedAt: Date.now(),
+            friendUids: [],
+            friends: [],
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (friendProfilesUnsubscribe && !friendIdsChanged && !shouldRevalidateFriendProfiles) {
+          setLoading(false);
+          return;
+        }
+
+        friendProfilesUnsubscribe = subscribeToFriendProfiles({
+          db,
+          friendUids,
+          onNext: (profiles) => {
+            setFriends(profiles);
+            friendListCache.set(uid, {
+              fetchedAt: Date.now(),
+              friendUids,
+              friends: profiles,
+            });
+            setLoading(false);
+          },
+          onError: (friendProfileError) => {
+            setError(friendProfileError.message);
+            setLoading(false);
+          },
+        });
       },
       handleError,
     );
