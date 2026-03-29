@@ -61,7 +61,7 @@ export default function LobbyScreen() {
   const leaderboardTriggerRef = useRef<HTMLButtonElement | null>(null);
   const leaderboardCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const wasLeaderboardOpen = useRef(false);
-  const { uid } = useAnonymousAuth();
+  const { uid, isAnonymousUser } = useAnonymousAuth();
   const { partyId, party, members, isHost, startGame, setPreGameConfig, pendingJoinError } = useParty();
   const isPartyGuest = Boolean(partyId && !isHost);
 
@@ -280,6 +280,7 @@ export default function LobbyScreen() {
               aria-haspopup="dialog"
               ref={leaderboardTriggerRef}
               onClick={() => setIsLeaderboardOpen(true)}
+              disabled={isAnonymousUser}
             >
               <img
                 className="settings-icon"
@@ -310,6 +311,7 @@ export default function LobbyScreen() {
                 onClick={() => void handleCreateClassiqueParty(100)}
                 disabled={
                   !firebaseReady ||
+                  isAnonymousUser ||
                   isCreatingClassiqueParty ||
                   isCreatingQuickplayParty ||
                   isPartyGuest
@@ -348,6 +350,7 @@ export default function LobbyScreen() {
           ) : null}
           {isSignedIn ? (
             <>
+              {isAnonymousUser ? <p className="notice">Quickplay is available for guest users. Sign in to unlock Classique and Leaderboard.</p> : null}
               {classiqueError ? <p className="notice">{classiqueError}</p> : null}
               {quickplayError ? <p className="notice">{quickplayError}</p> : null}
             </>

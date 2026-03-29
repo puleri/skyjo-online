@@ -529,6 +529,9 @@ export default function SocialCirclePanel({
         : socialLinkStatus === "copying"
           ? "Copying…"
           : null;
+  const isSocialLinkDisabled = !uid || isAnonymousUser || socialLinkStatus === "copying";
+  const isPartyLinkDisabled =
+    isAnonymousUser || partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId);
 
   return (
     <div className="social-circle-panel">
@@ -550,13 +553,19 @@ export default function SocialCirclePanel({
       {activeTab === "social" ? (
         <>
           <div className="social-circle-panel__bento active-panel">
-            <button                 disabled={!uid || socialLinkStatus === "copying"}
-onClick={() => {
+            <button
+              disabled={isSocialLinkDisabled}
+              onClick={() => {
                   void onClickCopySocialLink();
-                }} className="social-circle-panel__section social-circle-panel__section--social-link">
+                }}
+              className="social-circle-panel__section social-circle-panel__section--social-link"
+            >
                 {socialLinkStatus === "copying" ? "Copying…" : "Your social link"}
               {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
             </button>
+            {isAnonymousUser ? (
+              <p className="notice">Sign in with Google SSO to unlock social sharing links.</p>
+            ) : null}
 
             <div className="social-circle-panel__section social-circle-panel__section--friends">
               <div className="social-circle-panel__friends-header">
@@ -602,7 +611,12 @@ onClick={() => {
 
             <div className="social-circle-panel__section social-circle-panel__section--games">
               <h3 className="social-circle-panel__heading">Games ({yourGames.length})</h3>
-              <div className="social-circle-panel__list social-circle-panel__list--scroll" role="list">
+              <div
+                className={`social-circle-panel__list social-circle-panel__list--scroll ${isAnonymousUser ? "social-circle-panel__list--disabled" : ""}`}
+                role="list"
+                aria-disabled={isAnonymousUser}
+              >
+                {isAnonymousUser ? <p className="notice">Sign in with Google SSO to unlock saved games.</p> : null}
                 {sortedYourGames.length === 0 ? <p className="">No unfinished games saved.</p> : null}
                 {sortedYourGames.map((savedGame) => (
                   <article key={savedGame.gameId} className="social-circle-panel__row" role="listitem">
@@ -620,7 +634,7 @@ onClick={() => {
                             onClick={() => {
                               void onClickJoinSavedGame(savedGame.gameId, savedGame.partyId, savedGame.playerIds);
                             }}
-                            disabled={Boolean(joiningGameId) || Boolean(leavingGameId)}
+                            disabled={Boolean(joiningGameId) || Boolean(leavingGameId) || isAnonymousUser}
                           >
                             {joiningGameId === savedGame.gameId ? "Joining…" : "Rejoin"}
                           </button>
@@ -631,7 +645,7 @@ onClick={() => {
                               setLeaveGameError(null);
                               setConfirmLeaveGameId(savedGame.gameId);
                             }}
-                            disabled={Boolean(joiningGameId) || Boolean(leavingGameId)}
+                            disabled={Boolean(joiningGameId) || Boolean(leavingGameId) || isAnonymousUser}
                           >
                             {leavingGameId === savedGame.gameId ? "Leaving…" : "Leave game"}
                           </button>
@@ -651,7 +665,7 @@ onClick={() => {
                   onClick={() => {
                     void onClickSharePartyLink();
                   }}
-                  disabled={partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId)}
+                  disabled={isPartyLinkDisabled}
                 >
                   {partyLinkStatus === "copying" ? "Copying…" : "Copy party invite link"}
                 </button>
