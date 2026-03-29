@@ -194,3 +194,39 @@ export function subscribeToFriendProfiles(params: {
     unsubscribers.forEach((unsubscribe) => unsubscribe());
   };
 }
+
+export async function loadFriendProfilesSnapshot(params: {
+  db: Firestore;
+  friendUids: string[];
+}) {
+  const { db, friendUids } = params;
+
+  if (!friendUids.length) {
+    return [] as SocialUser[];
+  }
+
+  const friendMap = new Map<string, SocialUser>();
+
+  await Promise.all(
+    chunkValues(friendUids, 10).map(async (uidChunk) => {
+      const usersQuery = query(collection(db, "users"), where(documentId(), "in", uidChunk));
+      const snapshot = await getDocs(usersQuery);
+      snapshot.docs.forEach((friendDoc) => {
+        friendMap.set(friendDoc.id, normalizeSocialUser(friendDoc.id, friendDoc.data() as Record<string, unknown>));
+      });
+    }),
+  );
+
+  return friendUids
+    .map((uid) => friendMap.get(uid))
+    .filter((profile): profile is SocialUser => Boolean(profile));
+}
+
+export function subscribeToHotFriendProfiles(params: {
+  db: Firestore;
+  friendUids: string[];
+  onNext: (profiles: SocialUser[]) => void;
+  onError: (error: Error) => void;
+}) {
+  return subscribeToFriendProfiles(params);
+}
