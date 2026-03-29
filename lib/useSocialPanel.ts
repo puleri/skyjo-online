@@ -15,9 +15,10 @@ import {
   acceptFriendInvite,
   declineFriendInvite,
   inviteFriendToCurrentLobby as inviteFriendToCurrentLobbyAction,
+  loadFriendProfilesSnapshot,
   normalizeSocialUser,
   sendFriendInviteByIdentifier,
-  subscribeToFriendProfiles,
+  subscribeToHotFriendProfiles,
   type SocialFriendInvite,
   type SocialUser,
 } from "./socialPanel";
@@ -57,6 +58,7 @@ type SocialPanelData = {
 };
 
 const FRIEND_LIST_REVALIDATION_MS = 60 * 60 * 1000;
+const HOT_FRIEND_REALTIME_LIMIT = 12;
 
 type FriendListCacheEntry = {
   fetchedAt: number;
@@ -80,6 +82,16 @@ function isFriendListCacheFresh(entry: FriendListCacheEntry | undefined): entry 
   }
 
   return Date.now() - entry.fetchedAt < FRIEND_LIST_REVALIDATION_MS;
+}
+
+function selectHotFriendUids(friendProfiles: SocialUser[]) {
+  const activeFriendUids = friendProfiles.filter((friend) => Boolean(friend.activeGameId)).map((friend) => friend.uid);
+  const nonActiveFriendUids = friendProfiles
+    .filter((friend) => !friend.activeGameId)
+    .map((friend) => friend.uid)
+    .slice(0, Math.max(0, HOT_FRIEND_REALTIME_LIMIT - activeFriendUids.length));
+
+  return [...activeFriendUids, ...nonActiveFriendUids].slice(0, HOT_FRIEND_REALTIME_LIMIT);
 }
 
 function parseLegacySavedGames(userData: Record<string, unknown> | undefined): SavedGameListItem[] {
@@ -156,7 +168,9 @@ export function useSocialPanel(): SocialPanelData {
     );
 
     const userRef = doc(db, "users", uid);
-    let friendProfilesUnsubscribe: (() => void) | null = null;
+    let hotFriendProfilesUnsubscribe: (() => void) | null = null;
+    let revalidationIntervalId: ReturnType<typeof setInterval> | null = null;
+    let currentFriendUids: string[] = [];
     let latestLegacySavedGames: SavedGameListItem[] = [];
     let latestSubcollectionSavedGames: SavedGameListItem[] = [];
 
@@ -203,6 +217,77 @@ export function useSocialPanel(): SocialPanelData {
       },
     });
 
+    const stopHotFriendProfiles = () => {
+      if (hotFriendProfilesUnsubscribe) {
+        hotFriendProfilesUnsubscribe();
+        hotFriendProfilesUnsubscribe = null;
+      }
+    };
+
+    const upsertFriendProfiles = (incomingProfiles: SocialUser[]) => {
+      setFriends((previousProfiles) => {
+        const mergedProfilesByUid = new Map(previousProfiles.map((profile) => [profile.uid, profile]));
+        incomingProfiles.forEach((profile) => {
+          mergedProfilesByUid.set(profile.uid, profile);
+        });
+
+        return currentFriendUids
+          .map((friendUid) => mergedProfilesByUid.get(friendUid))
+          .filter((profile): profile is SocialUser => Boolean(profile));
+      });
+    };
+
+    const revalidateAllFriendProfiles = async (friendUids: string[]) => {
+      if (!friendUids.length) {
+        setFriends([]);
+        friendListCache.set(uid, {
+          fetchedAt: Date.now(),
+          friendUids: [],
+          friends: [],
+        });
+        stopHotFriendProfiles();
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const profiles = await loadFriendProfilesSnapshot({ db, friendUids });
+        setFriends(profiles);
+        friendListCache.set(uid, {
+          fetchedAt: Date.now(),
+          friendUids,
+          friends: profiles,
+        });
+
+        const hotFriendUids = selectHotFriendUids(profiles);
+        stopHotFriendProfiles();
+        hotFriendProfilesUnsubscribe = subscribeToHotFriendProfiles({
+          db,
+          friendUids: hotFriendUids,
+          onNext: (hotProfiles) => {
+            upsertFriendProfiles(hotProfiles);
+            setFriends((latestProfiles) => {
+              friendListCache.set(uid, {
+                fetchedAt: Date.now(),
+                friendUids,
+                friends: latestProfiles,
+              });
+              return latestProfiles;
+            });
+          },
+          onError: (friendProfileError) => {
+            setError(friendProfileError.message);
+            setLoading(false);
+          },
+        });
+        setLoading(false);
+      } catch (friendProfileError) {
+        const message = friendProfileError instanceof Error ? friendProfileError.message : "Unable to load friend profiles.";
+        setError(message);
+        setLoading(false);
+      }
+    };
+
     const unsubscribeProfile = onSnapshot(
       userRef,
       (snapshot) => {
@@ -217,42 +302,39 @@ export function useSocialPanel(): SocialPanelData {
         latestLegacySavedGames = parseLegacySavedGames(userData);
         syncSavedGames();
 
-        if (friendProfilesUnsubscribe) {
-          friendProfilesUnsubscribe();
-          friendProfilesUnsubscribe = null;
+        currentFriendUids = friendUids;
+
+        if (revalidationIntervalId) {
+          clearInterval(revalidationIntervalId);
+          revalidationIntervalId = null;
         }
 
         if (shouldUseCachedFriendList) {
           setFriends(latestCachedFriendList.friends);
+          const hotFriendUids = selectHotFriendUids(latestCachedFriendList.friends);
+          stopHotFriendProfiles();
+          hotFriendProfilesUnsubscribe = subscribeToHotFriendProfiles({
+            db,
+            friendUids: hotFriendUids,
+            onNext: (hotProfiles) => {
+              upsertFriendProfiles(hotProfiles);
+            },
+            onError: (friendProfileError) => {
+              setError(friendProfileError.message);
+              setLoading(false);
+            },
+          });
+          revalidationIntervalId = setInterval(() => {
+            void revalidateAllFriendProfiles(friendUids);
+          }, FRIEND_LIST_REVALIDATION_MS);
           setLoading(false);
           return;
         }
 
-        if (!friendUids.length) {
-          friendListCache.set(uid, {
-            fetchedAt: Date.now(),
-            friendUids: [],
-            friends: [],
-          });
-        }
-
-        friendProfilesUnsubscribe = subscribeToFriendProfiles({
-          db,
-          friendUids,
-          onNext: (profiles) => {
-            setFriends(profiles);
-            friendListCache.set(uid, {
-              fetchedAt: Date.now(),
-              friendUids,
-              friends: profiles,
-            });
-            setLoading(false);
-          },
-          onError: (friendProfileError) => {
-            setError(friendProfileError.message);
-            setLoading(false);
-          },
-        });
+        void revalidateAllFriendProfiles(friendUids);
+        revalidationIntervalId = setInterval(() => {
+          void revalidateAllFriendProfiles(friendUids);
+        }, FRIEND_LIST_REVALIDATION_MS);
       },
       handleError,
     );
@@ -270,8 +352,11 @@ export function useSocialPanel(): SocialPanelData {
       unsubscribePartyInvites();
       unsubscribeProfile();
       unsubscribeSavedGames();
-      if (friendProfilesUnsubscribe) {
-        friendProfilesUnsubscribe();
+      if (hotFriendProfilesUnsubscribe) {
+        hotFriendProfilesUnsubscribe();
+      }
+      if (revalidationIntervalId) {
+        clearInterval(revalidationIntervalId);
       }
     };
   }, [uid]);
