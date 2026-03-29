@@ -234,7 +234,19 @@ export default function HomeGate() {
             </button>
           ) : null}
           {uid && isAnonymousUser ? (
-            <p className="notice">{`${inviterName} wants to be your friend. Sign in with SSO to add them.`}</p>
+            <>
+              <p className="notice">{`${inviterName} wants to be your friend. Create an account to add them.`}</p>
+              <button
+                type="button"
+                className={`form-button-full-width form-card-font ${isGoogleSsoPending ? "is-pending" : ""}`}
+                onClick={() => {
+                  void onClickFriendLinkGoogleSso();
+                }}
+                disabled={isGoogleSsoPending}
+              >
+                {isGoogleSsoPending ? "Signing in…" : "Sign in with Google SSO"}
+              </button>
+            </>
           ) : null}
           {friendLinkStatus ? <p className="notice">{friendLinkStatus}</p> : null}
           <button type="button" className="unauth-back-button" onClick={onCloseFriendLinkCard}>
