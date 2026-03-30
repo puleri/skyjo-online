@@ -2,11 +2,8 @@ import {
   arrayUnion,
   collection,
   doc,
-  getDocs,
-  query,
   runTransaction,
   serverTimestamp,
-  where,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -23,6 +20,10 @@ export type FriendInvite = {
   respondedAt?: unknown;
 };
 
+function buildFriendInviteId(fromUserId: string, toUserId: string) {
+  return `${fromUserId}__${toUserId}`;
+}
+
 export async function sendFriendInvite(fromUserId: string, toUserId: string) {
   if (!fromUserId.trim() || !toUserId.trim()) {
     throw new Error("Both fromUserId and toUserId are required.");
@@ -32,29 +33,28 @@ export async function sendFriendInvite(fromUserId: string, toUserId: string) {
     throw new Error("You cannot send a friend invite to yourself.");
   }
 
-  const existingPending = await getDocs(
-    query(
-      collection(db, "friendInvites"),
-      where("fromUserId", "==", fromUserId),
-      where("toUserId", "==", toUserId),
-      where("status", "==", "pending"),
-    ),
-  );
-
-  if (!existingPending.empty) {
-    return existingPending.docs[0]?.id ?? null;
-  }
-
-  const inviteRef = doc(collection(db, "friendInvites"));
+  const inviteRef = doc(collection(db, "friendInvites"), buildFriendInviteId(fromUserId, toUserId));
 
   await runTransaction(db, async (transaction) => {
-    transaction.set(inviteRef, {
-      fromUserId,
-      toUserId,
-      status: "pending",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    } satisfies FriendInvite);
+    const existingInviteSnapshot = await transaction.get(inviteRef);
+    const existingInvite = existingInviteSnapshot.data() as Partial<FriendInvite> | undefined;
+
+    if (existingInvite?.status === "pending") {
+      return;
+    }
+
+    transaction.set(
+      inviteRef,
+      {
+        fromUserId,
+        toUserId,
+        status: "pending",
+        createdAt: existingInvite?.createdAt ?? serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        respondedAt: null,
+      } satisfies FriendInvite,
+      { merge: true },
+    );
   });
 
   return inviteRef.id;
