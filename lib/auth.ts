@@ -10,13 +10,17 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { app, db, isFirebaseConfigured } from "./firebase";
 import {
   ensureUserProfile,
   startUserProfileBootstrapSession,
 } from "./userProfileBootstrap";
+import {
+  profileIdentifierValueOrNull,
+  syncUserIdentifierDocsInTransaction,
+} from "./userIdentifiers";
 
 type AuthMode = "anonymous" | "google" | null;
 
@@ -302,14 +306,35 @@ export function useAnonymousAuth(): AuthState {
       setProfileDisplayName(trimmedDisplayName);
       cacheProfileDisplayName(uid, trimmedDisplayName);
 
-      await setDoc(
-        doc(db, "users", uid),
-        {
-          displayName: trimmedDisplayName,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", uid);
+        const userSnapshot = await transaction.get(userRef);
+        const existingProfile = userSnapshot.data() ?? {};
+
+        transaction.set(
+          userRef,
+          {
+            displayName: trimmedDisplayName,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        syncUserIdentifierDocsInTransaction({
+          db,
+          transaction,
+          previous: {
+            uid,
+            displayName: profileIdentifierValueOrNull(existingProfile.displayName),
+            email: profileIdentifierValueOrNull(existingProfile.email),
+          },
+          next: {
+            uid,
+            displayName: trimmedDisplayName,
+            email: profileIdentifierValueOrNull(existingProfile.email),
+          },
+        });
+      });
     },
     [isAnonymousUser, uid]
   );
