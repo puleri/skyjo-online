@@ -12,8 +12,8 @@ import {
 import {
   doc,
   onSnapshot,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   type FirestoreError,
 } from "firebase/firestore";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
@@ -33,6 +33,10 @@ import {
   getUserProfileBootstrapState,
   subscribeUserProfileBootstrap,
 } from "./userProfileBootstrap";
+import {
+  profileIdentifierValueOrNull,
+  syncUserIdentifierDocsInTransaction,
+} from "./userIdentifiers";
 
 type UseUserProfileState = {
   profile: UserProfile | null;
@@ -192,15 +196,45 @@ export function useUserProfile(): UseUserProfileState {
       return;
     }
 
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        ...updates,
-        ...(updates.displayName !== undefined ? { displayName: trimmedDisplayName || null } : {}),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await runTransaction(db, async (transaction) => {
+      const userRef = doc(db, "users", user.uid);
+      const userSnapshot = await transaction.get(userRef);
+      const existingProfile = userSnapshot.data() ?? {};
+
+      const nextDisplayName =
+        updates.displayName !== undefined
+          ? trimmedDisplayName || null
+          : profileIdentifierValueOrNull(existingProfile.displayName);
+      const nextEmail =
+        updates.email !== undefined
+          ? (typeof updates.email === "string" ? updates.email : null)
+          : profileIdentifierValueOrNull(existingProfile.email);
+
+      transaction.set(
+        userRef,
+        {
+          ...updates,
+          ...(updates.displayName !== undefined ? { displayName: trimmedDisplayName || null } : {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      syncUserIdentifierDocsInTransaction({
+        db,
+        transaction,
+        previous: {
+          uid: user.uid,
+          displayName: profileIdentifierValueOrNull(existingProfile.displayName),
+          email: profileIdentifierValueOrNull(existingProfile.email),
+        },
+        next: {
+          uid: user.uid,
+          displayName: nextDisplayName,
+          email: nextEmail,
+        },
+      });
+    });
 
     if (updates.displayName !== undefined) {
       await updateAuthProfile(user, { displayName: trimmedDisplayName || null });

@@ -1,9 +1,13 @@
 "use client";
 
 import { type User } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import { defaultUserProfile } from "./userProfile";
+import {
+  profileIdentifierValueOrNull,
+  syncUserIdentifierDocsInTransaction,
+} from "./userIdentifiers";
 
 type BootstrapStatus = "idle" | "loading" | "ready" | "error";
 
@@ -82,72 +86,100 @@ export async function ensureUserProfile(user: User) {
   const sessionIdForRequest = activeSessionId;
   const ensurePromise = (async () => {
     const userRef = doc(db, "users", user.uid);
-    const userSnapshot = await getDoc(userRef);
     const defaultProfile = defaultUserProfile(user);
+    let resolvedDisplayName: string | null = defaultProfile.displayName;
 
-    if (!userSnapshot.exists()) {
-      await setDoc(userRef, {
-        ...defaultProfile,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+    await runTransaction(db, async (transaction) => {
+      const userSnapshot = await transaction.get(userRef);
+
+      if (!userSnapshot.exists()) {
+        transaction.set(userRef, {
+          ...defaultProfile,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        syncUserIdentifierDocsInTransaction({
+          db,
+          transaction,
+          previous: { uid: user.uid, displayName: null, email: null },
+          next: {
+            uid: user.uid,
+            displayName: defaultProfile.displayName,
+            email: defaultProfile.email,
+          },
+        });
+        resolvedDisplayName = defaultProfile.displayName;
+        return;
+      }
+
+      const existingProfile = userSnapshot.data();
+      resolvedDisplayName =
+        typeof existingProfile.displayName === "string" && existingProfile.displayName.trim()
+          ? existingProfile.displayName
+          : user.displayName;
+
+      const nextEmail =
+        typeof existingProfile.email === "string" && existingProfile.email.trim()
+          ? existingProfile.email
+          : user.email;
+
+      transaction.set(
+        userRef,
+        {
+          ...(typeof existingProfile.displayName === "string" ? {} : { displayName: user.displayName }),
+          ...(typeof existingProfile.email === "string" ? {} : { email: user.email }),
+          ...(typeof existingProfile.photoURL === "string" ? {} : { photoURL: user.photoURL }),
+          ...(Array.isArray(existingProfile.friends) ? {} : { friends: defaultProfile.friends }),
+          ...(typeof existingProfile.activeGameId === "string" || existingProfile.activeGameId === null
+            ? {}
+            : { activeGameId: defaultProfile.activeGameId }),
+          ...(existingProfile.presenceState === "online" ||
+          existingProfile.presenceState === "in_game" ||
+          existingProfile.presenceState === "offline"
+            ? {}
+            : { presenceState: defaultProfile.presenceState }),
+          ...(existingProfile.lastSeenAt ? {} : { lastSeenAt: defaultProfile.lastSeenAt }),
+          ...(Array.isArray(existingProfile.lastFiveGames)
+            ? {}
+            : { lastFiveGames: defaultProfile.lastFiveGames }),
+          ...(existingProfile.settingsPreferences &&
+          typeof existingProfile.settingsPreferences === "object"
+            ? {}
+            : { settingsPreferences: defaultProfile.settingsPreferences }),
+          ...(typeof existingProfile.level === "number" ? {} : { level: defaultProfile.level }),
+          ...(typeof existingProfile.experience === "number"
+            ? {}
+            : { experience: defaultProfile.experience }),
+          ...(Array.isArray(existingProfile.unlockedSpells)
+            ? {}
+            : { unlockedSpells: defaultProfile.unlockedSpells }),
+          ...(Array.isArray(existingProfile.rewardedGameIds)
+            ? {}
+            : { rewardedGameIds: defaultProfile.rewardedGameIds }),
+          ...(existingProfile.lastXpGainAnimation &&
+          typeof existingProfile.lastXpGainAnimation === "object"
+            ? {}
+            : { lastXpGainAnimation: defaultProfile.lastXpGainAnimation }),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      syncUserIdentifierDocsInTransaction({
+        db,
+        transaction,
+        previous: {
+          uid: user.uid,
+          displayName: profileIdentifierValueOrNull(existingProfile.displayName),
+          email: profileIdentifierValueOrNull(existingProfile.email),
+        },
+        next: {
+          uid: user.uid,
+          displayName: resolvedDisplayName,
+          email: nextEmail,
+        },
       });
-
-      setBootstrapState(user.uid, {
-        status: "ready",
-        profileDisplayName: defaultProfile.displayName,
-        error: null,
-        sessionId: sessionIdForRequest,
-      });
-      return defaultProfile.displayName;
-    }
-
-    const existingProfile = userSnapshot.data();
-    const resolvedDisplayName =
-      typeof existingProfile.displayName === "string" && existingProfile.displayName.trim()
-        ? existingProfile.displayName
-        : user.displayName;
-
-    await setDoc(
-      userRef,
-      {
-        ...(typeof existingProfile.displayName === "string" ? {} : { displayName: user.displayName }),
-        ...(typeof existingProfile.email === "string" ? {} : { email: user.email }),
-        ...(typeof existingProfile.photoURL === "string" ? {} : { photoURL: user.photoURL }),
-        ...(Array.isArray(existingProfile.friends) ? {} : { friends: defaultProfile.friends }),
-        ...(typeof existingProfile.activeGameId === "string" || existingProfile.activeGameId === null
-          ? {}
-          : { activeGameId: defaultProfile.activeGameId }),
-        ...(existingProfile.presenceState === "online" ||
-        existingProfile.presenceState === "in_game" ||
-        existingProfile.presenceState === "offline"
-          ? {}
-          : { presenceState: defaultProfile.presenceState }),
-        ...(existingProfile.lastSeenAt ? {} : { lastSeenAt: defaultProfile.lastSeenAt }),
-        ...(Array.isArray(existingProfile.lastFiveGames)
-          ? {}
-          : { lastFiveGames: defaultProfile.lastFiveGames }),
-        ...(existingProfile.settingsPreferences &&
-        typeof existingProfile.settingsPreferences === "object"
-          ? {}
-          : { settingsPreferences: defaultProfile.settingsPreferences }),
-        ...(typeof existingProfile.level === "number" ? {} : { level: defaultProfile.level }),
-        ...(typeof existingProfile.experience === "number"
-          ? {}
-          : { experience: defaultProfile.experience }),
-        ...(Array.isArray(existingProfile.unlockedSpells)
-          ? {}
-          : { unlockedSpells: defaultProfile.unlockedSpells }),
-        ...(Array.isArray(existingProfile.rewardedGameIds)
-          ? {}
-          : { rewardedGameIds: defaultProfile.rewardedGameIds }),
-        ...(existingProfile.lastXpGainAnimation &&
-        typeof existingProfile.lastXpGainAnimation === "object"
-          ? {}
-          : { lastXpGainAnimation: defaultProfile.lastXpGainAnimation }),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    });
 
     setBootstrapState(user.uid, {
       status: "ready",

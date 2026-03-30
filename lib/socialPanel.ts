@@ -17,6 +17,7 @@ import {
   sendFriendInvite as sendFriendInviteAction,
 } from "./friendInvites";
 import { chunkValues, subscribeToUsersByIdChunks } from "./userSubscriptions";
+import { createUserIdentifierDocId, normalizeIdentifierValue } from "./userIdentifiers";
 
 export type SocialUser = {
   uid: string;
@@ -96,7 +97,18 @@ export async function resolveUserIdFromIdentifier(db: Firestore, identifier: str
     throw new Error("Provide a user ID or display name.");
   }
 
-  const cacheKey = trimmedIdentifier;
+  const normalizedIdentifier = normalizeIdentifierValue(trimmedIdentifier);
+  if (!normalizedIdentifier) {
+    throw new Error("Provide a user ID or display name.");
+  }
+
+  const likelyKind = trimmedIdentifier.includes("@")
+    ? "email"
+    : /^[a-zA-Z0-9]{20,}$/.test(trimmedIdentifier)
+      ? "uid"
+      : "name";
+  const lookupDocId = createUserIdentifierDocId(likelyKind, normalizedIdentifier);
+  const cacheKey = lookupDocId;
   const cachedLookupResult = readIdentifierLookupCache(cacheKey);
   if (cachedLookupResult) {
     if (cachedLookupResult === IDENTIFIER_NOT_FOUND) {
@@ -111,6 +123,16 @@ export async function resolveUserIdFromIdentifier(db: Firestore, identifier: str
   }
 
   const lookupPromise = (async () => {
+    const identifierRef = doc(db, "userIdentifiers", lookupDocId);
+    const identifierSnapshot = await getDoc(identifierRef);
+    if (identifierSnapshot.exists()) {
+      const lookupData = identifierSnapshot.data();
+      if (typeof lookupData.uid === "string" && lookupData.uid.trim()) {
+        writeIdentifierLookupCache(cacheKey, lookupData.uid);
+        return lookupData.uid;
+      }
+    }
+
     const byUidRef = doc(db, "users", trimmedIdentifier);
     const byUidSnap = await getDoc(byUidRef);
     if (byUidSnap.exists()) {
