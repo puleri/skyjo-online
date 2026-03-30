@@ -2235,6 +2235,76 @@ type LeavePartyGameOptions = {
   mode?: LeavePartyGameMode;
 };
 
+export const leavePartyOnly = async (partyId: string, playerId: string) => {
+  const partyRef = doc(db, "parties", partyId);
+  const memberRef = doc(db, "parties", partyId, "partyMembers", playerId);
+  const membersQuery = query(
+    collection(db, "parties", partyId, "partyMembers"),
+    orderBy("joinedAt", "asc"),
+  );
+  const membersSnapshot = await getDocs(membersQuery);
+  const currentMembers = membersSnapshot.docs.map((memberDoc) => ({
+    id: memberDoc.id,
+    displayName:
+      (memberDoc.data().displayName as string | undefined) ?? "Anonymous player",
+  }));
+
+  await runTransaction(db, async (transaction) => {
+    const partySnap = await transaction.get(partyRef);
+    transaction.set(
+      doc(db, "users", playerId),
+      { activePartyId: null, updatedAt: serverTimestamp() },
+      { merge: true },
+    );
+
+    if (!partySnap.exists()) {
+      return;
+    }
+
+    const nextMembers = currentMembers.filter((member) => member.id !== playerId);
+    transaction.delete(memberRef);
+
+    if (!nextMembers.length) {
+      transaction.delete(partyRef);
+      return;
+    }
+
+    const partyData = partySnap.data();
+    const nextHostId =
+      partyData.hostId === playerId
+        ? (nextMembers[0]?.id ?? null)
+        : ((partyData.hostId as string | undefined) ?? null);
+    const nextHostDisplayName =
+      partyData.hostId === playerId
+        ? (nextMembers[0]?.displayName ?? null)
+        : ((partyData.hostDisplayName as string | undefined) ?? null);
+    const nextPlayerIds = nextMembers.map((member) => member.id);
+    const nextPlayerNames = nextMembers.map((member) => member.displayName);
+
+    nextMembers.forEach((member) => {
+      transaction.set(
+        doc(db, "parties", partyId, "partyMembers", member.id),
+        {
+          isHost: member.id === nextHostId,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    });
+
+    transaction.update(partyRef, {
+      hostId: nextHostId,
+      hostDisplayName: nextHostDisplayName,
+      memberIds: nextPlayerIds,
+      playerIds: nextPlayerIds,
+      playerNames: nextPlayerNames,
+      playerCount: nextPlayerIds.length,
+      players: nextPlayerIds.length,
+      updatedAt: serverTimestamp(),
+    });
+  });
+};
+
 export const leavePartyGame = async (
   gameId: string,
   playerId: string,
@@ -2258,7 +2328,6 @@ export const leavePartyGame = async (
   }
 
   const partyRef = doc(db, "parties", partyId);
-  const memberRef = doc(db, "parties", partyId, "partyMembers", playerId);
   const membersQuery = query(
     collection(db, "parties", partyId, "partyMembers"),
     orderBy("joinedAt", "asc"),
@@ -2364,58 +2433,5 @@ export const leavePartyGame = async (
     );
   }
 
-  await runTransaction(db, async (transaction) => {
-    const partySnap = await transaction.get(partyRef);
-    transaction.set(
-      doc(db, "users", playerId),
-      { activePartyId: null, updatedAt: serverTimestamp() },
-      { merge: true },
-    );
-
-    if (!partySnap.exists()) {
-      return;
-    }
-
-    const nextMembers = currentMembers.filter((member) => member.id !== playerId);
-    transaction.delete(memberRef);
-
-    if (!nextMembers.length) {
-      transaction.delete(partyRef);
-      return;
-    }
-
-    const partyData = partySnap.data();
-    const nextHostId =
-      partyData.hostId === playerId
-        ? (nextMembers[0]?.id ?? null)
-        : ((partyData.hostId as string | undefined) ?? null);
-    const nextHostDisplayName =
-      partyData.hostId === playerId
-        ? (nextMembers[0]?.displayName ?? null)
-        : ((partyData.hostDisplayName as string | undefined) ?? null);
-    const nextPlayerIds = nextMembers.map((member) => member.id);
-    const nextPlayerNames = nextMembers.map((member) => member.displayName);
-
-    nextMembers.forEach((member) => {
-      transaction.set(
-        doc(db, "parties", partyId, "partyMembers", member.id),
-        {
-          isHost: member.id === nextHostId,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-    });
-
-    transaction.update(partyRef, {
-      hostId: nextHostId,
-      hostDisplayName: nextHostDisplayName,
-      memberIds: nextPlayerIds,
-      playerIds: nextPlayerIds,
-      playerNames: nextPlayerNames,
-      playerCount: nextPlayerIds.length,
-      players: nextPlayerIds.length,
-      updatedAt: serverTimestamp(),
-    });
-  });
+  await leavePartyOnly(partyId, playerId);
 };
