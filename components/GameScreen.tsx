@@ -482,6 +482,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const betweenRoundsGainRef = useRef<GainNode | null>(null);
   const itemImpactSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const itemLoopSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const itemLoopGainRef = useRef<GainNode | null>(null);
+  const itemLoopFadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const activeItemSoundRef = useRef<{
     playerId: string;
     itemCode: ItemCode;
@@ -908,6 +912,10 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   };
 
   const stopItemDrawAudio = () => {
+    if (itemLoopFadeTimeoutRef.current) {
+      clearTimeout(itemLoopFadeTimeoutRef.current);
+      itemLoopFadeTimeoutRef.current = null;
+    }
     if (itemImpactSourceRef.current) {
       itemImpactSourceRef.current.stop();
       itemImpactSourceRef.current.disconnect();
@@ -918,6 +926,43 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       itemLoopSourceRef.current.disconnect();
       itemLoopSourceRef.current = null;
     }
+    if (itemLoopGainRef.current) {
+      itemLoopGainRef.current.disconnect();
+      itemLoopGainRef.current = null;
+    }
+  };
+
+  const fadeOutItemLoopAudio = (fadeOutSeconds = 0.8) => {
+    const loopSource = itemLoopSourceRef.current;
+    if (!loopSource) {
+      return;
+    }
+    if (itemLoopFadeTimeoutRef.current) {
+      clearTimeout(itemLoopFadeTimeoutRef.current);
+    }
+
+    const audioContext = audioContextRef.current;
+    const gainNode = itemLoopGainRef.current;
+    if (!audioContext || !gainNode) {
+      stopItemDrawAudio();
+      return;
+    }
+
+    const now = audioContext.currentTime;
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(0, now + fadeOutSeconds);
+
+    itemLoopFadeTimeoutRef.current = setTimeout(() => {
+      if (itemLoopSourceRef.current === loopSource) {
+        loopSource.stop();
+      }
+      if (itemLoopGainRef.current) {
+        itemLoopGainRef.current.disconnect();
+        itemLoopGainRef.current = null;
+      }
+      itemLoopFadeTimeoutRef.current = null;
+    }, fadeOutSeconds * 1000);
   };
 
   const getItemDrawSoundPaths = (code: ItemCode) => {
@@ -938,9 +983,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const itemName = itemNameByCode[code];
     const folder = itemFolderByCode[code];
     return {
-      impact: `/sounds/card-draw/items/${folder}/${itemName}-Impact.wav`,
-      loop: `/sounds/card-draw/items/${folder}/${itemName}-Loop.wav`,
-      finish: `/sounds/card-draw/items/${folder}/${itemName}-Finish.wav`,
+      impact: `/sounds/card-draw/items/${folder}/${itemName}-Impact.mp3`,
+      loop: `/sounds/card-draw/items/${folder}/${itemName}-Loop.mp3`,
     };
   };
 
@@ -989,22 +1033,25 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       const loopSource = audioContext.createBufferSource();
       loopSource.buffer = loopBuffer;
       loopSource.loop = true;
-      loopSource.connect(audioContext.destination);
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 1;
+      loopSource.connect(gainNode);
+      gainNode.connect(audioContext.destination);
       loopSource.onended = () => {
         if (itemLoopSourceRef.current === loopSource) {
           itemLoopSourceRef.current = null;
         }
+        if (itemLoopGainRef.current === gainNode) {
+          itemLoopGainRef.current.disconnect();
+          itemLoopGainRef.current = null;
+        }
       };
       loopSource.start(0);
       itemLoopSourceRef.current = loopSource;
+      itemLoopGainRef.current = gainNode;
     };
     impactSource.start(0);
     itemImpactSourceRef.current = impactSource;
-  };
-
-  const playItemDrawFinishSound = (code: ItemCode) => {
-    const { finish } = getItemDrawSoundPaths(code);
-    playSound(finish);
   };
 
   const getDrawSoundPath = (value: Card) => {
@@ -1242,8 +1289,12 @@ export default function GameScreen({ gameId }: GameScreenProps) {
       return;
     }
 
-    stopItemDrawAudio();
-    playItemDrawFinishSound(activeItemSound.itemCode);
+    if (itemImpactSourceRef.current) {
+      itemImpactSourceRef.current.stop();
+      itemImpactSourceRef.current.disconnect();
+      itemImpactSourceRef.current = null;
+    }
+    fadeOutItemLoopAudio(0.8);
     activeItemSoundRef.current = null;
   }, [firebaseReady, game?.currentPlayerId, isCardSoundsEnabled]);
 
