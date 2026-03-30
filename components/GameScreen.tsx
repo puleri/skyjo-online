@@ -29,6 +29,7 @@ import {
   discardAndRevealPendingDraw,
   discardItemForReveal,
   drawFromDeck,
+  leavePartyOnly,
   leavePartyGame,
   drawFromDiscard,
   revealAfterDiscard,
@@ -3372,6 +3373,24 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     setIsLeaveGameModalOpen(false);
   };
 
+  const handleReturnToMainMenu = async () => {
+    if (!uid) {
+      router.push("/");
+      return;
+    }
+
+    setError(null);
+    try {
+      if (game?.partyId) {
+        await leavePartyOnly(game.partyId, uid);
+      }
+      router.push("/");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error.";
+      setError(message);
+    }
+  };
+
   const handleConfirmLeaveGame = async () => {
     if (!uid) {
       setError("Sign in to leave the game.");
@@ -4018,7 +4037,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <button
                   className="form-button-full-width"
                   type="button"
-                  onClick={() => router.push("/")}
+                  onClick={handleReturnToMainMenu}
                 >
                   Main Menu
                 </button>
@@ -4148,7 +4167,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
                 <button
                   type="button"
                   className="form-button-full-width"
-                  onClick={() => router.push("/")}
+                  onClick={handleReturnToMainMenu}
                 >
                   Back to main menu
                 </button>
