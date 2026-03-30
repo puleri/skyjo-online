@@ -1,9 +1,9 @@
 "use client";
 
-import { doc, onSnapshot } from "firebase/firestore";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useAnonymousAuth } from "../lib/auth";
 import { db, isFirebaseConfigured } from "../lib/firebase";
+import { subscribeToUsersByIdChunks } from "../lib/userSubscriptions";
 import { useUserProfile } from "../lib/useUserProfile";
 import { useParty } from "./LobbyProvider";
 import SocialCirclePanel from "./SocialCirclePanel";
@@ -84,32 +84,50 @@ export default function PartyPresenceCluster() {
       return;
     }
 
-    const unsubscribeByMember = orderedMembers.map((member) =>
-      onSnapshot(doc(db, "users", member.id), (snapshot) => {
-        const data = snapshot.data();
-        const nextPhoto =
-          typeof data?.photoUrl === "string"
-            ? data.photoUrl
-            : typeof data?.photoURL === "string"
-              ? data.photoURL
-              : null;
+    const memberIds = orderedMembers.map((member) => member.id);
+
+    setProfilePhotosById((current) => {
+      const trimmedEntries = Object.entries(current).filter(([memberId]) => memberIds.includes(memberId));
+      if (trimmedEntries.length === Object.keys(current).length) {
+        return current;
+      }
+      return Object.fromEntries(trimmedEntries);
+    });
+
+    return subscribeToUsersByIdChunks({
+      db,
+      userIds: memberIds,
+      onChunkSnapshot: (docs) => {
+        const chunkPhotos: Record<string, string | null> = {};
+
+        docs.forEach((snapshotDoc) => {
+          const data = snapshotDoc.data();
+          chunkPhotos[snapshotDoc.id] =
+            typeof data?.photoUrl === "string"
+              ? data.photoUrl
+              : typeof data?.photoURL === "string"
+                ? data.photoURL
+                : null;
+        });
 
         setProfilePhotosById((current) => {
-          if (current[member.id] === nextPhoto) {
-            return current;
-          }
+          let hasChanges = false;
+          const next = { ...current };
 
-          return {
-            ...current,
-            [member.id]: nextPhoto,
-          };
+          Object.entries(chunkPhotos).forEach(([memberId, nextPhoto]) => {
+            if (next[memberId] !== nextPhoto) {
+              next[memberId] = nextPhoto;
+              hasChanges = true;
+            }
+          });
+
+          return hasChanges ? next : current;
         });
-      }),
-    );
-
-    return () => {
-      unsubscribeByMember.forEach((unsubscribe) => unsubscribe());
-    };
+      },
+      onError: () => {
+        // Fallback photos from orderedMembers remain in use when profile snapshots fail.
+      },
+    });
   }, [orderedMembers]);
 
   useEffect(() => {
