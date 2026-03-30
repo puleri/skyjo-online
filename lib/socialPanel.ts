@@ -5,19 +5,18 @@ import {
   getDoc,
   getDocs,
   limit,
-  onSnapshot,
   query,
   runTransaction,
   serverTimestamp,
   where,
   type Firestore,
-  type Unsubscribe,
 } from "firebase/firestore";
 import {
   acceptFriendInvite as acceptFriendInviteAction,
   declineFriendInvite as declineFriendInviteAction,
   sendFriendInvite as sendFriendInviteAction,
 } from "./friendInvites";
+import { chunkValues, subscribeToUsersByIdChunks } from "./userSubscriptions";
 
 export type SocialUser = {
   uid: string;
@@ -89,14 +88,6 @@ export function normalizeSocialUser(uid: string, data: Record<string, unknown>):
     displayName,
     activeGameId: typeof data.activeGameId === "string" ? data.activeGameId : null,
   };
-}
-
-function chunkValues(values: string[], size: number) {
-  const chunks: string[][] = [];
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size));
-  }
-  return chunks;
 }
 
 export async function resolveUserIdFromIdentifier(db: Firestore, identifier: string) {
@@ -237,35 +228,23 @@ export function subscribeToFriendProfiles(params: {
   }
 
   const friendMap = new Map<string, SocialUser>();
-  const unsubscribers: Unsubscribe[] = [];
 
-  chunkValues(friendUids, 10).forEach((uidChunk) => {
-    const usersQuery = query(collection(db, "users"), where(documentId(), "in", uidChunk));
+  return subscribeToUsersByIdChunks({
+    db,
+    userIds: friendUids,
+    onChunkSnapshot: (docs) => {
+      docs.forEach((friendDoc) => {
+        friendMap.set(friendDoc.id, normalizeSocialUser(friendDoc.id, friendDoc.data() as Record<string, unknown>));
+      });
 
-    const unsubscribe = onSnapshot(
-      usersQuery,
-      (snapshot) => {
-        snapshot.docs.forEach((friendDoc) => {
-          friendMap.set(friendDoc.id, normalizeSocialUser(friendDoc.id, friendDoc.data() as Record<string, unknown>));
-        });
-
-        onNext(
-          friendUids
-            .map((uid) => friendMap.get(uid))
-            .filter((profile): profile is SocialUser => Boolean(profile)),
-        );
-      },
-      (error) => {
-        onError(error);
-      },
-    );
-
-    unsubscribers.push(unsubscribe);
+      onNext(
+        friendUids
+          .map((uid) => friendMap.get(uid))
+          .filter((profile): profile is SocialUser => Boolean(profile)),
+      );
+    },
+    onError,
   });
-
-  return () => {
-    unsubscribers.forEach((unsubscribe) => unsubscribe());
-  };
 }
 
 export async function loadFriendProfilesSnapshot(params: {
