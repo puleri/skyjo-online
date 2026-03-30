@@ -2228,14 +2228,14 @@ export const leaveGame = async (gameId: string, playerId: string) => {
   });
 };
 
-type LeavePartyGameMode = "self-only" | "whole-party";
+type LeavePartyGameMode = "party-only" | "self-only" | "whole-party";
 
 type LeavePartyGameOptions = {
   partyId?: string | null;
   mode?: LeavePartyGameMode;
 };
 
-export const leavePartyOnly = async (partyId: string, playerId: string) => {
+const leavePartyMembership = async (partyId: string, playerId: string) => {
   const partyRef = doc(db, "parties", partyId);
   const memberRef = doc(db, "parties", partyId, "partyMembers", playerId);
   const membersQuery = query(
@@ -2305,6 +2305,10 @@ export const leavePartyOnly = async (partyId: string, playerId: string) => {
   });
 };
 
+export const leavePartyOnly = async (partyId: string, playerId: string) => {
+  await leavePartyMembership(partyId, playerId);
+};
+
 export const leavePartyGame = async (
   gameId: string,
   playerId: string,
@@ -2314,6 +2318,9 @@ export const leavePartyGame = async (
   const mode = options?.mode ?? "self-only";
 
   if (!partyId) {
+    if (mode === "party-only") {
+      return;
+    }
     try {
       await leaveGame(gameId, playerId);
     } catch (error) {
@@ -2324,6 +2331,11 @@ export const leavePartyGame = async (
           `Please refresh and try again. Original error: ${message}`,
       );
     }
+    return;
+  }
+
+  if (mode === "party-only") {
+    await leavePartyMembership(partyId, playerId);
     return;
   }
 
@@ -2433,5 +2445,5 @@ export const leavePartyGame = async (
     );
   }
 
-  await leavePartyOnly(partyId, playerId);
+  await leavePartyMembership(partyId, playerId);
 };

@@ -29,7 +29,6 @@ import {
   discardAndRevealPendingDraw,
   discardItemForReveal,
   drawFromDeck,
-  leavePartyOnly,
   leavePartyGame,
   drawFromDiscard,
   revealAfterDiscard,
@@ -3382,7 +3381,11 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     setError(null);
     try {
       if (game?.partyId) {
-        await leavePartyOnly(game.partyId, uid);
+        // Main Menu from party game: update parties + users.activePartyId only; keep games untouched.
+        await leavePartyGame(gameId, uid, {
+          partyId: game.partyId,
+          mode: "party-only",
+        });
       }
       router.push("/");
     } catch (err) {
@@ -3403,6 +3406,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     setError(null);
     try {
+      // Leave Game: remove this player from games and party, then clear users.activePartyId.
       await leavePartyGame(gameId, uid, {
         partyId: game?.partyId ?? null,
         mode: "self-only",
@@ -3432,6 +3436,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
 
     setError(null);
     try {
+      // Leave with whole party: remove all party members from games, keep party membership + activePartyId.
       await leavePartyGame(gameId, uid, {
         partyId: game.partyId,
         mode: "whole-party",
