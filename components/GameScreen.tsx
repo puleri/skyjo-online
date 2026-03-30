@@ -943,8 +943,8 @@ export default function GameScreen({ gameId }: GameScreenProps) {
     const itemName = itemNameByCode[code];
     const folder = itemFolderByCode[code];
     return {
-      impact: `/sounds/card-draw/items/${folder}/${itemName}-Impact.mp3`,
-      loop: `/sounds/card-draw/items/${folder}/${itemName}-Loop.mp3`,
+      impact: `/sounds/card-draw/items/${folder}/${itemName}-Impact.wav`,
+      loop: `/sounds/card-draw/items/${folder}/${itemName}-Loop.wav`,
     };
   };
 
