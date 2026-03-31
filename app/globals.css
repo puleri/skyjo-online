@@ -65,7 +65,9 @@
   --color-bg: #1f1b18;
   --newcolor-bg: #1f1b18;
   --on-newbg: #FFF9E2;
-  --menu-button-bg: #33333351;
+    --new-grey: #212121;
+  --menu-button-bg: #212121;
+  --cluster-button-bg: #282828;
   --color-surface: #2a2421;
   --color-surface-alt: #3a322c;
   --color-surface-bright: #332c27;
@@ -4328,15 +4330,13 @@ border: 1px solid #ffedef;
     transform 240ms ease,
     opacity 240ms ease;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--new-grey) 88%, black 12%);
+  background: var(--new-grey);
   color: var(--new-color-text);
-  border: 1px solid color-mix(in srgb, var(--new-color-text) 25%, transparent);
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 0.64rem;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   pointer-events: none;
   z-index: 120;
 }
