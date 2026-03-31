@@ -15,7 +15,11 @@ type PresenceMember = {
   isHost: boolean;
 };
 
+type PartyInviteCopyStatus = "idle" | "copying" | "copied" | "error";
+
 const FALLBACK_LABEL = "Anonymous player";
+const MAX_PARTY_MEMBERS = 8;
+const signInRoute = "/";
 
 function getMemberLabel(member: PresenceMember, isLocalUser: boolean) {
   const resolvedName = member.displayName.trim() || FALLBACK_LABEL;
@@ -43,9 +47,11 @@ export default function PartyPresenceCluster() {
   const [isEditingDisplayName, setIsEditingDisplayName] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState("");
   const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
+  const [partyInviteCopyStatus, setPartyInviteCopyStatus] = useState<PartyInviteCopyStatus>("idle");
   const localTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const partyInviteCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { updateProfile } = useUserProfile();
 
   const orderedMembers = useMemo(() => {
@@ -174,8 +180,39 @@ export default function PartyPresenceCluster() {
       if (copyTimerRef.current) {
         clearTimeout(copyTimerRef.current);
       }
+      if (partyInviteCopyTimerRef.current) {
+        clearTimeout(partyInviteCopyTimerRef.current);
+      }
     };
   }, []);
+
+  const onClickCopyPartyInviteLink = async () => {
+    if (partyInviteCopyStatus === "copying") {
+      return;
+    }
+
+    const resolvedPartyId = partyId ?? (ensurePartyId ? await ensurePartyId() : null);
+    if (!resolvedPartyId) {
+      setPartyInviteCopyStatus("error");
+      return;
+    }
+
+    setPartyInviteCopyStatus("copying");
+    try {
+      const params = new URLSearchParams({ joinPartyId: resolvedPartyId });
+      const partyJoinUrl = `${window.location.origin}${signInRoute}?${params.toString()}`;
+      await navigator.clipboard.writeText(partyJoinUrl);
+      setPartyInviteCopyStatus("copied");
+      if (partyInviteCopyTimerRef.current) {
+        clearTimeout(partyInviteCopyTimerRef.current);
+      }
+      partyInviteCopyTimerRef.current = setTimeout(() => {
+        setPartyInviteCopyStatus("idle");
+      }, 1800);
+    } catch {
+      setPartyInviteCopyStatus("error");
+    }
+  };
 
   const localUserDisplayName = localMember?.displayName.trim() || FALLBACK_LABEL;
   const localUserPhotoUrl = localMember ? (profilePhotosById[localMember.id] ?? localMember.photoURL) : null;
@@ -269,10 +306,29 @@ export default function PartyPresenceCluster() {
   if (!orderedMembers.length) {
     return null;
   }
+  const shouldShowInviteShortcut = orderedMembers.length < MAX_PARTY_MEMBERS;
 
   return (
     <>
       <aside className="party-presence-cluster" aria-label="Party member presence">
+        {shouldShowInviteShortcut ? (
+          <button
+            type="button"
+            className="party-presence-cluster__member party-presence-cluster__invite-shortcut"
+            aria-label="Copy party invite link"
+            title="Copy party invite link"
+            onClick={() => {
+              void onClickCopyPartyInviteLink();
+            }}
+          >
+            <span aria-hidden="true">+</span>
+            {partyInviteCopyStatus === "copied" ? (
+              <span className="party-presence-cluster__invite-tooltip" role="status" aria-live="polite">
+                Party invite copied
+              </span>
+            ) : null}
+          </button>
+        ) : null}
         {orderedMembers.map((member, index) => {
           const isLocalUser = Boolean(uid && member.id === uid);
           const avatarLabel = getMemberLabel(member, isLocalUser);
@@ -303,7 +359,7 @@ export default function PartyPresenceCluster() {
                   aria-label={avatarLabel}
                   aria-haspopup="dialog"
                   aria-expanded={isSageOpen}
-                  style={{ zIndex: index + 1 }}
+                  style={{ zIndex: index + (shouldShowInviteShortcut ? 2 : 1) }}
                   onClick={(event) => openSagePanel(event.currentTarget)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -318,7 +374,7 @@ export default function PartyPresenceCluster() {
                   className={`party-presence-cluster__member party-presence-cluster__member-indicator--mobile${member.isHost ? " is-host" : ""} is-local`}
                   title={avatarLabel}
                   aria-label={avatarLabel}
-                  style={{ zIndex: index + 1 }}
+                  style={{ zIndex: index + (shouldShowInviteShortcut ? 2 : 1) }}
                   role="img"
                 >
                   {avatarContent}
@@ -333,7 +389,7 @@ export default function PartyPresenceCluster() {
               className={`party-presence-cluster__member${member.isHost ? " is-host" : ""}`}
               title={avatarLabel}
               aria-label={avatarLabel}
-              style={{ zIndex: index + 1 }}
+              style={{ zIndex: index + (shouldShowInviteShortcut ? 2 : 1) }}
               role="img"
             >
               {avatarContent}
