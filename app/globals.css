@@ -4200,6 +4200,52 @@ border: 1px solid #ffedef;
   cursor: pointer;
 }
 
+.party-presence-cluster__invite-shortcut {
+  appearance: none;
+  padding: 0;
+  cursor: pointer;
+  background: var(--new-grey);
+  color: var(--new-color-text);
+  border-color: var(--color-surface-bright);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.party-presence-cluster__invite-shortcut:hover {
+  background: color-mix(in srgb, var(--new-grey) 80%, white 20%);
+  color: var(--new-color-text);
+  transform: translateY(-1px);
+}
+
+.party-presence-cluster__invite-shortcut:active {
+  transform: translateY(0);
+}
+
+.party-presence-cluster__invite-shortcut:focus-visible {
+  outline: 3px solid var(--new-color-text);
+  outline-offset: 2px;
+}
+
+.party-presence-cluster__invite-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--new-grey) 88%, black 12%);
+  color: var(--new-color-text);
+  border: 1px solid color-mix(in srgb, var(--new-color-text) 25%, transparent);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 40;
+}
+
 .party-presence-cluster__member-indicator--mobile,
 .party-presence-cluster__open-button {
   display: none;
