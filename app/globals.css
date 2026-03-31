@@ -4293,6 +4293,8 @@ border: 1px solid #ffedef;
   appearance: none;
   padding: 0;
   cursor: pointer;
+  position: relative;
+  z-index: 60;
   background: var(--new-grey);
   color: var(--new-color-text);
   border-color: var(--color-surface-bright);
@@ -4318,9 +4320,13 @@ border: 1px solid #ffedef;
 
 .party-presence-cluster__invite-tooltip {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  right: calc(100% + 8px);
+  transform: translateX(12px) translateY(-50%);
+  opacity: 0;
+  transition:
+    transform 240ms ease,
+    opacity 240ms ease;
   white-space: nowrap;
   background: color-mix(in srgb, var(--new-grey) 88%, black 12%);
   color: var(--new-color-text);
@@ -4332,7 +4338,26 @@ border: 1px solid #ffedef;
   letter-spacing: 0.01em;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   pointer-events: none;
-  z-index: 40;
+  z-index: 120;
+}
+
+.party-presence-cluster__invite-tooltip--visible {
+  opacity: 1;
+  transform: translateX(0) translateY(-50%);
+}
+
+.party-presence-cluster__invite-tooltip--closing {
+  opacity: 0;
+  transform: translateX(12px) translateY(-50%);
+}
+
+.party-presence-cluster__invite-tooltip--status {
+  top: calc(100% + 6px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  opacity: 1;
+  transition: none;
 }
 
 .party-presence-cluster__member-indicator--mobile {

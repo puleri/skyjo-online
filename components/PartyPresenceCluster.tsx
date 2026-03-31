@@ -16,6 +16,7 @@ type PresenceMember = {
 };
 
 type PartyInviteCopyStatus = "idle" | "copying" | "copied" | "error";
+type InviteHintAnimationState = "hidden" | "visible" | "closing";
 
 const FALLBACK_LABEL = "Anonymous player";
 const MAX_PARTY_MEMBERS = 8;
@@ -48,10 +49,15 @@ export default function PartyPresenceCluster() {
   const [displayNameDraft, setDisplayNameDraft] = useState("");
   const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
   const [partyInviteCopyStatus, setPartyInviteCopyStatus] = useState<PartyInviteCopyStatus>("idle");
+  const [inviteHintAnimationState, setInviteHintAnimationState] =
+    useState<InviteHintAnimationState>("hidden");
   const localTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const partyInviteCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inviteHintStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inviteHintCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inviteHintResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { updateProfile } = useUserProfile();
 
   const orderedMembers = useMemo(() => {
@@ -183,6 +189,15 @@ export default function PartyPresenceCluster() {
       if (partyInviteCopyTimerRef.current) {
         clearTimeout(partyInviteCopyTimerRef.current);
       }
+      if (inviteHintStartTimerRef.current) {
+        clearTimeout(inviteHintStartTimerRef.current);
+      }
+      if (inviteHintCloseTimerRef.current) {
+        clearTimeout(inviteHintCloseTimerRef.current);
+      }
+      if (inviteHintResetTimerRef.current) {
+        clearTimeout(inviteHintResetTimerRef.current);
+      }
     };
   }, []);
 
@@ -303,10 +318,60 @@ export default function PartyPresenceCluster() {
     }
   };
 
+  const shouldShowInviteShortcut = orderedMembers.length < MAX_PARTY_MEMBERS;
+  const shouldRenderInviteHint =
+    inviteHintAnimationState !== "hidden" && partyInviteCopyStatus !== "copied";
+
+  useEffect(() => {
+    if (!shouldShowInviteShortcut) {
+      setInviteHintAnimationState("hidden");
+      if (inviteHintStartTimerRef.current) {
+        clearTimeout(inviteHintStartTimerRef.current);
+        inviteHintStartTimerRef.current = null;
+      }
+      if (inviteHintCloseTimerRef.current) {
+        clearTimeout(inviteHintCloseTimerRef.current);
+        inviteHintCloseTimerRef.current = null;
+      }
+      if (inviteHintResetTimerRef.current) {
+        clearTimeout(inviteHintResetTimerRef.current);
+        inviteHintResetTimerRef.current = null;
+      }
+      return;
+    }
+
+    setInviteHintAnimationState("hidden");
+    inviteHintStartTimerRef.current = setTimeout(() => {
+      setInviteHintAnimationState("visible");
+    }, 120);
+
+    inviteHintCloseTimerRef.current = setTimeout(() => {
+      setInviteHintAnimationState("closing");
+    }, 5120);
+
+    inviteHintResetTimerRef.current = setTimeout(() => {
+      setInviteHintAnimationState("hidden");
+    }, 5420);
+
+    return () => {
+      if (inviteHintStartTimerRef.current) {
+        clearTimeout(inviteHintStartTimerRef.current);
+        inviteHintStartTimerRef.current = null;
+      }
+      if (inviteHintCloseTimerRef.current) {
+        clearTimeout(inviteHintCloseTimerRef.current);
+        inviteHintCloseTimerRef.current = null;
+      }
+      if (inviteHintResetTimerRef.current) {
+        clearTimeout(inviteHintResetTimerRef.current);
+        inviteHintResetTimerRef.current = null;
+      }
+    };
+  }, [shouldShowInviteShortcut]);
+
   if (!orderedMembers.length) {
     return null;
   }
-  const shouldShowInviteShortcut = orderedMembers.length < MAX_PARTY_MEMBERS;
 
   return (
     <>
@@ -322,8 +387,19 @@ export default function PartyPresenceCluster() {
             }}
           >
             <span aria-hidden="true">+</span>
+            {shouldRenderInviteHint ? (
+              <span
+                className={`party-presence-cluster__invite-tooltip party-presence-cluster__invite-tooltip--${inviteHintAnimationState}`}
+              >
+                Copy party invite link →
+              </span>
+            ) : null}
             {partyInviteCopyStatus === "copied" ? (
-              <span className="party-presence-cluster__invite-tooltip" role="status" aria-live="polite">
+              <span
+                className="party-presence-cluster__invite-tooltip party-presence-cluster__invite-tooltip--status"
+                role="status"
+                aria-live="polite"
+              >
                 Party invite copied
               </span>
             ) : null}
