@@ -1809,7 +1809,20 @@ button.card.card--discard-top:active:not(:disabled) {
 }
 
 .card--selected-animated {
-  animation: selected-card-fade-in 0.6s ease-out;
+  animation-duration: 0.6s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.card--selected-animated.selected-card-fade-in-a {
+  animation-name: selected-card-fade-in-a;
+}
+
+.card--selected-animated.selected-card-fade-in-b {
+  animation-name: selected-card-fade-in-b;
+}
+
+.card--selected-animated {
   -webkit-mask-image: var(--selected-mask-image, url("/animations/selected.GIF"));
   mask-image: var(--selected-mask-image, url("/animations/selected.GIF"));
   -webkit-mask-size: 100% 100%;
@@ -1820,7 +1833,17 @@ button.card.card--discard-top:active:not(:disabled) {
   mask-position: center;
 }
 
-@keyframes selected-card-fade-in {
+@keyframes selected-card-fade-in-a {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes selected-card-fade-in-b {
   from {
     opacity: 0;
   }

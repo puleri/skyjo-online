@@ -2285,10 +2285,14 @@ export default function GameScreen({ gameId }: GameScreenProps) {
   const selectedCardMaskStyle = useMemo(
     () =>
       ({
-        "--selected-mask-image": `url("/animations/selected.GIF?play=${selectedCardAnimationId}")`,
+        "--selected-mask-image": 'url("/animations/selected.GIF")',
       }) as CSSProperties,
-    [selectedCardAnimationId],
+    [],
   );
+  const selectedCardFadeClass =
+    selectedCardAnimationId % 2 === 0
+      ? "selected-card-fade-in-a"
+      : "selected-card-fade-in-b";
   const selectedCardLabel = getCardLabel(selectedCardValue);
   const canSelectGridCard =
     isGameActive &&
@@ -4354,8 +4358,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <div>
                 {showSelectedCard ? (
                   <div
-                    key={`selected-card-dock-${selectedCardAnimationId}`}
-                    className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                    className={`card card--discard-pile card--selected-animated ${selectedCardFadeClass}${getCardStyleClass(selectedCardValue)}`}
                     style={selectedCardMaskStyle}
                     aria-label="Selected card"
                   >
@@ -4410,8 +4413,7 @@ export default function GameScreen({ gameId }: GameScreenProps) {
               <>
                 {showSelectedCard ? (
                   <div
-                    key={`selected-card-dock-${selectedCardAnimationId}`}
-                    className={`card card--discard-pile card--selected-animated${getCardStyleClass(selectedCardValue)}`}
+                    className={`card card--discard-pile card--selected-animated ${selectedCardFadeClass}${getCardStyleClass(selectedCardValue)}`}
                     style={selectedCardMaskStyle}
                     aria-label="Selected card"
                   >
