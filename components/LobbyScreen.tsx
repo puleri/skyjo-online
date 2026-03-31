@@ -269,7 +269,7 @@ export default function LobbyScreen() {
             Couldn&apos;t join invite: {pendingJoinError}
           </p>
         ) : null}
-        <div className="flex-space-between">
+        <div className="logo-leaderboard-rules-wrapper">
           <img className="home-logo" src="/images/misty-logo.svg" alt="Misty logo" />
           {/* when this button is clicked, it opens the rules image in another window */}
           <div className="menu-action-buttons">

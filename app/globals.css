@@ -51,13 +51,13 @@
   --color-sage-500: #8a9a8a;
   --color-sage-600: #6f846f;
   --color-sage-700: #5f745f;
-
   --color-on-sage: #f1e8e1;
   --color-on-muted: #7a7a75;
   --card-back-image: url("/images/misty-cardback.png");
   --card-back-image-wide: url("/images/wide.png");
   --lobby-bg-image: url("/images/misty-lobby-bg.png");
   --login-bg-image: url("/images/signin.webp");
+  --dark-mode-invert-filter: invert(0);
 }
 
 :root[data-theme="dark"] {
@@ -80,6 +80,8 @@
   --color-accent-secondary-strong: #e0b468;
   --color-dark: #f6f4ef;
   --color-on-dark: #2a2421;
+  --color-sage-300: #393b39;
+  --dark-mode-invert-filter: invert(1);
   --color-on-muted: #bdb4a7;
   --card-back-image: url("/images/misty-cardback-dark.png");
   --card-back-image-wide: url("/images/wide-dark.png");
@@ -117,7 +119,6 @@ body {
 }
 
 .home-logo {
-  margin: 30px 0 0;
   width: clamp(200px, 25vw, 300px);
 }
 
@@ -2382,6 +2383,7 @@ small {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: 20px;
 }
 
 .menu-action-button {
@@ -2389,12 +2391,11 @@ small {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 50px;
-  width: 50px;
+  height: 40px;
+  width: 40px;
   border-radius: 30px;
-  background-color: var(--color-surface-bright);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
-  margin-bottom: 20px;
+  background-color: var(--color-sage-300);
+  box-shadow: none;
   border: none;
 }
 
@@ -2411,7 +2412,7 @@ small {
   width: 25px;
   border-radius: 30px;
   background-color: var(--color-surface-bright);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
   margin-bottom: 0px;
   border: none;
 }
@@ -2424,8 +2425,8 @@ small {
 }
 
 .game-settings-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: #454545;
   position: relative;
 }
@@ -2480,8 +2481,8 @@ small {
 }
 
 .question-mark-icon {
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   color: #454545;
   position: relative;
 }
@@ -3395,8 +3396,8 @@ small {
 }
 
 .settings-icon {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
 }
 
 .lobby-scene-wrapper {
@@ -4165,8 +4166,15 @@ border: 1px solid #ffedef;
   min-height: 100%;
 }
 
+.logo-leaderboard-rules-wrapper {
+  margin: 30px 0 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+}
+
 .party-presence-cluster {
-  --presence-overlap: 12px;
   position: absolute;
   top: 12px;
   right: 14px;
@@ -4178,10 +4186,10 @@ border: 1px solid #ffedef;
 }
 
 .party-presence-cluster__member {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  margin-left: calc(var(--presence-overlap) * -1);
+  margin-left: 10px;
   border: 2px solid var(--color-surface-bright);
   background: var(--color-accent-soft);
   color: var(--color-text);
@@ -4261,8 +4269,8 @@ border: 1px solid #ffedef;
 }
 
 .party-presence-cluster__member.is-local {
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   border-width: 3px;
 }
 
