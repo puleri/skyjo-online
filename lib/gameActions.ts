@@ -2314,13 +2314,29 @@ export const leavePartyGame = async (
   playerId: string,
   options?: LeavePartyGameOptions,
 ) => {
-  const partyId = options?.partyId ?? null;
+  let partyId = options?.partyId ?? null;
   const mode = options?.mode ?? "self-only";
 
-  if (!partyId) {
-    if (mode === "party-only") {
+  if (!partyId && mode === "party-only") {
+    const userSnap = await getDoc(doc(db, "users", playerId));
+    partyId =
+      userSnap.exists()
+        ? ((userSnap.data().activePartyId as string | undefined) ?? null)
+        : null;
+
+    if (!partyId) {
+      await runTransaction(db, async (transaction) => {
+        transaction.set(
+          doc(db, "users", playerId),
+          { activePartyId: null, updatedAt: serverTimestamp() },
+          { merge: true },
+        );
+      });
       return;
     }
+  }
+
+  if (!partyId) {
     try {
       await leaveGame(gameId, playerId);
     } catch (error) {
