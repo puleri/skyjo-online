@@ -2685,6 +2685,30 @@ small {
   z-index: 2;
 }
 
+.home-menu-buttons--party-guest {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-menu-button-waiting-hint {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: color-mix(in srgb, var(--color-dark) 82%, #ffffff);
+  text-align: center;
+}
+
+.home-menu-button-waiting-ellipsis {
+  display: inline-block;
+  min-width: 16px;
+  text-align: left;
+  animation: home-menu-waiting-ellipsis-breathe 1.8s ease-in-out infinite;
+}
+
 .home-menu-buttons:hover {
   background-color: #D9D9D9;
   box-shadow: none;
@@ -2773,6 +2797,18 @@ small {
   100% {
     transform: translateX(260%) rotate(var(--sheen-angle));
     opacity: 0;
+  }
+}
+
+@keyframes home-menu-waiting-ellipsis-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-1px);
   }
 }
 
