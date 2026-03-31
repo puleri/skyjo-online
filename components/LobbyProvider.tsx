@@ -441,12 +441,29 @@ export default function LobbyProvider({ children }: { children: ReactNode }) {
       })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : "Unable to join the party from this invite.";
+        if (message === "Party no longer exists.") {
+          clearPendingPartyJoin();
+        }
         setPendingJoinError(message);
       })
       .finally(() => {
         pendingJoinInFlightRef.current = false;
       });
   }, [displayName, isAuthStateReady, profileDisplayName, router, uid]);
+
+  useEffect(() => {
+    if (!pendingJoinError) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingJoinError(null);
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [pendingJoinError]);
 
 
   useEffect(() => {
