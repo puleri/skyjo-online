@@ -2417,7 +2417,8 @@ small {
   height: 40px;
   width: 40px;
   border-radius: 30px;
-  background-color: var(--color-sage-300);
+  background-color: var(--newcolor-bg);
+  filter: var(--dark-mode-invert-filter);
   box-shadow: none;
   border: none;
 }
