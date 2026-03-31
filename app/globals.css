@@ -119,7 +119,19 @@ body {
 }
 
 .home-logo {
-  width: clamp(200px, 25vw, 300px);
+  width: clamp(150px, 28vw, 280px);
+}
+
+@media (max-width: 900px) {
+  .home-logo {
+    width: clamp(140px, 34vw, 220px);
+  }
+}
+
+@media (max-width: 640px) {
+  .home-logo {
+    width: clamp(120px, 42vw, 180px);
+  }
 }
 
 h1 {
