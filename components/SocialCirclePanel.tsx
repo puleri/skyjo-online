@@ -474,21 +474,6 @@ export default function SocialCirclePanel({
     }
   };
 
-
-  useEffect(() => {
-    if (partyLinkStatus !== "copied") {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setPartyLinkStatus("idle");
-    }, 1800);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [partyLinkStatus]);
-
   const handleProfileSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = profileName.trim();
@@ -530,7 +515,7 @@ export default function SocialCirclePanel({
 
   const partyLinkStatusText =
     partyLinkStatus === "copied"
-      ? "party invite copied"
+      ? "Copied!"
       : partyLinkStatus === "error"
         ? "Couldn't copy party link."
         : partyLinkStatus === "copying"
@@ -676,14 +661,13 @@ export default function SocialCirclePanel({
               <div className="social-circle-panel__section social-circle-panel__section--party-actions">
                 <button
                   type="button"
-                  className="social-circle-panel__party-invite-copy-button"
+                  className="social-circle-panel__section--social-link social-circle-panel__toggle"
                   onClick={() => {
                     void onClickSharePartyLink();
                   }}
                   disabled={isPartyLinkDisabled}
-                  aria-label={partyLinkStatus === "copying" ? "Copying party invite link" : "Copy party invite link"}
                 >
-                  {partyLinkStatus === "copying" ? "…" : "+"}
+                  {partyLinkStatus === "copying" ? "Copying…" : "Copy party invite link"}
                 </button>
                 {partyId ? (
                   <button
@@ -697,7 +681,7 @@ export default function SocialCirclePanel({
                     {isLeavingParty ? "Leaving party…" : "Leave party"}
                   </button>
                 ) : null}
-                {partyLinkStatusText ? <p className="social-circle-panel__copy-tooltip">{partyLinkStatusText}</p> : null}
+                {partyLinkStatusText ? <p className="notice">{partyLinkStatusText}</p> : null}
               </div>
             ) : null}
           </div>
