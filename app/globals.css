@@ -4304,7 +4304,7 @@ border: 1px solid #ffedef;
   border-width: 3px;
 }
 
-.party-presence-cluster__member.is-host::after {
+.party-presence-cluster__member::after {
   content: "";
   position: absolute;
   width: 30px;
@@ -4312,7 +4312,15 @@ border: 1px solid #ffedef;
   top: -18px;
   right: -10px;
   background: url("/crown.png") center / contain no-repeat;
+  opacity: 0;
+  transform: translateY(2px) scale(0.96);
+  transition: opacity 220ms ease, transform 220ms ease;
   pointer-events: none;
+}
+
+.party-presence-cluster__member.is-host::after {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .party-presence-cluster__member.is-local.is-host::after {
