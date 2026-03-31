@@ -4301,10 +4301,19 @@ border: 1px solid #ffedef;
 .party-presence-cluster__member.is-host::after {
   content: "";
   position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid var(--color-accent-secondary);
+  width: 30px;
+  height: 30px;
+  top: -18px;
+  right: -10px;
+  background: url("/crown.png") center / contain no-repeat;
   pointer-events: none;
+}
+
+.party-presence-cluster__member.is-local.is-host::after {
+  width: 50px;
+  height: 50px;
+  top: -28px;
+  right: -16px;
 }
 
 .party-presence-cluster__photo {
@@ -4333,7 +4342,7 @@ border: 1px solid #ffedef;
 }
 
 :root[data-theme="dark"] .party-presence-cluster__member.is-host::after {
-  border-color: var(--color-accent-secondary-strong);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
 .party-presence-cluster__sage-modal,
