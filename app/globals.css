@@ -4354,10 +4354,10 @@ border: 1px solid #ffedef;
 .party-presence-cluster__member::after {
   content: "";
   position: absolute;
-  width: 30px;
-  height: 30px;
-  top: -28px;
-  background: url("/crown.png") center / contain no-repeat;
+  width: 15px;
+  height: 28px;
+  bottom: -24px;
+  background: url("/ribbon.svg") center / contain no-repeat;
   opacity: 0;
   transform: translateY(2px) scale(0.96);
   transition: opacity 220ms ease, transform 220ms ease;
@@ -4370,9 +4370,10 @@ border: 1px solid #ffedef;
 }
 
 .party-presence-cluster__member.is-local.is-host::after {
-  width: 34px;
-  height: 34px;
-  top: -32px;
+  width: 20px;
+  height: 30px;
+  bottom: -28px;
+  z-index: -3;
 }
 
 .party-presence-cluster__photo {
