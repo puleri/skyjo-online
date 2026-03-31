@@ -530,8 +530,7 @@ export default function SocialCirclePanel({
           ? "Copying…"
           : null;
   const isSocialLinkDisabled = !uid || isAnonymousUser || socialLinkStatus === "copying";
-  const isPartyLinkDisabled =
-    isAnonymousUser || partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId);
+  const isPartyLinkDisabled = partyLinkStatus === "copying" || (!partyId && !onEnsurePartyId);
 
   return (
     <div className="social-circle-panel">
