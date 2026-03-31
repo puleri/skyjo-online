@@ -97,8 +97,7 @@ html {
 
 main {
   height: 100%;
-  overflow-x: hidden;
-
+  overflow: visible;
 }
 
 body {
@@ -106,7 +105,6 @@ body {
   background: var(--newcolor-bg);
   color: var(--color-text);
   height: 100%;
-  overflow-x: hidden;
   color: var(--color-text-muted);
 
 }
@@ -4162,6 +4160,7 @@ border: 1px solid #ffedef;
 }
 
 .app-shell {
+  overflow: visible;
   position: relative;
   min-height: 100%;
 }
