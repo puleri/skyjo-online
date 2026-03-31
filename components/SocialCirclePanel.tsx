@@ -660,7 +660,7 @@ export default function SocialCirclePanel({
               <div className="social-circle-panel__section social-circle-panel__section--party-actions">
                 <button
                   type="button"
-                  className="social-circle-panel__section--social-link social-circle-panel__toggle"
+                  className="social-circle-panel__section--party-link social-circle-panel__toggle"
                   onClick={() => {
                     void onClickSharePartyLink();
                   }}

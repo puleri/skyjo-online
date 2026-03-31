@@ -4704,7 +4704,7 @@ border: 1px solid #ffedef;
 }
 
 .social-circle-panel__section--party-actions {
-  grid-column: 3 / 4;
+  grid-column: 1 / 2;
   grid-row: 1 / 2;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
