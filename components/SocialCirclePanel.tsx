@@ -575,7 +575,7 @@ export default function SocialCirclePanel({
                 }}
               className="social-circle-panel__section social-circle-panel__section--social-link"
             >
-                {socialLinkStatus === "copying" ? "Copying…" : "Your social link"}
+                {socialLinkStatus === "copying" ? "Copying…" : "Copy friend request link"}
               {socialLinkStatusText ? <p className="notice">{socialLinkStatusText}</p> : null}
             </button>
             {isAnonymousUser ? (

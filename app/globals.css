@@ -63,7 +63,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-bg: #1f1b18;
-    --newcolor-bg: #1f1b18;
+  --newcolor-bg: #1f1b18;
   --on-newbg: #FFF9E2;
   --menu-button-bg: #33333351;
   --color-surface: #2a2421;
@@ -4553,7 +4553,7 @@ border: 1px solid #ffedef;
   box-shadow: none;
   color: var(--new-color-text);
   text-transform: uppercase;
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-size: clamp(.8rem, 1vw, 1rem);
   letter-spacing: 0.15em;
   grid-column: 1 / 2;
   grid-row: 1 / 2;
