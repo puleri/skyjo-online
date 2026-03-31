@@ -29,7 +29,7 @@ export type PreGameConfig = {
   targetScore: 50 | 100;
 };
 
-export const MIN_PARTY_SIZE_TO_START = 2;
+export const MIN_PARTY_SIZE_TO_START = 1;
 
 export function isValidPreGameConfig(config: PreGameConfig | null | undefined) {
   if (!config) {
