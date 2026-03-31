@@ -307,7 +307,9 @@ export default function LobbyScreen() {
             <div className="lobby-bento-grid">
               <button
                 type="button"
-                className="home-menu-button_main-row home-menu-buttons home-menu-buttons--classique lobby-bento-grid__classique"
+                className={`home-menu-button_main-row home-menu-buttons home-menu-buttons--classique lobby-bento-grid__classique ${
+                  isPartyGuest ? "home-menu-buttons--party-guest" : ""
+                }`}
                 onClick={() => void handleCreateClassiqueParty(100)}
                 disabled={
                   !firebaseReady ||
@@ -317,10 +319,21 @@ export default function LobbyScreen() {
                   isPartyGuest
                 }
               >
- <img src="/text/Classique.svg" alt="Classique" className="home-menu-words" />              </button>
+                <img src="/text/Classique.svg" alt="Classique" className="home-menu-words" />
+                {isPartyGuest ? (
+                  <span className="home-menu-button-waiting-hint">
+                    Waiting on host to start
+                    <span className="home-menu-button-waiting-ellipsis" aria-hidden="true">
+                      ...
+                    </span>
+                  </span>
+                ) : null}
+              </button>
               <button
                 type="button"
-                className="home-menu-button_main-row home-menu-buttons home-menu-buttons--quickplay lobby-bento-grid__quickplay"
+                className={`home-menu-button_main-row home-menu-buttons home-menu-buttons--quickplay lobby-bento-grid__quickplay ${
+                  isPartyGuest ? "home-menu-buttons--party-guest" : ""
+                }`}
                 onClick={() => void handleCreateClassiqueParty(50)}
                 disabled={
                   !firebaseReady ||
@@ -329,7 +342,15 @@ export default function LobbyScreen() {
                   isPartyGuest
                 }
               >
-                 <img src="/text/Quickplay.svg" alt="Quickplay" className="home-menu-words" />
+                <img src="/text/Quickplay.svg" alt="Quickplay" className="home-menu-words" />
+                {isPartyGuest ? (
+                  <span className="home-menu-button-waiting-hint">
+                    Waiting on host to start
+                    <span className="home-menu-button-waiting-ellipsis" aria-hidden="true">
+                      ...
+                    </span>
+                  </span>
+                ) : null}
               </button>
               <button
                 type="button"
