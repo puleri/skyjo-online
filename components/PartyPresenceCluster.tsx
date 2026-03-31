@@ -370,15 +370,24 @@ export default function PartyPresenceCluster() {
                 >
                   {avatarContent}
                 </button>
-                <div
-                  className={`party-presence-cluster__member party-presence-cluster__member-indicator--mobile${member.isHost ? " is-host" : ""} is-local`}
+                <button
+                  type="button"
+                  className={`party-presence-cluster__member party-presence-cluster__member-trigger party-presence-cluster__member-indicator--mobile${member.isHost ? " is-host" : ""} is-local`}
                   title={avatarLabel}
                   aria-label={avatarLabel}
+                  aria-haspopup="dialog"
+                  aria-expanded={isSageOpen}
                   style={{ zIndex: index + (shouldShowInviteShortcut ? 2 : 1) }}
-                  role="img"
+                  onClick={(event) => openSagePanel(event.currentTarget)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openSagePanel(event.currentTarget);
+                    }
+                  }}
                 >
                   {avatarContent}
-                </div>
+                </button>
               </Fragment>
             );
           }
@@ -397,35 +406,6 @@ export default function PartyPresenceCluster() {
           );
         })}
       </aside>
-
-      {localMember ? (
-        <button
-          type="button"
-          className="party-presence-cluster__open-button"
-          aria-label="Open social panel"
-          aria-haspopup="dialog"
-          aria-expanded={isSageOpen}
-          onClick={(event) => openSagePanel(event.currentTarget)}
-        >
-          <span className="party-presence-cluster__open-button-avatar" aria-hidden="true">
-            {(profilePhotosById[localMember.id] ?? localMember.photoURL) ? (
-              <img
-                className="party-presence-cluster__photo"
-                src={profilePhotosById[localMember.id] ?? localMember.photoURL ?? ""}
-                alt=""
-                loading="lazy"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <span className="party-presence-cluster__fallback">{getFallbackInitial(localMember.displayName)}</span>
-            )}
-          </span>
-          <span className="party-presence-cluster__open-button-label">Social</span>
-          <span className="party-presence-cluster__open-button-icon" aria-hidden="true">
-            ▾
-          </span>
-        </button>
-      ) : null}
 
       {isSageOpen ? (
         <div
