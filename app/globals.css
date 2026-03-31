@@ -1808,7 +1808,13 @@ button.card.card--discard-top:active:not(:disabled) {
   color: #3f5a4a;
 }
 
+.selected-card-slot {
+  position: relative;
+}
+
 .card--selected-animated {
+  position: absolute;
+  inset: 0;
   animation-duration: 0.6s;
   animation-timing-function: ease-out;
   animation-fill-mode: both;

@@ -4356,26 +4356,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div className="game-pile">
               <h6>Selected card</h6>
               <div>
-                {showSelectedCard ? (
-                  <div
-                    className={`card card--discard-pile card--selected-animated ${selectedCardFadeClass}${getCardStyleClass(selectedCardValue)}`}
-                    style={selectedCardMaskStyle}
-                    aria-label="Selected card"
-                  >
-                    {isItemCard(selectedCardValue) ? (
-                      renderItemContent(selectedCardValue.code)
-                    ) : (
-                      <span className="card__value">{selectedCardLabel}</span>
-                    )}
-                  </div>
-                ) : (
+                <div className="selected-card-slot">
                   <div
                     className="card card--empty-selected"
-                    aria-label="No selected card"
+                    aria-hidden={showSelectedCard}
+                    aria-label={showSelectedCard ? undefined : "No selected card"}
                   >
                     —
                   </div>
-                )}
+                  {showSelectedCard ? (
+                    <div
+                      className={`card card--discard-pile card--selected-animated ${selectedCardFadeClass}${getCardStyleClass(selectedCardValue)}`}
+                      style={selectedCardMaskStyle}
+                      aria-label="Selected card"
+                    >
+                      {isItemCard(selectedCardValue) ? (
+                        renderItemContent(selectedCardValue.code)
+                      ) : (
+                        <span className="card__value">{selectedCardLabel}</span>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
                 <div className="card-tags">
                   <span className="card-draw-source">
                     {selectedCardOwnerLabel}
@@ -4411,26 +4413,28 @@ export default function GameScreen({ gameId }: GameScreenProps) {
             <div className="game-pile">
               <h6>Selected card</h6>
               <>
-                {showSelectedCard ? (
-                  <div
-                    className={`card card--discard-pile card--selected-animated ${selectedCardFadeClass}${getCardStyleClass(selectedCardValue)}`}
-                    style={selectedCardMaskStyle}
-                    aria-label="Selected card"
-                  >
-                    {isItemCard(selectedCardValue) ? (
-                      renderItemContent(selectedCardValue.code)
-                    ) : (
-                      <span className="card__value">{selectedCardLabel}</span>
-                    )}
-                  </div>
-                ) : (
+                <div className="selected-card-slot">
                   <div
                     className="card card--empty-selected"
-                    aria-label="No selected card"
+                    aria-hidden={showSelectedCard}
+                    aria-label={showSelectedCard ? undefined : "No selected card"}
                   >
                     —
                   </div>
-                )}
+                  {showSelectedCard ? (
+                    <div
+                      className={`card card--discard-pile card--selected-animated ${selectedCardFadeClass}${getCardStyleClass(selectedCardValue)}`}
+                      style={selectedCardMaskStyle}
+                      aria-label="Selected card"
+                    >
+                      {isItemCard(selectedCardValue) ? (
+                        renderItemContent(selectedCardValue.code)
+                      ) : (
+                        <span className="card__value">{selectedCardLabel}</span>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
                 <div className="card-tags">
                   <span className="card-draw-source">
                     {selectedCardOwnerLabel}
