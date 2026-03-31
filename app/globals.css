@@ -4254,8 +4254,8 @@ border: 1px solid #ffedef;
 
 .party-presence-cluster {
   position: absolute;
-  top: 12px;
-  right: 14px;
+  top: 32px;
+  right: 24px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
