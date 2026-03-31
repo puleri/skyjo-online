@@ -121,7 +121,7 @@ export async function joinPartyByIdAction({
     ]);
 
     if (!partySnap.exists()) {
-      throw new Error("Party not found.");
+      throw new Error("Party no longer exists.");
     }
 
     const partyData = partySnap.data();
