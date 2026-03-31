@@ -4609,8 +4609,8 @@ border: 1px solid #ffedef;
   text-transform: uppercase;
   font-size: clamp(.8rem, 1vw, 1rem);
   letter-spacing: 0.15em;
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
+  grid-column: 3 / 4;
+  grid-row: 2 / 3;
   align-content: center;
 }
 
@@ -4646,7 +4646,7 @@ border: 1px solid #ffedef;
 
 .social-circle-panel__section--party-actions {
   grid-column: 3 / 4;
-  grid-row: 2 / 3;
+  grid-row: 1 / 2;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
